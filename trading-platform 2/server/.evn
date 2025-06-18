@@ -1,0 +1,21 @@
+# Archivo .env
+# Coloca este archivo en la raíz de tu proyecto
+
+# Clave de API para Finnhub
+FINNHUB_API_KEY=d17qv21r01qteuvpfhk0d17qv21r01qteuvpfhkg
+
+# --- NO OLVIDES AÑADIR TAMBIÉN LAS OTRAS VARIABLES ---
+
+# Puerto para el servidor
+PORT=3000
+
+# Credenciales de tu base de datos local
+DB_USER=postgres
+DB_HOST=localhost
+DB_DATABASE=tradingapp
+DB_PASSWORD=Nayara28*
+DB_PORT=5432
+
+# Clave secreta para las sesiones de usuario
+SESSION_SECRET=una_clave_secreta_muy_larga_y_aleatoria
+
