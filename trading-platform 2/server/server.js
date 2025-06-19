@@ -1,5 +1,6 @@
 import express from "express";
 import session from "express-session";
+import helmet from "helmet";
 import { Pool } from "pg";
 import { parse } from "pg-connection-string"; // Importar para parsear la URL de la DB
 import bcrypt from "bcryptjs";
@@ -11,6 +12,22 @@ import WebSocket, { WebSocketServer } from "ws";
 import http from "http";
 
 const app = express();
+app.use(
+  helmet.contentSecurityPolicy({
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "script-src": ["'self'", "https://s3.tradingview.com"],
+      "connect-src": [
+        "'self'",
+        "wss://stream.binance.com",
+        "wss://ws.twelvedata.com",
+        "https://*.twelvedata.com",
+        "https://*.binance.com",
+        "https://bulltrodat-backend.onrender.com",
+      ],
+    },
+  })
+);
 const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 
