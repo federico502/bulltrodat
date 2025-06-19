@@ -2039,7 +2039,7 @@ const SideMenu = React.memo(({ isOpen, onClose, setAlert }) => {
             <div className="p-4 border-b border-neutral-700 flex-shrink-0">
               <img
                 className="mb-2"
-                src="/public/bulltrodatw.png"
+                src="/bulltrodatw.png" // CORREGIDO: Ruta del logo sin /public
                 width="220"
                 alt="Logo"
               />
@@ -2211,7 +2211,6 @@ const DashboardPage = () => {
     if (!user) return;
 
     const connectWebSocket = () => {
-      // La URL del WebSocket ahora se lee de las variables de entorno de Vite
       const wsUrl = import.meta.env.VITE_WSS_URL;
       if (!wsUrl) {
         console.error("VITE_WSS_URL is not defined in environment variables.");
@@ -2231,7 +2230,6 @@ const DashboardPage = () => {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-
           if (data.type === "price_update") {
             setRealTimePrices((prevPrices) => ({
               ...prevPrices,
@@ -2402,13 +2400,11 @@ const DashboardPage = () => {
       const upperSymbol = symbol.toUpperCase().trim();
       if (upperSymbol && !userAssets.includes(upperSymbol)) {
         setUserAssets((prevAssets) => [...prevAssets, upperSymbol]);
-
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
           wsRef.current.send(
             JSON.stringify({ type: "subscribe", symbols: [upperSymbol] })
           );
         }
-
         setAlert({ message: `${upperSymbol} añadido.`, type: "success" });
       } else if (userAssets.includes(upperSymbol)) {
         setAlert({
@@ -2427,7 +2423,6 @@ const DashboardPage = () => {
         const newAssetList = userAssets.filter((a) => a !== symbol);
         setSelectedAsset(newAssetList.length > 0 ? newAssetList[0] : "BTCUSDT");
       }
-
       setAlert({ message: `${symbol} eliminado.`, type: "success" });
     },
     [userAssets, selectedAsset, setSelectedAsset]
@@ -2551,7 +2546,7 @@ const DashboardPage = () => {
               <div className="flex-grow">
                 <img
                   className="mb-4"
-                  src="/public/bulltrodatw.png"
+                  src="/bulltrodatw.png" // CORREGIDO: Ruta del logo sin /public
                   width="220"
                   alt="Logo"
                 />
@@ -2577,7 +2572,7 @@ const DashboardPage = () => {
         <div className="flex-grow">
           <img
             className="mb-4"
-            src="/public/bulltrodatw.png"
+            src="/bulltrodatw.png" // CORREGIDO: Ruta del logo sin /public
             width="220"
             alt="Logo"
           />
@@ -2710,7 +2705,8 @@ const App = () => {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white text-xl font-bold animate-pulse">
-          <img src="/public/bulltrodatw.png" width="220" alt="Cargando..." />
+          <img src="/bulltrodatw.png" width="220" alt="Cargando..." />{" "}
+          {/* CORREGIDO: Ruta del logo */}
         </div>
       </div>
     );
@@ -2761,7 +2757,12 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-4">
       <div className="bg-neutral-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-neutral-700">
-        <img className="mb-3 mx-auto" src="/public/bulltrodatw.png" alt="" />
+        <img
+          className="mb-3 mx-auto"
+          src="/bulltrodatw.png"
+          alt="Logo de Bulltrodat"
+        />{" "}
+        {/* CORREGIDO: Ruta del logo */}
         <p className="text-center text-neutral-400 mb-6">
           {isLogin ? "Inicia sesión para continuar" : "Crea tu cuenta"}
         </p>
