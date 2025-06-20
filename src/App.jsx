@@ -202,9 +202,6 @@ const ArrowUpTrayIcon = ({ className }) => (
   </svg>
 );
 
-//================================================================================
-// 1. CONTEXTO DE LA APLICACIÓN
-//================================================================================
 const AppContext = createContext();
 
 const AppProvider = ({ children }) => {
@@ -212,7 +209,7 @@ const AppProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [realTimePrices, setRealTimePrices] = useState({});
-  const [selectedAsset, setSelectedAsset] = useState("BTC-USDT"); // CAMBIO: Símbolo por defecto de KuCoin
+  const [selectedAsset, setSelectedAsset] = useState("BTC-USDT");
 
   const checkUser = useCallback(async () => {
     try {
@@ -266,9 +263,6 @@ const AppProvider = ({ children }) => {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
-//================================================================================
-// 2. HOOKS PERSONALIZADOS
-//================================================================================
 const useFlashOnUpdate = (value) => {
   const [flashClass, setFlashClass] = useState("");
   const prevValueRef = useRef();
@@ -299,9 +293,6 @@ const useFlashOnUpdate = (value) => {
   return flashClass;
 };
 
-//================================================================================
-// 3. COMPONENTES DE LA INTERFAZ
-//================================================================================
 const Toast = ({ message, type, onDismiss }) => (
   <motion.div
     layout
@@ -342,17 +333,16 @@ const TradingViewWidget = React.memo(({ symbol }) => {
   const containerRef = useRef(null);
 
   const getTradingViewSymbol = (assetSymbol) => {
-    if (!assetSymbol) return "KUCOIN:BTC-USDT";
+    if (!assetSymbol) return "KUCOIN:BTCUSDT"; // Default symbol
     const s = assetSymbol.toUpperCase();
 
-    // KuCoin format
+    // **CORRECCIÓN AQUÍ**
+    // KuCoin usa el formato 'BTCUSDT' sin guion para TradingView.
     if (s.includes("-USDT")) {
-      return `KUCOIN:${s}`;
+      return `KUCOIN:${s.replace("-", "")}`;
     }
-
-    // Convertir formatos viejos si es necesario
     if (s.endsWith("USDT")) {
-      return `KUCOIN:${s.slice(0, -4)}-USDT`;
+      return `KUCOIN:${s}`;
     }
 
     const forexPairs = [
