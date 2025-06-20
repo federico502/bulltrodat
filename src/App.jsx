@@ -333,14 +333,15 @@ const TradingViewWidget = React.memo(({ symbol }) => {
   const containerRef = useRef(null);
 
   const getTradingViewSymbol = (assetSymbol) => {
-    if (!assetSymbol) return "KUCOIN:BTCUSDT"; // Default symbol
+    if (!assetSymbol) return "KUCOIN:BTCUSDT"; // Símbolo por defecto
     const s = assetSymbol.toUpperCase();
 
-    // **CORRECCIÓN AQUÍ**
-    // KuCoin usa el formato 'BTCUSDT' sin guion para TradingView.
+    // **CORRECCIÓN DE LÓGICA**
+    // KuCoin en TradingView usa el formato 'BTCUSDT' (sin guion).
     if (s.includes("-USDT")) {
       return `KUCOIN:${s.replace("-", "")}`;
     }
+    // Si ya viene sin guion (por alguna razón), también funciona
     if (s.endsWith("USDT")) {
       return `KUCOIN:${s}`;
     }
@@ -592,7 +593,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
           type="text"
           value={newSymbol}
           onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
-          placeholder="Ej: BTC-USDT"
+          placeholder="Ej: DOGE-USDT"
           className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
         />
         <button
@@ -2211,6 +2212,7 @@ const DashboardPage = () => {
     setOpHistoryFilter(newFilter);
     fetchData(1, newFilter);
   };
+
   const handleOpenNewOpModal = useCallback(
     (type, volume) => {
       if (!volume || volume <= 0) {
@@ -2279,7 +2281,11 @@ const DashboardPage = () => {
 
   const handleAddAsset = useCallback(
     (symbol) => {
-      const upperSymbol = symbol.toUpperCase().trim();
+      let upperSymbol = symbol.toUpperCase().trim();
+      if (upperSymbol.endsWith("USDT") && !upperSymbol.includes("-")) {
+        upperSymbol = `${upperSymbol.slice(0, -4)}-USDT`;
+      }
+
       if (upperSymbol && !userAssets.includes(upperSymbol)) {
         setUserAssets((prevAssets) => [...prevAssets, upperSymbol]);
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
