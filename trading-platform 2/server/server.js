@@ -92,15 +92,20 @@ const sessionMiddleware = session({
     secure: NODE_ENV === "production",
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24 * 7,
-    sameSite: "lax",
+    sameSite: NODE_ENV === "production" ? "none" : "lax",
   },
+});
+app.use((req, res, next) => {
+  if (req.headers["x-forwarded-proto"] === "https") {
+    req.session.cookie.secure = true;
+  }
+  next();
 });
 app.use(sessionMiddleware);
 
 // --- Lógica de WebSockets ---
 global.preciosEnTiempoReal = {};
 const usuariosSockets = {};
-
 const initialCrypto = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT"];
 const initialStocks = [
   "AAPL",
@@ -891,7 +896,7 @@ const startServer = async () => {
   try {
     await pool.query(`
           CREATE TABLE IF NOT EXISTS "user_sessions" (
-            "sid" varchar NOT NULL,
+            "sid" varchar NOT NULL COLLATE "default",
             "sess" json NOT NULL,
             "expire" timestamp(6) NOT NULL,
             CONSTRAINT "user_sessions_pkey" PRIMARY KEY ("sid")
