@@ -47,10 +47,19 @@ const pool = new Pool({
 });
 
 // --- Configuración de Middlewares ---
+
+// !! CORRECCIÓN FINAL: Confiar en el proxy de Render !!
+// Esto es crucial para que las cookies seguras funcionen correctamente en producción.
+if (NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
 const allowedOrigins = [FRONTEND_URL];
 app.use(
   cors({
     origin: function (origin, callback) {
+      // Para depuración:
+      // console.log(`CORS Check: Request from origin ${origin}`);
       if (!origin && NODE_ENV !== "production") {
         return callback(null, true);
       }
@@ -95,22 +104,7 @@ const sessionMiddleware = session({
     sameSite: NODE_ENV === "production" ? "none" : "lax",
   },
 });
-
-// !! CORRECCIÓN IMPORTANTE: El orden de estos middlewares es crucial !!
-// Primero, aplicamos el middleware que CREA la sesión.
 app.use(sessionMiddleware);
-
-// Segundo, aplicamos el middleware que USA la sesión.
-app.use((req, res, next) => {
-  if (req.headers["x-forwarded-proto"] === "https") {
-    // Aseguramos que la cookie de sesión sea segura si estamos detrás de un proxy (como Render)
-    if (req.session) {
-      // Comprobamos que la sesión existe antes de usarla
-      req.session.cookie.secure = true;
-    }
-  }
-  next();
-});
 
 // --- Lógica de WebSockets ---
 global.preciosEnTiempoReal = {};
