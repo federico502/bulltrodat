@@ -47,9 +47,6 @@ const pool = new Pool({
 });
 
 // --- Configuración de Middlewares ---
-
-// !! CORRECCIÓN FINAL: Confiar en el proxy de Render !!
-// Esto es crucial para que las cookies seguras funcionen correctamente en producción.
 if (NODE_ENV === "production") {
   app.set("trust proxy", 1);
 }
@@ -87,7 +84,7 @@ app.use(
 
 app.use(express.json());
 
-// --- Configuración de Sesiones Persistentes en PostgreSQL ---
+// --- Configuración de Sesiones Persistentes ---
 const PgSession = connectPgSimple(session);
 const sessionMiddleware = session({
   store: new PgSession({
@@ -109,7 +106,13 @@ app.use(sessionMiddleware);
 // --- Lógica de WebSockets ---
 global.preciosEnTiempoReal = {};
 const usuariosSockets = {};
-const initialCrypto = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT"];
+const initialCrypto = [
+  "BTC-USDT",
+  "ETH-USDT",
+  "SOL-USDT",
+  "XRP-USDT",
+  "BNB-USDT",
+];
 const initialStocks = [
   "AAPL",
   "AMZN",
@@ -130,9 +133,9 @@ const initialForex = [
   "AUDJPY",
 ];
 const initialCommodities = ["XAGUSD", "XAUUSD"];
-let binanceWs = null;
+let kuCoinWs = null;
 let twelveDataWs = null;
-const activeBinanceSubscriptions = new Set(initialCrypto);
+const activeKuCoinSubscriptions = new Set(initialCrypto);
 const activeTwelveDataSubscriptions = new Set([
   ...initialStocks,
   ...initialForex,
@@ -165,6 +168,7 @@ function broadcast(data) {
 
 const getSymbolType = (symbol) => {
   const s = symbol.toUpperCase();
+  if (s.includes("-USDT")) return "crypto";
   if (s.endsWith("USDT")) return "crypto";
   if (s.length === 6) {
     const base = s.substring(0, 3);
@@ -176,6 +180,14 @@ const getSymbolType = (symbol) => {
   return "stock";
 };
 
+const getKuCoinSymbolFormat = (symbol) => {
+  const s = symbol.toUpperCase();
+  if (s.endsWith("USDT") && !s.includes("-")) {
+    return `${s.slice(0, -4)}-USDT`;
+  }
+  return s;
+};
+
 const getTwelveDataSymbolFormat = (symbol) => {
   const s = symbol.toUpperCase();
   if (getSymbolType(s) === "forex/commodity") {
@@ -184,71 +196,90 @@ const getTwelveDataSymbolFormat = (symbol) => {
   return s;
 };
 
-function subscribeToBinance(symbols) {
-  if (binanceWs && binanceWs.readyState === WebSocket.OPEN) {
-    console.log(
-      `🔷 Subscribing to ${symbols.length} symbols on Binance: ${symbols.join(
-        ", "
-      )}`
-    );
-    binanceWs.send(
+function subscribeToKuCoin(symbols) {
+  if (kuCoinWs && kuCoinWs.readyState === WebSocket.OPEN) {
+    const topic = `/market/ticker:${symbols.join(",")}`;
+    console.log(`🔷 Subscribing to KuCoin topic: ${topic}`);
+    kuCoinWs.send(
       JSON.stringify({
-        method: "SUBSCRIBE",
-        params: symbols.map((s) => `${s.toLowerCase()}@trade`),
         id: Date.now(),
+        type: "subscribe",
+        topic: topic,
+        privateChannel: false,
+        response: true,
       })
     );
   }
 }
 
-function subscribeToTwelveData(symbols) {
-  if (twelveDataWs && twelveDataWs.readyState === WebSocket.OPEN) {
-    console.log(
-      `🔷 Subscribing to ${
-        symbols.length
-      } symbols on Twelve Data: ${symbols.join(", ")}`
+async function iniciarWebSocketKuCoin() {
+  try {
+    console.log("Solicitando token para WebSocket de KuCoin...");
+    const tokenResponse = await fetch(
+      "https://api.kucoin.com/api/v1/bullet-public",
+      { method: "POST" }
     );
-    twelveDataWs.send(
-      JSON.stringify({
-        action: "subscribe",
-        params: { symbols: symbols.map(getTwelveDataSymbolFormat).join(",") },
-      })
-    );
-  }
-}
-
-function iniciarWebSocketBinance() {
-  const url = `wss://stream.binance.com:9443/ws`;
-  binanceWs = new WebSocket(url);
-  binanceWs.on("open", () => {
-    console.log("✅ WebSocket connected to Binance");
-    if (activeBinanceSubscriptions.size > 0) {
-      subscribeToBinance(Array.from(activeBinanceSubscriptions));
+    if (!tokenResponse.ok) {
+      throw new Error(
+        `Failed to get KuCoin token: ${tokenResponse.statusText}`
+      );
     }
-  });
-  binanceWs.on("message", (data) => {
-    try {
-      const mensaje = JSON.parse(data);
-      if (mensaje.s && mensaje.p) {
-        const upperSymbol = mensaje.s.toUpperCase();
-        global.preciosEnTiempoReal[upperSymbol] = parseFloat(mensaje.p);
-        broadcast({
-          type: "price_update",
-          prices: { [upperSymbol]: parseFloat(mensaje.p) },
-        });
+    const tokenData = await tokenResponse.json();
+    const { token, instanceServers } = tokenData.data;
+
+    if (!token || !instanceServers || instanceServers.length === 0) {
+      throw new Error("Invalid token or server data from KuCoin");
+    }
+
+    const endpoint = instanceServers[0].endpoint;
+    const wsUrl = `${endpoint}?token=${token}`;
+    console.log("✅ Conectando al WebSocket de KuCoin...");
+
+    kuCoinWs = new WebSocket(wsUrl);
+
+    kuCoinWs.on("open", () => {
+      console.log("✅ WebSocket conectado a KuCoin");
+      if (activeKuCoinSubscriptions.size > 0) {
+        subscribeToKuCoin(Array.from(activeKuCoinSubscriptions));
       }
-    } catch (err) {
-      console.error("❌ Error processing message from Binance:", err);
-    }
-  });
-  binanceWs.on("close", () => {
-    console.warn("🔁 Binance WebSocket closed, reconnecting...");
-    setTimeout(iniciarWebSocketBinance, 3000);
-  });
-  binanceWs.on("error", (err) => {
-    console.error("❌ Binance WebSocket error:", err.message);
-    binanceWs.close();
-  });
+      setInterval(() => {
+        if (kuCoinWs.readyState === WebSocket.OPEN) {
+          kuCoinWs.send(JSON.stringify({ id: Date.now(), type: "ping" }));
+        }
+      }, 15000);
+    });
+
+    kuCoinWs.on("message", (data) => {
+      try {
+        const message = JSON.parse(data);
+        if (message.type === "message" && message.subject === "trade.ticker") {
+          const symbolWithDash = message.topic.split(":")[1];
+          const symbol = symbolWithDash.replace("-", "");
+          const price = parseFloat(message.data.price);
+          global.preciosEnTiempoReal[symbol] = price;
+          broadcast({
+            type: "price_update",
+            prices: { [symbol]: price },
+          });
+        }
+      } catch (err) {
+        console.error("❌ Error procesando mensaje de KuCoin:", err);
+      }
+    });
+
+    kuCoinWs.on("close", () => {
+      console.warn("🔁 KuCoin WebSocket cerrado, reconectando...");
+      setTimeout(iniciarWebSocketKuCoin, 5000);
+    });
+
+    kuCoinWs.on("error", (err) => {
+      console.error("❌ Error WebSocket KuCoin:", err.message);
+      kuCoinWs.close();
+    });
+  } catch (error) {
+    console.error("❌ Fallo al iniciar la conexión con KuCoin:", error);
+    setTimeout(iniciarWebSocketKuCoin, 10000);
+  }
 }
 
 function iniciarWebSocketTwelveData() {
@@ -279,10 +310,6 @@ function iniciarWebSocketTwelveData() {
           type: "price_update",
           prices: { [internalSymbol]: price },
         });
-      } else if (message.event === "subscribe-status") {
-        console.log("📈 Twelve Data subscription status:", message);
-      } else if (message.event === "error") {
-        console.error("❌ Twelve Data API error:", message);
       }
     } catch (err) {
       console.error("❌ Error processing message from Twelve Data:", err);
@@ -315,12 +342,14 @@ async function getFreshPriceFromApi(symbol) {
   const type = getSymbolType(upperSymbol);
   try {
     if (type === "crypto") {
+      const kucoinSymbol = getKuCoinSymbolFormat(upperSymbol);
       const response = await fetch(
-        `https://api.binance.com/api/v3/ticker/price?symbol=${upperSymbol}`
+        `https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=${kucoinSymbol}`
       );
-      if (!response.ok) return null;
-      const data = await response.json();
-      return parseFloat(data.price);
+      if (response.ok) {
+        const { data } = await response.json();
+        if (data && data.price) return parseFloat(data.price);
+      }
     }
     if (type === "forex/commodity" || type === "stock") {
       const twelveDataSymbol = getTwelveDataSymbolFormat(upperSymbol);
@@ -368,22 +397,15 @@ async function getFreshPriceFromApi(symbol) {
 
 async function cerrarOperacionesAutomáticamente(operationId = null) {
   try {
-    let query = `
-            SELECT o.id, o.usuario_id, o.activo, o.tipo_operacion, o.volumen, o.precio_entrada,
-                   o.take_profit, o.stop_loss, o.fecha, u.balance
-            FROM operaciones o
-            JOIN usuarios u ON o.usuario_id = u.id
-            WHERE o.cerrada = false AND (o.take_profit IS NOT NULL OR o.stop_loss IS NOT NULL)
-        `;
-    const queryParams = [];
-    if (operationId) {
-      query += ` AND o.id = $1`;
-      queryParams.push(operationId);
-    }
-    const { rows: operaciones } = await pool.query(query, queryParams);
+    const result = await pool.query(
+      "SELECT * FROM operaciones WHERE cerrada = false AND (take_profit IS NOT NULL OR stop_loss IS NOT NULL)"
+    );
+    const operaciones = result.rows;
+
     for (const op of operaciones) {
       const precioActual = await getLatestPrice(op.activo);
       if (!precioActual) continue;
+
       let cerrar = false;
       let ganancia = 0;
       const volumen = parseFloat(op.volumen);
@@ -391,6 +413,7 @@ async function cerrarOperacionesAutomáticamente(operationId = null) {
       const tp = op.take_profit ? parseFloat(op.take_profit) : null;
       const sl = op.stop_loss ? parseFloat(op.stop_loss) : null;
       const tipo = op.tipo_operacion.toLowerCase();
+
       if (tipo === "buy" || tipo === "compra") {
         if ((tp && precioActual >= tp) || (sl && precioActual <= sl))
           cerrar = true;
@@ -398,43 +421,37 @@ async function cerrarOperacionesAutomáticamente(operationId = null) {
         if ((tp && precioActual <= tp) || (sl && precioActual >= sl))
           cerrar = true;
       }
+
       if (cerrar) {
         if (tipo === "buy" || tipo === "compra") {
           ganancia = (precioActual - entrada) * volumen;
         } else {
           ganancia = (entrada - precioActual) * volumen;
         }
-        const tipoCierre = ganancia >= 0 ? "tp" : "sl";
-        const socket = usuariosSockets[op.usuario_id];
-        if (socket && socket.readyState === WebSocket.OPEN) {
-          socket.send(
-            JSON.stringify({
-              tipo: "operacion_cerrada",
-              operacion_id: op.id,
-              tipoCierre,
-              activo: op.activo,
-              ganancia,
-            })
+
+        const client = await pool.connect();
+        try {
+          await client.query("BEGIN");
+          await client.query(
+            "UPDATE operaciones SET cerrada = true, ganancia = $1, precio_cierre = $2 WHERE id = $3",
+            [ganancia, precioActual, op.id]
           );
+          await client.query(
+            "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
+            [ganancia, op.usuario_id]
+          );
+          await client.query("COMMIT");
+          console.log(`✔️ Operación #${op.id} cerrada automáticamente.`);
+        } catch (e) {
+          await client.query("ROLLBACK");
+          throw e;
+        } finally {
+          client.release();
         }
-        await pool.query("BEGIN");
-        await pool.query(
-          "UPDATE operaciones SET cerrada = true, ganancia = $1, precio_cierre = $2 WHERE id = $3",
-          [ganancia, precioActual, op.id]
-        );
-        await pool.query(
-          "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
-          [ganancia, op.usuario_id]
-        );
-        await pool.query("COMMIT");
-        console.log(
-          `✔️ Operación #${op.id} cerrada automáticamente por ${tipoCierre}.`
-        );
       }
     }
   } catch (err) {
     console.error("❌ Error al cerrar operaciones automáticamente:", err);
-    await pool.query("ROLLBACK");
   }
 }
 
@@ -909,7 +926,7 @@ const startServer = async () => {
 
     server.listen(PORT, () => {
       console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
-      iniciarWebSocketBinance();
+      iniciarWebSocketKuCoin();
       iniciarWebSocketTwelveData();
       setInterval(() => cerrarOperacionesAutomáticamente(), 1500);
     });

@@ -24,7 +24,6 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 // --- Configuración de Axios ---
-// La URL base ahora se lee desde las variables de entorno de Vite.
 axios.defaults.baseURL = import.meta.env.VITE_API_URL;
 axios.defaults.withCredentials = true;
 
@@ -58,7 +57,6 @@ const MenuIcon = () => (
     />
   </svg>
 );
-
 const PlusIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -141,7 +139,6 @@ const KeyIcon = ({ className }) => (
     />
   </svg>
 );
-
 const UserCircleIcon = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -158,7 +155,6 @@ const UserCircleIcon = ({ className }) => (
     />
   </svg>
 );
-
 const ChevronLeftIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -173,7 +169,6 @@ const ChevronLeftIcon = () => (
     />
   </svg>
 );
-
 const ArrowDownTrayIcon = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -190,7 +185,6 @@ const ArrowDownTrayIcon = ({ className }) => (
     />
   </svg>
 );
-
 const ArrowUpTrayIcon = ({ className }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -207,6 +201,7 @@ const ArrowUpTrayIcon = ({ className }) => (
     />
   </svg>
 );
+
 //================================================================================
 // 1. CONTEXTO DE LA APLICACIÓN
 //================================================================================
@@ -217,7 +212,7 @@ const AppProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [realTimePrices, setRealTimePrices] = useState({});
-  const [selectedAsset, setSelectedAsset] = useState("BTCUSDT");
+  const [selectedAsset, setSelectedAsset] = useState("BTC-USDT"); // CAMBIO: Símbolo por defecto de KuCoin
 
   const checkUser = useCallback(async () => {
     try {
@@ -307,7 +302,6 @@ const useFlashOnUpdate = (value) => {
 //================================================================================
 // 3. COMPONENTES DE LA INTERFAZ
 //================================================================================
-
 const Toast = ({ message, type, onDismiss }) => (
   <motion.div
     layout
@@ -348,12 +342,17 @@ const TradingViewWidget = React.memo(({ symbol }) => {
   const containerRef = useRef(null);
 
   const getTradingViewSymbol = (assetSymbol) => {
-    if (!assetSymbol) return "BINANCE:BTCUSDT";
-
+    if (!assetSymbol) return "KUCOIN:BTC-USDT";
     const s = assetSymbol.toUpperCase();
 
+    // KuCoin format
+    if (s.includes("-USDT")) {
+      return `KUCOIN:${s}`;
+    }
+
+    // Convertir formatos viejos si es necesario
     if (s.endsWith("USDT")) {
-      return `BINANCE:${s}`;
+      return `KUCOIN:${s.slice(0, -4)}-USDT`;
     }
 
     const forexPairs = [
@@ -364,40 +363,20 @@ const TradingViewWidget = React.memo(({ symbol }) => {
       "EURJPY",
       "GBPJPY",
       "AUDJPY",
-      "EURAUD",
-      "GBPAUD",
     ];
-    if (forexPairs.includes(s)) {
-      return `OANDA:${s}`;
-    }
-    const commodities = ["XAGUSD", "XAUUSD"];
-    if (commodities.includes(s)) {
-      return `OANDA:${s}`;
-    }
+    if (forexPairs.includes(s)) return `OANDA:${s}`;
 
-    const stockExchanges = {
-      AAPL: "NASDAQ",
-      GOOGL: "NASDAQ",
-      AMZN: "NASDAQ",
-      META: "NASDAQ",
-      TSLA: "NASDAQ",
-      MSFT: "NASDAQ",
-      NVDA: "NASDAQ",
-    };
-    if (stockExchanges[s]) {
-      return `${stockExchanges[s]}:${s}`;
-    }
+    const commodities = ["XAGUSD", "XAUUSD"];
+    if (commodities.includes(s)) return `OANDA:${s}`;
 
     return `NASDAQ:${s}`;
   };
 
   useEffect(() => {
     const tvSymbol = getTradingViewSymbol(symbol);
-
     const createWidget = () => {
-      if (!containerRef.current || typeof window.TradingView === "undefined") {
+      if (!containerRef.current || typeof window.TradingView === "undefined")
         return;
-      }
       containerRef.current.innerHTML = "";
       new window.TradingView.widget({
         autosize: true,
@@ -444,19 +423,12 @@ const TradingViewWidget = React.memo(({ symbol }) => {
 
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
   if (totalPages <= 1) return null;
-
   const handlePrevious = () => {
-    if (currentPage > 1) {
-      onPageChange(currentPage - 1);
-    }
+    if (currentPage > 1) onPageChange(currentPage - 1);
   };
-
   const handleNext = () => {
-    if (currentPage < totalPages) {
-      onPageChange(currentPage + 1);
-    }
+    if (currentPage < totalPages) onPageChange(currentPage + 1);
   };
-
   return (
     <div className="flex justify-center items-center gap-2 mt-2">
       <button
@@ -501,7 +473,6 @@ const PerformanceChart = ({ performanceData, isLoading }) => {
     scales: { x: { display: false }, y: { display: false } },
     plugins: { legend: { display: false } },
   };
-
   return (
     <Card className="mt-4">
       <h3 className="text-white font-bold text-base mb-4">Rendimiento</h3>
@@ -566,13 +537,11 @@ const StatisticsPanel = ({ stats, performanceData, isLoading }) => (
 
 const AssetPrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
-  const priceData = realTimePrices[symbol.toUpperCase()];
-  const price = priceData;
+  const normalizedSymbol = symbol.toUpperCase().replace("-", "");
+  const price = realTimePrices[normalizedSymbol];
   const flashClass = useFlashOnUpdate(price);
-
   const baseColor = price ? "text-white" : "text-neutral-500";
   const finalColorClass = flashClass || baseColor;
-
   return (
     <div className="px-2 py-1 rounded-md">
       <span
@@ -584,45 +553,41 @@ const AssetPrice = React.memo(({ symbol }) => {
   );
 });
 
-const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => {
-  return (
-    <li
-      onClick={() => onClick(symbol)}
-      className={`cursor-pointer transition-all duration-200 rounded-md flex justify-between items-center p-2 group ${
-        isSelected
-          ? "bg-cyan-500/20 text-white"
-          : "hover:bg-neutral-800 text-neutral-300"
-      }`}
-    >
-      <span className="font-semibold">{symbol}</span>
-      <div className="flex items-center gap-2">
-        <AssetPrice symbol={symbol} />
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove(symbol);
-          }}
-          className="text-neutral-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-          title={`Eliminar ${symbol}`}
-        >
-          <XIcon />
-        </button>
-      </div>
-    </li>
-  );
-});
+const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
+  <li
+    onClick={() => onClick(symbol)}
+    className={`cursor-pointer transition-all duration-200 rounded-md flex justify-between items-center p-2 group ${
+      isSelected
+        ? "bg-cyan-500/20 text-white"
+        : "hover:bg-neutral-800 text-neutral-300"
+    }`}
+  >
+    <span className="font-semibold">{symbol}</span>
+    <div className="flex items-center gap-2">
+      <AssetPrice symbol={symbol} />
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(symbol);
+        }}
+        className="text-neutral-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+        title={`Eliminar ${symbol}`}
+      >
+        <XIcon />
+      </button>
+    </div>
+  </li>
+));
 
 const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
   const { setSelectedAsset, selectedAsset } = useContext(AppContext);
   const [newSymbol, setNewSymbol] = useState("");
-
   const handleAssetClick = useCallback(
     (symbol) => {
       setSelectedAsset(symbol);
     },
     [setSelectedAsset]
   );
-
   const handleSubmit = (e) => {
     e.preventDefault();
     if (newSymbol) {
@@ -630,7 +595,6 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
       setNewSymbol("");
     }
   };
-
   return (
     <div className="mb-6">
       <form onSubmit={handleSubmit} className="mb-4 flex gap-2">
@@ -638,7 +602,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
           type="text"
           value={newSymbol}
           onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
-          placeholder="Ej: TSLA"
+          placeholder="Ej: BTC-USDT"
           className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
         />
         <button
@@ -680,25 +644,19 @@ const ProfileMenu = React.memo(
   ({ user, logout, onToggleSideMenu, onManageUsers, onManageRegCode }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef(null);
-
     useEffect(() => {
       const handleClickOutside = (event) => {
-        if (menuRef.current && !menuRef.current.contains(event.target)) {
+        if (menuRef.current && !menuRef.current.contains(event.target))
           setIsOpen(false);
-        }
       };
       document.addEventListener("mousedown", handleClickOutside);
       return () =>
         document.removeEventListener("mousedown", handleClickOutside);
     }, []);
-
     const handleItemClick = (action) => {
-      if (action) {
-        action();
-      }
+      if (action) action();
       setIsOpen(false);
     };
-
     return (
       <div className="relative" ref={menuRef}>
         <button
@@ -708,7 +666,6 @@ const ProfileMenu = React.memo(
         >
           <UserCircleIcon className="h-6 w-6" />
         </button>
-
         <AnimatePresence>
           {isOpen && (
             <motion.div
@@ -718,7 +675,7 @@ const ProfileMenu = React.memo(
               transition={{ duration: 0.15, ease: "easeOut" }}
               className="origin-top-right absolute right-0 mt-2 w-64 rounded-xl shadow-2xl bg-neutral-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-50 p-2 border border-neutral-700"
             >
-              <div className="px-3 py-2 border-b  border-neutral-700 mb-2">
+              <div className="px-3 py-2 border-b border-neutral-700 mb-2">
                 <p className="text-sm font-semibold text-white truncate">
                   {user?.nombre || "Usuario"}
                 </p>
@@ -774,7 +731,6 @@ const Header = ({
 }) => {
   const { user, logout, selectedAsset } = useContext(AppContext);
   const [volume, setVolume] = useState(0.01);
-
   return (
     <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-black/20 border-b border-neutral-800">
       <div className="flex items-center gap-4">
@@ -832,7 +788,6 @@ const FlashingMetric = ({ value, prefix = "", suffix = "" }) => {
   const flashClass = useFlashOnUpdate(value);
   const baseColor = "text-white";
   const finalColorClass = flashClass || baseColor;
-
   return (
     <span
       className={`font-bold px-2 py-1 rounded-md transition-colors duration-300 ${finalColorClass}`}
@@ -877,23 +832,17 @@ const FinancialMetrics = ({ metrics, isLoading }) => (
 
 const LiveProfitCell = ({ operation }) => {
   const { realTimePrices } = useContext(AppContext);
-
   const calculateProfit = useCallback(() => {
-    if (operation.cerrada) {
-      return parseFloat(operation.ganancia || 0);
-    }
-    const currentPrice = realTimePrices[operation.activo.toUpperCase()];
-    if (!currentPrice) {
-      return 0;
-    }
+    if (operation.cerrada) return parseFloat(operation.ganancia || 0);
+    const normalizedSymbol = operation.activo.toUpperCase().replace("-", "");
+    const currentPrice = realTimePrices[normalizedSymbol];
+    if (!currentPrice) return 0;
     return operation.tipo_operacion.toLowerCase() === "sell"
       ? (operation.precio_entrada - currentPrice) * operation.volumen
       : (currentPrice - operation.precio_entrada) * operation.volumen;
   }, [realTimePrices, operation]);
-
   const profit = calculateProfit();
   const profitColor = profit >= 0 ? "text-green-400" : "text-red-400";
-
   return (
     <span className={`font-mono ${profitColor}`}>{profit.toFixed(2)}</span>
   );
@@ -933,7 +882,6 @@ const OperationsHistory = ({
       console.error("Error closing operation:", error);
     }
   };
-
   const columns = [
     "Fecha",
     "Tipo",
@@ -947,7 +895,6 @@ const OperationsHistory = ({
     "G-P",
     "Acción",
   ];
-
   const renderMobileCard = (op) => (
     <Card key={op.id} className="text-sm" onClick={() => onRowClick(op)}>
       <div className="flex justify-between items-center mb-3">
@@ -1164,11 +1111,11 @@ const Modal = ({
 
 const ModalLivePrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
-  const price = realTimePrices[symbol?.toUpperCase()];
+  const normalizedSymbol = symbol?.toUpperCase().replace("-", "");
+  const price = realTimePrices[normalizedSymbol];
   const flashClass = useFlashOnUpdate(price);
   const baseColor = price ? "text-white" : "text-yellow-400";
   const finalColorClass = flashClass || baseColor;
-
   return (
     <span
       className={`font-mono transition-colors duration-300 ${finalColorClass}`}
@@ -1181,20 +1128,17 @@ const ModalLivePrice = React.memo(({ symbol }) => {
 const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const { type, asset, volume } = operationData || {};
   const { realTimePrices } = useContext(AppContext);
-
-  const livePrice = asset ? realTimePrices[asset.toUpperCase()] : null;
+  const normalizedAsset = asset?.toUpperCase().replace("-", "");
+  const livePrice = realTimePrices[normalizedAsset];
   const requiredMargin = livePrice ? (livePrice * volume).toFixed(2) : "0.00";
-
   const [tp, setTp] = useState("");
   const [sl, setSl] = useState("");
-
   useEffect(() => {
     if (!isOpen) {
       setTp("");
       setSl("");
     }
   }, [isOpen]);
-
   const handleConfirm = () => {
     onConfirm({
       volumen: volume,
@@ -1204,7 +1148,6 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
     });
     onClose();
   };
-
   return (
     <Modal
       isOpen={isOpen}
@@ -1350,7 +1293,6 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
     currentPage: 1,
     totalPages: 1,
   });
-
   const fetchUserOperations = useCallback(
     (page = 1) => {
       if (isOpen && user) {
@@ -1370,11 +1312,9 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
     },
     [isOpen, user]
   );
-
   useEffect(() => {
     fetchUserOperations(1);
   }, [isOpen, user, fetchUserOperations]);
-
   const handlePriceChange = (opId, value) =>
     setEditingPrices((prev) => ({ ...prev, [opId]: value }));
   const handleSavePrice = async (opId) => {
@@ -1384,7 +1324,6 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
       fetchUserOperations(pagination.currentPage);
     }
   };
-
   return (
     <Modal
       isOpen={isOpen}
@@ -1451,17 +1390,12 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
   );
 };
 
-// =================================================================
-// COMPONENTES DE GESTIÓN DE USUARIOS (CON CORRECCIÓN DE PARPADEO)
-// =================================================================
-
 const UserCard = React.memo(
   ({ user, onDataChange, onViewUserOps, onDeleteUser, onSave }) => {
     const handleInputChange = (e) => {
       const { name, value } = e.target;
       onDataChange(user.id, name, value);
     };
-
     return (
       <Card className="text-sm">
         <div className="flex justify-between items-start mb-2">
@@ -1555,7 +1489,6 @@ const UserTableRow = React.memo(
       const { name, value } = e.target;
       onDataChange(user.id, name, value);
     };
-
     return (
       <tr className="border-b border-neutral-700">
         <td className="p-2 whitespace-nowrap">{user.id}</td>
@@ -1665,7 +1598,6 @@ const ManageUsersModal = ({
     currentPage: 1,
     totalPages: 1,
   });
-
   const fetchUsers = useCallback(
     (page = 1) => {
       if (isOpen) {
@@ -1687,13 +1619,11 @@ const ManageUsersModal = ({
     },
     [isOpen]
   );
-
   useEffect(() => {
     if (isOpen) {
       fetchUsers(1);
     }
   }, [isOpen, fetchUsers]);
-
   const handleUserUpdate = (userId, field, value) => {
     setUsers((currentUsers) =>
       currentUsers.map((user) =>
@@ -1701,13 +1631,10 @@ const ManageUsersModal = ({
       )
     );
   };
-
   const handleSave = useCallback(
     async (userData) => {
       const payload = { ...userData };
-      if (!payload.password) {
-        delete payload.password;
-      }
+      if (!payload.password) delete payload.password;
       try {
         await axios.post("/actualizar-usuario", payload);
         setAlert({
@@ -1722,7 +1649,6 @@ const ManageUsersModal = ({
     },
     [fetchUsers, pagination.currentPage, setAlert]
   );
-
   return (
     <Modal
       isOpen={isOpen}
@@ -1967,39 +1893,35 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
   );
 });
 
-const DepositView = React.memo(({ onBack }) => {
-  return (
-    <div className="p-4">
-      <button
-        onClick={onBack}
-        className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
-      >
-        <ChevronLeftIcon /> Volver al Menú
-      </button>
-      <h2 className="text-xl font-bold mb-4 text-white">Depositar Fondos</h2>
-      <p className="text-neutral-400">
-        Aquí irá el formulario para depositar fondos.
-      </p>
-    </div>
-  );
-});
+const DepositView = React.memo(({ onBack }) => (
+  <div className="p-4">
+    <button
+      onClick={onBack}
+      className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
+    >
+      <ChevronLeftIcon /> Volver al Menú
+    </button>
+    <h2 className="text-xl font-bold mb-4 text-white">Depositar Fondos</h2>
+    <p className="text-neutral-400">
+      Aquí irá el formulario para depositar fondos.
+    </p>
+  </div>
+));
 
-const WithdrawView = React.memo(({ onBack }) => {
-  return (
-    <div className="p-4">
-      <button
-        onClick={onBack}
-        className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
-      >
-        <ChevronLeftIcon /> Volver al Menú
-      </button>
-      <h2 className="text-xl font-bold mb-4 text-white">Retirar Fondos</h2>
-      <p className="text-neutral-400">
-        Aquí irá el formulario para retirar fondos.
-      </p>
-    </div>
-  );
-});
+const WithdrawView = React.memo(({ onBack }) => (
+  <div className="p-4">
+    <button
+      onClick={onBack}
+      className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
+    >
+      <ChevronLeftIcon /> Volver al Menú
+    </button>
+    <h2 className="text-xl font-bold mb-4 text-white">Retirar Fondos</h2>
+    <p className="text-neutral-400">
+      Aquí irá el formulario para retirar fondos.
+    </p>
+  </div>
+));
 
 const MenuButton = React.memo(({ icon, text, onClick }) => (
   <button
@@ -2014,9 +1936,7 @@ const MenuButton = React.memo(({ icon, text, onClick }) => (
 const SideMenu = React.memo(({ isOpen, onClose, setAlert }) => {
   const [view, setView] = useState("main");
   useEffect(() => {
-    if (isOpen) {
-      setView("main");
-    }
+    if (isOpen) setView("main");
   }, [isOpen]);
   return (
     <AnimatePresence>
@@ -2039,7 +1959,7 @@ const SideMenu = React.memo(({ isOpen, onClose, setAlert }) => {
             <div className="p-4 border-b border-neutral-700 flex-shrink-0">
               <img
                 className="mb-2"
-                src="/bulltrodatw.png" // CORREGIDO: Ruta del logo sin /public
+                src="/bulltrodatw.png"
                 width="220"
                 alt="Logo"
               />
@@ -2089,9 +2009,6 @@ const SideMenu = React.memo(({ isOpen, onClose, setAlert }) => {
   );
 });
 
-//================================================================================
-// 4. PÁGINA PRINCIPAL
-//================================================================================
 const DashboardPage = () => {
   const {
     user,
@@ -2102,14 +2019,12 @@ const DashboardPage = () => {
   } = useContext(AppContext);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [mobileVolume, setMobileVolume] = useState(0.01);
-
   const wsRef = useRef(null);
-
   const initialAssets = useMemo(
     () => [
-      "BTCUSDT",
-      "ETHUSDT",
-      "SOLUSDT",
+      "BTC-USDT",
+      "ETH-USDT",
+      "SOL-USDT",
       "AAPL",
       "TSLA",
       "NVDA",
@@ -2122,7 +2037,6 @@ const DashboardPage = () => {
     ],
     []
   );
-
   const [userAssets, setUserAssets] = useState(() => {
     try {
       const savedAssets = localStorage.getItem("userTradingAssets");
@@ -2136,7 +2050,6 @@ const DashboardPage = () => {
       return initialAssets;
     }
   });
-
   const [operations, setOperations] = useState([]);
   const [stats, setStats] = useState({});
   const [balance, setBalance] = useState(0);
@@ -2202,40 +2115,25 @@ const DashboardPage = () => {
   );
 
   useEffect(() => {
-    if (user) {
-      fetchData(1, "todas");
-    }
+    if (user) fetchData(1, "todas");
   }, [user, fetchData]);
 
   useEffect(() => {
     if (!user) return;
-
     const connectWebSocket = () => {
       const wsUrl = import.meta.env.VITE_WSS_URL;
-      if (!wsUrl) {
-        console.error("VITE_WSS_URL is not defined in environment variables.");
-        return;
-      }
-
+      if (!wsUrl) return;
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
-
       ws.onopen = () => {
-        console.log("✅ Conectado al WebSocket del servidor de la app");
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: "subscribe", symbols: userAssets }));
-        }
+        ws.send(JSON.stringify({ type: "subscribe", symbols: userAssets }));
       };
-
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.type === "price_update") {
-            setRealTimePrices((prevPrices) => ({
-              ...prevPrices,
-              ...data.prices,
-            }));
-          } else if (data.tipo === "operacion_cerrada") {
+          if (data.type === "price_update")
+            setRealTimePrices((prev) => ({ ...prev, ...data.prices }));
+          else if (data.tipo === "operacion_cerrada") {
             setAlert({
               message: `Operación #${data.operacion_id} (${
                 data.activo
@@ -2250,22 +2148,15 @@ const DashboardPage = () => {
           console.error("Error procesando mensaje de WebSocket:", error);
         }
       };
-
-      ws.onclose = () => {
-        console.log("🔌 Desconectado, intentando reconectar en 3s...");
-        setTimeout(connectWebSocket, 3000);
-      };
+      ws.onclose = () => setTimeout(connectWebSocket, 3000);
       ws.onerror = (error) => {
         console.error("❌ Error de WebSocket:", error);
         ws.close();
       };
     };
     connectWebSocket();
-
     return () => {
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.close();
-      }
+      if (wsRef.current) wsRef.current.close();
     };
   }, [
     user,
@@ -2295,7 +2186,8 @@ const DashboardPage = () => {
   useEffect(() => {
     const openOperations = operations.filter((op) => !op.cerrada);
     const pnl = openOperations.reduce((total, op) => {
-      const currentPrice = realTimePrices[op.activo.toUpperCase()];
+      const normalizedSymbol = op.activo.toUpperCase().replace("-", "");
+      const currentPrice = realTimePrices[normalizedSymbol];
       if (!currentPrice) return total;
       return (
         total +
@@ -2316,28 +2208,27 @@ const DashboardPage = () => {
 
   useEffect(() => {
     if (alert.message) {
-      const timer = setTimeout(() => {
-        setAlert({ message: "", type: "info" });
-      }, 3000);
+      const timer = setTimeout(
+        () => setAlert({ message: "", type: "info" }),
+        3000
+      );
       return () => clearTimeout(timer);
     }
   }, [alert]);
 
-  const handlePageChange = (newPage) => {
-    fetchData(newPage, opHistoryFilter);
-  };
+  const handlePageChange = (newPage) => fetchData(newPage, opHistoryFilter);
   const handleFilterChange = (newFilter) => {
     setOpHistoryFilter(newFilter);
     fetchData(1, newFilter);
   };
-
   const handleOpenNewOpModal = useCallback(
     (type, volume) => {
       if (!volume || volume <= 0) {
         setAlert({ message: "El volumen debe ser mayor a 0.", type: "error" });
         return;
       }
-      const currentPrice = realTimePrices[selectedAsset.toUpperCase()];
+      const normalizedAsset = selectedAsset.toUpperCase().replace("-", "");
+      const currentPrice = realTimePrices[normalizedAsset];
       if (!currentPrice) {
         setAlert({
           message: "Precio del activo no disponible. Intente de nuevo.",
@@ -2361,7 +2252,8 @@ const DashboardPage = () => {
 
   const handleConfirmOperation = useCallback(
     async (opDetails) => {
-      const livePrice = realTimePrices[selectedAsset.toUpperCase()];
+      const normalizedAsset = selectedAsset.toUpperCase().replace("-", "");
+      const livePrice = realTimePrices[normalizedAsset];
       if (!livePrice) {
         setAlert({
           message: "No se pudo confirmar, el precio no está disponible.",
@@ -2421,7 +2313,9 @@ const DashboardPage = () => {
       setUserAssets((prevAssets) => prevAssets.filter((a) => a !== symbol));
       if (selectedAsset === symbol) {
         const newAssetList = userAssets.filter((a) => a !== symbol);
-        setSelectedAsset(newAssetList.length > 0 ? newAssetList[0] : "BTCUSDT");
+        setSelectedAsset(
+          newAssetList.length > 0 ? newAssetList[0] : "BTC-USDT"
+        );
       }
       setAlert({ message: `${symbol} eliminado.`, type: "success" });
     },
@@ -2435,17 +2329,15 @@ const DashboardPage = () => {
 
   const handleOpRowClick = useCallback(
     (op) => {
-      let profit;
-      if (op.cerrada) {
-        profit = parseFloat(op.ganancia || 0);
-      } else {
-        const currentPrice = realTimePrices[op.activo.toUpperCase()];
-        profit = currentPrice
-          ? op.tipo_operacion.toLowerCase() === "sell"
-            ? (op.precio_entrada - currentPrice) * op.volumen
-            : (currentPrice - op.precio_entrada) * op.volumen
-          : 0;
-      }
+      const normalizedSymbol = op.activo.toUpperCase().replace("-", "");
+      const currentPrice = realTimePrices[normalizedSymbol];
+      const profit = op.cerrada
+        ? parseFloat(op.ganancia || 0)
+        : currentPrice
+        ? op.tipo_operacion.toLowerCase() === "sell"
+          ? (op.precio_entrada - currentPrice) * op.volumen
+          : (currentPrice - op.precio_entrada) * op.volumen
+        : 0;
       setCurrentOpDetails({ op, profit });
       setIsOpDetailsModalOpen(true);
     },
@@ -2518,13 +2410,11 @@ const DashboardPage = () => {
           />
         )}
       </AnimatePresence>
-
       <SideMenu
         isOpen={isSideMenuOpen}
         onClose={() => setIsSideMenuOpen(false)}
         setAlert={setAlert}
       />
-
       <AnimatePresence>
         {isSidebarVisible && (
           <>
@@ -2546,7 +2436,7 @@ const DashboardPage = () => {
               <div className="flex-grow">
                 <img
                   className="mb-4"
-                  src="/bulltrodatw.png" // CORREGIDO: Ruta del logo sin /public
+                  src="/bulltrodatw.png"
                   width="220"
                   alt="Logo"
                 />
@@ -2567,15 +2457,9 @@ const DashboardPage = () => {
           </>
         )}
       </AnimatePresence>
-
       <aside className="hidden lg:flex lg:flex-col w-72 bg-black/30 p-4 overflow-y-auto flex-shrink-0 border-r border-neutral-800">
         <div className="flex-grow">
-          <img
-            className="mb-4"
-            src="/bulltrodatw.png" // CORREGIDO: Ruta del logo sin /public
-            width="220"
-            alt="Logo"
-          />
+          <img className="mb-4" src="/bulltrodatw.png" width="220" alt="Logo" />
           <AssetLists
             assets={userAssets}
             onAddAsset={handleAddAsset}
@@ -2590,7 +2474,6 @@ const DashboardPage = () => {
           />
         </div>
       </aside>
-
       <NewOperationModal
         isOpen={isNewOpModalOpen}
         onClose={() => setIsNewOpModalOpen(false)}
@@ -2636,7 +2519,6 @@ const DashboardPage = () => {
       >
         {confirmationModal.children}
       </ConfirmationModal>
-
       <main className="flex-1 flex flex-col bg-black/50 overflow-hidden">
         <Header
           onOperation={handleOpenNewOpModal}
@@ -2645,7 +2527,6 @@ const DashboardPage = () => {
           onToggleSideMenu={() => setIsSideMenuOpen(true)}
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
         />
-
         <div className="flex-1 flex flex-col p-2 sm:p-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
           <div className="flex-grow min-h-[300px] sm:min-h-[400px] bg-black rounded-lg shadow-2xl shadow-black/30">
             <TradingViewWidget symbol={selectedAsset} />
@@ -2667,7 +2548,6 @@ const DashboardPage = () => {
             />
           </div>
         </div>
-
         <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm p-3 border-t border-neutral-800 flex justify-around items-center gap-2">
           <button
             onClick={() => handleOpenNewOpModal("sell", mobileVolume)}
@@ -2695,23 +2575,17 @@ const DashboardPage = () => {
   );
 };
 
-//================================================================================
-// 5. COMPONENTE PRINCIPAL DE LA APLICACIÓN
-//================================================================================
 const App = () => {
   const { isAppLoading, isAuthenticated } = useContext(AppContext);
-
   if (isAppLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white text-xl font-bold animate-pulse">
-          <img src="/bulltrodatw.png" width="220" alt="Cargando..." />{" "}
-          {/* CORREGIDO: Ruta del logo */}
+          <img src="/bulltrodatw.png" width="220" alt="Cargando..." />
         </div>
       </div>
     );
   }
-
   return isAuthenticated ? <DashboardPage /> : <LoginPage />;
 };
 
@@ -2724,7 +2598,6 @@ const LoginPage = () => {
   const [codigo, setCodigo] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -2761,8 +2634,7 @@ const LoginPage = () => {
           className="mb-3 mx-auto"
           src="/bulltrodatw.png"
           alt="Logo de Bulltrodat"
-        />{" "}
-        {/* CORREGIDO: Ruta del logo */}
+        />
         <p className="text-center text-neutral-400 mb-6">
           {isLogin ? "Inicia sesión para continuar" : "Crea tu cuenta"}
         </p>
