@@ -58,18 +58,18 @@ const allowedOrigins = [FRONTEND_URL];
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Para depuración:
-      // console.log(`CORS Check: Request from origin ${origin}`);
-      if (!origin && NODE_ENV !== "production") {
-        return callback(null, true);
+      if (
+        allowedOrigins.indexOf(origin) !== -1 ||
+        (!origin && NODE_ENV !== "production")
+      ) {
+        callback(null, true);
+      } else {
+        console.error(`CORS Error: Origen no permitido: ${origin}`);
+        callback(
+          new Error("CORS policy does not allow access from this origin."),
+          false
+        );
       }
-      if (allowedOrigins.indexOf(origin) !== -1) {
-        return callback(null, true);
-      }
-      return callback(
-        new Error("CORS policy does not allow access from this origin."),
-        false
-      );
     },
     credentials: true,
   })
