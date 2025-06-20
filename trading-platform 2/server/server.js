@@ -95,13 +95,22 @@ const sessionMiddleware = session({
     sameSite: NODE_ENV === "production" ? "none" : "lax",
   },
 });
+
+// !! CORRECCIÓN IMPORTANTE: El orden de estos middlewares es crucial !!
+// Primero, aplicamos el middleware que CREA la sesión.
+app.use(sessionMiddleware);
+
+// Segundo, aplicamos el middleware que USA la sesión.
 app.use((req, res, next) => {
   if (req.headers["x-forwarded-proto"] === "https") {
-    req.session.cookie.secure = true;
+    // Aseguramos que la cookie de sesión sea segura si estamos detrás de un proxy (como Render)
+    if (req.session) {
+      // Comprobamos que la sesión existe antes de usarla
+      req.session.cookie.secure = true;
+    }
   }
   next();
 });
-app.use(sessionMiddleware);
 
 // --- Lógica de WebSockets ---
 global.preciosEnTiempoReal = {};
