@@ -336,7 +336,7 @@ const TradingViewWidget = React.memo(({ symbol }) => {
     if (!assetSymbol) return "KUCOIN:BTCUSDT"; // Símbolo por defecto
     const s = assetSymbol.toUpperCase();
 
-    // **CORRECCIÓN DE LÓGICA**
+    // **CORRECCIÓN AQUÍ**
     // KuCoin en TradingView usa el formato 'BTCUSDT' (sin guion).
     if (s.includes("-USDT")) {
       return `KUCOIN:${s.replace("-", "")}`;
