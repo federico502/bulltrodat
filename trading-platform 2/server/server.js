@@ -212,6 +212,22 @@ function subscribeToKuCoin(symbols) {
   }
 }
 
+function subscribeToTwelveData(symbols) {
+  if (twelveDataWs && twelveDataWs.readyState === WebSocket.OPEN) {
+    console.log(
+      `🔷 Subscribing to ${
+        symbols.length
+      } symbols on Twelve Data: ${symbols.join(", ")}`
+    );
+    twelveDataWs.send(
+      JSON.stringify({
+        action: "subscribe",
+        params: { symbols: symbols.map(getTwelveDataSymbolFormat).join(",") },
+      })
+    );
+  }
+}
+
 async function iniciarWebSocketKuCoin() {
   try {
     console.log("Solicitando token para WebSocket de KuCoin...");
@@ -334,7 +350,9 @@ function iniciarWebSocketTwelveData() {
 }
 
 async function getLatestPrice(symbol) {
-  return global.preciosEnTiempoReal[symbol.toUpperCase()] || null;
+  return (
+    global.preciosEnTiempoReal[symbol.toUpperCase().replace("-", "")] || null
+  );
 }
 
 async function getFreshPriceFromApi(symbol) {
@@ -647,7 +665,7 @@ app.post("/cerrar-operacion", async (req, res) => {
     if (tipo === "compra" || tipo === "buy")
       gananciaFinal = (precioActual - precio_entrada) * volumen;
     else if (tipo === "venta" || tipo === "sell")
-      gananciaFinal = (precio_entrada - precioActual) * volumen;
+      gananciaFinal = (precio_entrada - precio_entrada) * volumen;
     await client.query(
       "UPDATE operaciones SET cerrada = true, ganancia = $1, precio_cierre = $2 WHERE id = $3",
       [gananciaFinal, precioActual, operacion_id]
