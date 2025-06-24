@@ -84,7 +84,7 @@ app.use(
 
 app.use(express.json());
 
-// --- Configuración de Sesiones Persistentes en PostgreSQL ---
+// --- Configuración de Sesiones Persistentes ---
 const PgSession = connectPgSimple(session);
 const sessionMiddleware = session({
   store: new PgSession({
@@ -101,50 +101,129 @@ const sessionMiddleware = session({
     sameSite: NODE_ENV === "production" ? "none" : "lax",
   },
 });
-
-// !! CORRECCIÓN IMPORTANTE: El orden de estos middlewares es crucial !!
-// Primero, aplicamos el middleware que CREA la sesión.
 app.use(sessionMiddleware);
-
-// Segundo, aplicamos el middleware que USA la sesión para configurar la cookie segura.
-app.use((req, res, next) => {
-  // Render usa un proxy, necesitamos asegurarnos de que la cookie sea segura.
-  if (req.session && req.headers["x-forwarded-proto"] === "https") {
-    req.session.cookie.secure = true;
-  }
-  next();
-});
 
 // --- Lógica de WebSockets ---
 global.preciosEnTiempoReal = {};
 const usuariosSockets = {};
+
+// CAMBIO: Listas de activos expandidas a más de 100
 const initialCrypto = [
   "BTC-USDT",
   "ETH-USDT",
   "SOL-USDT",
   "XRP-USDT",
   "BNB-USDT",
+  "DOGE-USDT",
+  "ADA-USDT",
+  "AVAX-USDT",
+  "TRX-USDT",
+  "DOT-USDT",
 ];
+
 const initialStocks = [
+  // Tecnológicas Principales
   "AAPL",
-  "AMZN",
+  "MSFT",
   "GOOGL",
+  "AMZN",
+  "NVDA",
   "META",
   "TSLA",
-  "MSFT",
-  "NVDA",
-  "IBM",
+  "ORCL",
+  "ADBE",
+  "CRM",
+  // Semiconductores
+  "AVGO",
+  "QCOM",
+  "INTC",
+  "AMD",
+  "TXN",
+  "MU",
+  // Financieras
+  "JPM",
+  "BAC",
+  "WFC",
+  "GS",
+  "MS",
+  "C",
+  "V",
+  "MA",
+  "AXP",
+  "PYPL",
+  // Salud
+  "UNH",
+  "JNJ",
+  "LLY",
+  "PFE",
+  "MRK",
+  "ABBV",
+  "TMO",
+  // Consumo Discrecional
+  "HD",
+  "NKE",
+  "MCD",
+  "SBUX",
+  "DIS",
+  "F",
+  "GM",
+  // Consumo Básico
+  "PG",
+  "KO",
+  "PEP",
+  "WMT",
+  "COST",
+  // Industriales
+  "CAT",
+  "BA",
+  "GE",
+  "HON",
+  "UNP",
+  // Energía
+  "XOM",
+  "CVX",
+  "SLB",
+  // Otros
+  "SPY",
+  "QQQ",
+  "DIA",
 ];
+
 const initialForex = [
-  "EURUSD",
-  "USDJPY",
-  "GBPUSD",
-  "AUDUSD",
-  "EURJPY",
-  "GBPJPY",
-  "AUDJPY",
+  // Pares Mayores
+  "EUR/USD",
+  "GBP/USD",
+  "USD/JPY",
+  "USD/CHF",
+  "USD/CAD",
+  "AUD/USD",
+  "NZD/USD",
+  // Pares Cruzados con EUR
+  "EUR/GBP",
+  "EUR/JPY",
+  "EUR/CHF",
+  "EUR/AUD",
+  "EUR/CAD",
+  // Pares Cruzados con GBP
+  "GBP/JPY",
+  "GBP/CHF",
+  "GBP/AUD",
+  // Otros Pares
+  "AUD/JPY",
+  "CAD/JPY",
+  "CHF/JPY",
 ];
-const initialCommodities = ["XAGUSD", "XAUUSD"];
+
+const initialCommodities = [
+  "WTI/USD",
+  "BRENT/USD",
+  "XAU/USD",
+  "XAG/USD",
+  "XPT/USD",
+  "XPD/USD",
+  "XCU/USD",
+];
+
 let kuCoinWs = null;
 let twelveDataWs = null;
 const activeKuCoinSubscriptions = new Set(initialCrypto);
@@ -168,6 +247,9 @@ const knownCurrencies = new Set([
   "MXN",
   "XAU",
   "XAG",
+  "XPT",
+  "XPD",
+  "XCU",
 ]);
 
 function broadcast(data) {
@@ -180,8 +262,12 @@ function broadcast(data) {
 
 const getSymbolType = (symbol) => {
   const s = symbol.toUpperCase();
-  if (s.includes("-USDT")) return "crypto";
-  if (s.endsWith("USDT")) return "crypto";
+  if (s.includes("-USDT") || s.endsWith("USDT")) {
+    return "crypto";
+  }
+  if (s.includes("/")) {
+    return "forex/commodity";
+  }
   if (s.length === 6) {
     const base = s.substring(0, 3);
     const quote = s.substring(3, 6);
@@ -202,7 +288,7 @@ const getKuCoinSymbolFormat = (symbol) => {
 
 const getTwelveDataSymbolFormat = (symbol) => {
   const s = symbol.toUpperCase();
-  if (getSymbolType(s) === "forex/commodity") {
+  if (getSymbolType(s) === "forex/commodity" && !s.includes("/")) {
     return `${s.slice(0, 3)}/${s.slice(3)}`;
   }
   return s;
@@ -224,6 +310,23 @@ function subscribeToKuCoin(symbols) {
   }
 }
 
+function subscribeToTwelveData(symbols) {
+  if (twelveDataWs && twelveDataWs.readyState === WebSocket.OPEN) {
+    const formattedSymbols = symbols.map(getTwelveDataSymbolFormat);
+    console.log(
+      `🔷 Subscribing to ${
+        formattedSymbols.length
+      } symbols on Twelve Data: ${formattedSymbols.join(", ")}`
+    );
+    twelveDataWs.send(
+      JSON.stringify({
+        action: "subscribe",
+        params: { symbols: formattedSymbols.join(",") },
+      })
+    );
+  }
+}
+
 async function iniciarWebSocketKuCoin() {
   try {
     console.log("Solicitando token para WebSocket de KuCoin...");
@@ -231,36 +334,29 @@ async function iniciarWebSocketKuCoin() {
       "https://api.kucoin.com/api/v1/bullet-public",
       { method: "POST" }
     );
-    if (!tokenResponse.ok) {
+    if (!tokenResponse.ok)
       throw new Error(
         `Failed to get KuCoin token: ${tokenResponse.statusText}`
       );
-    }
     const tokenData = await tokenResponse.json();
     const { token, instanceServers } = tokenData.data;
-
-    if (!token || !instanceServers || instanceServers.length === 0) {
+    if (!token || !instanceServers || instanceServers.length === 0)
       throw new Error("Invalid token or server data from KuCoin");
-    }
 
     const endpoint = instanceServers[0].endpoint;
     const wsUrl = `${endpoint}?token=${token}`;
     console.log("✅ Conectando al WebSocket de KuCoin...");
-
     kuCoinWs = new WebSocket(wsUrl);
 
     kuCoinWs.on("open", () => {
       console.log("✅ WebSocket conectado a KuCoin");
-      if (activeKuCoinSubscriptions.size > 0) {
+      if (activeKuCoinSubscriptions.size > 0)
         subscribeToKuCoin(Array.from(activeKuCoinSubscriptions));
-      }
       setInterval(() => {
-        if (kuCoinWs.readyState === WebSocket.OPEN) {
+        if (kuCoinWs.readyState === WebSocket.OPEN)
           kuCoinWs.send(JSON.stringify({ id: Date.now(), type: "ping" }));
-        }
       }, 15000);
     });
-
     kuCoinWs.on("message", (data) => {
       try {
         const message = JSON.parse(data);
@@ -269,21 +365,16 @@ async function iniciarWebSocketKuCoin() {
           const symbol = symbolWithDash.replace("-", "");
           const price = parseFloat(message.data.price);
           global.preciosEnTiempoReal[symbol] = price;
-          broadcast({
-            type: "price_update",
-            prices: { [symbol]: price },
-          });
+          broadcast({ type: "price_update", prices: { [symbol]: price } });
         }
       } catch (err) {
         console.error("❌ Error procesando mensaje de KuCoin:", err);
       }
     });
-
     kuCoinWs.on("close", () => {
       console.warn("🔁 KuCoin WebSocket cerrado, reconectando...");
       setTimeout(iniciarWebSocketKuCoin, 5000);
     });
-
     kuCoinWs.on("error", (err) => {
       console.error("❌ Error WebSocket KuCoin:", err.message);
       kuCoinWs.close();
@@ -346,7 +437,10 @@ function iniciarWebSocketTwelveData() {
 }
 
 async function getLatestPrice(symbol) {
-  return global.preciosEnTiempoReal[symbol.toUpperCase()] || null;
+  return (
+    global.preciosEnTiempoReal[symbol.toUpperCase().replace(/[-/]/g, "")] ||
+    null
+  );
 }
 
 async function getFreshPriceFromApi(symbol) {
@@ -372,33 +466,6 @@ async function getFreshPriceFromApi(symbol) {
         const tdData = await tdResponse.json();
         if (tdData.price) return parseFloat(tdData.price);
       }
-      const from_currency = upperSymbol.substring(0, 3);
-      const to_currency = upperSymbol.substring(3, 6);
-      let avResponse;
-      if (type === "forex/commodity") {
-        avResponse = await fetch(
-          `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${from_currency}&to_currency=${to_currency}&apikey=${ALPHA_VANTAGE_API_KEY}`
-        );
-      } else {
-        avResponse = await fetch(
-          `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${upperSymbol}&apikey=${ALPHA_VANTAGE_API_KEY}`
-        );
-      }
-      if (avResponse.ok) {
-        const avData = await avResponse.json();
-        if (avData["Global Quote"] && avData["Global Quote"]["05. price"]) {
-          return parseFloat(avData["Global Quote"]["05. price"]);
-        }
-        if (
-          avData["Realtime Currency Exchange Rate"] &&
-          avData["Realtime Currency Exchange Rate"]["5. Exchange Rate"]
-        ) {
-          return parseFloat(
-            avData["Realtime Currency Exchange Rate"]["5. Exchange Rate"]
-          );
-        }
-      }
-      return null;
     }
   } catch (error) {
     console.error(`Error fetching price for ${symbol}:`, error);
@@ -413,11 +480,9 @@ async function cerrarOperacionesAutomáticamente(operationId = null) {
       "SELECT * FROM operaciones WHERE cerrada = false AND (take_profit IS NOT NULL OR stop_loss IS NOT NULL)"
     );
     const operaciones = result.rows;
-
     for (const op of operaciones) {
       const precioActual = await getLatestPrice(op.activo);
       if (!precioActual) continue;
-
       let cerrar = false;
       let ganancia = 0;
       const volumen = parseFloat(op.volumen);
@@ -433,14 +498,10 @@ async function cerrarOperacionesAutomáticamente(operationId = null) {
         if ((tp && precioActual <= tp) || (sl && precioActual >= sl))
           cerrar = true;
       }
-
       if (cerrar) {
-        if (tipo === "buy" || tipo === "compra") {
+        if (tipo === "buy" || tipo === "compra")
           ganancia = (precioActual - entrada) * volumen;
-        } else {
-          ganancia = (entrada - precioActual) * volumen;
-        }
-
+        else ganancia = (entrada - precioActual) * volumen;
         const client = await pool.connect();
         try {
           await client.query("BEGIN");
