@@ -1914,6 +1914,16 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
   );
 });
 
+const PaymentMethodButton = ({ icon, text, onClick }) => (
+  <button
+    onClick={onClick}
+    className="w-full text-left p-4 flex items-center gap-4 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-lg transition-colors"
+  >
+    {icon}
+    <span className="font-semibold text-lg">{text}</span>
+  </button>
+);
+
 const DepositView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
