@@ -1944,7 +1944,7 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
       <PaymentMethodButton
         icon={<BanknotesIcon className="h-8 w-8 text-green-400" />}
         text="Transferencia Bancaria"
-        onClick={() => alert("Este método no está implementado aún.")}
+        onClick={() => onSelectMethod("bank", "deposit")}
       />
     </div>
   </div>
@@ -1970,7 +1970,7 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
       <PaymentMethodButton
         icon={<BanknotesIcon className="h-8 w-8 text-green-400" />}
         text="Transferencia Bancaria"
-        onClick={() => alert("Este método no está implementado aún.")}
+        onClick={() => onSelectMethod("bank", "withdraw")}
       />
     </div>
   </div>
@@ -2081,6 +2081,144 @@ const SideMenu = React.memo(
   }
 );
 
+const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
+  const [network, setNetwork] = useState("TRC20");
+  const depositAddress = "TQmZ1fA2gB4iC3dE5fG6h7J8k9L0mN1oP2q";
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(depositAddress);
+    onSubmitted();
+  };
+
+  const handleWithdrawal = (e) => {
+    e.preventDefault();
+    onSubmitted();
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`${
+        type === "deposit" ? "Depositar" : "Retirar"
+      } con Criptomonedas`}
+      maxWidth="max-w-lg"
+    >
+      {type === "deposit" ? (
+        <div className="text-center">
+          <p className="text-neutral-400 mb-4">
+            Envía USDT a la siguiente dirección usando la red TRON (TRC20).
+          </p>
+          <div className="bg-neutral-800 p-4 rounded-lg my-4">
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${depositAddress}`}
+              alt="QR Code"
+              className="mx-auto border-4 border-white rounded-lg"
+            />
+          </div>
+          <div className="bg-neutral-900/50 p-3 rounded-lg flex items-center justify-between gap-4">
+            <span className="font-mono text-sm break-all text-neutral-300">
+              {depositAddress}
+            </span>
+            <button
+              onClick={handleCopy}
+              className="p-2 rounded-md hover:bg-neutral-700 transition-colors flex-shrink-0"
+            >
+              <ClipboardIcon className="h-5 w-5" />
+            </button>
+          </div>
+          <p className="text-xs text-yellow-400 mt-4">
+            Asegúrate de enviar únicamente USDT en la red TRC20. Enviar otra
+            moneda o usar otra red podría resultar en la pérdida de tus fondos.
+          </p>
+        </div>
+      ) : (
+        <form onSubmit={handleWithdrawal} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-300 mb-1">
+              Tu Dirección de Billetera (USDT)
+            </label>
+            <input
+              required
+              type="text"
+              placeholder="Introduce tu dirección de billetera"
+              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-300 mb-1">
+              Red
+            </label>
+            <select
+              value={network}
+              onChange={(e) => setNetwork(e.target.value)}
+              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              <option value="TRC20">TRON (TRC20)</option>
+              <option value="ERC20">Ethereum (ERC20)</option>
+              <option value="BEP20">BNB Smart Chain (BEP20)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-300 mb-1">
+              Monto a Retirar
+            </label>
+            <input
+              required
+              type="number"
+              step="0.01"
+              placeholder="0.00"
+              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+          </div>
+          <div className="flex justify-end pt-4">
+            <button
+              type="submit"
+              className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 transition-colors"
+            >
+              Solicitar Retiro
+            </button>
+          </div>
+        </form>
+      )}
+    </Modal>
+  );
+};
+
+const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => (
+  <Modal
+    isOpen={isOpen}
+    onClose={onClose}
+    title={`${type === "deposit" ? "Depositar" : "Retirar"} por Transferencia`}
+    maxWidth="max-w-lg"
+  >
+    <div className="space-y-4 text-neutral-300">
+      <p>
+        Para continuar, por favor contacta a soporte con los siguientes
+        detalles:
+      </p>
+      <ul className="list-disc list-inside bg-neutral-800/50 p-4 rounded-md">
+        <li>
+          Tipo de operación:{" "}
+          <span className="font-semibold text-white">
+            {type === "deposit" ? "Depósito" : "Retiro"}
+          </span>
+        </li>
+        <li>Monto deseado</li>
+        <li>Comprobante de la transacción (si es un depósito)</li>
+      </ul>
+      <div className="text-center pt-4">
+        <button
+          onClick={onSubmitted}
+          className="px-6 py-2 bg-green-600 hover:bg-green-500 rounded-md text-white font-bold"
+        >
+          Entendido
+        </button>
+      </div>
+    </div>
+  </Modal>
+);
+
 const DashboardPage = () => {
   const {
     user,
@@ -2144,29 +2282,46 @@ const DashboardPage = () => {
   const [currentUserForOps, setCurrentUserForOps] = useState(null);
   const [currentOpDetails, setCurrentOpDetails] = useState(null);
   const [isRegCodeModalOpen, setIsRegCodeModalOpen] = useState(false);
+  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+  });
+  const [paymentModalConfig, setPaymentModalConfig] = useState({
+    isOpen: false,
+    type: "",
+    method: "",
+  });
   const [confirmationModal, setConfirmationModal] = useState({
     isOpen: false,
     title: "",
     children: null,
     onConfirm: () => {},
   });
-  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-  });
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [paymentModalConfig, setPaymentModalConfig] = useState({
-    type: "",
-    method: "",
-  });
 
   const handleOpenPaymentModal = (method, type) => {
-    setPaymentModalConfig({ method, type });
-    setIsPaymentModalOpen(true);
+    setPaymentModalConfig({ isOpen: true, method, type });
     setIsSideMenuOpen(false);
   };
-  const handleClosePaymentModal = () => setIsPaymentModalOpen(false);
+  const handleClosePaymentModal = () =>
+    setPaymentModalConfig({ isOpen: false, type: "", method: "" });
+
+  const handlePaymentSubmitted = () => {
+    handleClosePaymentModal();
+    setConfirmationModal({
+      isOpen: true,
+      title: "Solicitud Recibida",
+      children:
+        "Un asesor se comunicará con usted a la brevedad para completar la operación.",
+      onConfirm: () =>
+        setConfirmationModal({
+          isOpen: false,
+          title: "",
+          children: null,
+          onConfirm: () => {},
+        }),
+    });
+  };
 
   const fetchData = useCallback(
     async (page = 1, filter = "todas") => {
@@ -2505,14 +2660,30 @@ const DashboardPage = () => {
         setAlert={setAlert}
         onSelectPaymentMethod={handleOpenPaymentModal}
       />
+
       {paymentModalConfig.method === "crypto" && (
         <CryptoPaymentModal
-          isOpen={isPaymentModalOpen}
+          isOpen={paymentModalConfig.isOpen}
           onClose={handleClosePaymentModal}
           type={paymentModalConfig.type}
-          setAlert={setAlert}
+          onSubmitted={handlePaymentSubmitted}
         />
       )}
+      {paymentModalConfig.method === "bank" && (
+        <BankTransferModal
+          isOpen={paymentModalConfig.isOpen}
+          onClose={handleClosePaymentModal}
+          type={paymentModalConfig.type}
+          onSubmitted={handlePaymentSubmitted}
+        />
+      )}
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        onClose={confirmationModal.onConfirm}
+        title={confirmationModal.title}
+      >
+        {confirmationModal.children}
+      </ConfirmationModal>
 
       <AnimatePresence>
         {isSidebarVisible && (
@@ -2603,21 +2774,7 @@ const DashboardPage = () => {
         onClose={() => setIsRegCodeModalOpen(false)}
         setAlert={setAlert}
       />
-      <ConfirmationModal
-        isOpen={confirmationModal.isOpen}
-        onClose={() =>
-          setConfirmationModal({
-            isOpen: false,
-            title: "",
-            children: null,
-            onConfirm: () => {},
-          })
-        }
-        title={confirmationModal.title}
-        onConfirm={confirmationModal.onConfirm}
-      >
-        {confirmationModal.children}
-      </ConfirmationModal>
+
       <main className="flex-1 flex flex-col bg-black/50 overflow-hidden">
         <Header
           onOperation={handleOpenNewOpModal}
