@@ -84,7 +84,7 @@ app.use(
 
 app.use(express.json());
 
-// --- Configuración de Sesiones Persistentes ---
+// --- Configuración de Sesiones Persistentes en PostgreSQL ---
 const PgSession = connectPgSimple(session);
 const sessionMiddleware = session({
   store: new PgSession({
@@ -219,23 +219,6 @@ function subscribeToKuCoin(symbols) {
         topic: topic,
         privateChannel: false,
         response: true,
-      })
-    );
-  }
-}
-
-function subscribeToTwelveData(symbols) {
-  if (twelveDataWs && twelveDataWs.readyState === WebSocket.OPEN) {
-    const formattedSymbols = symbols.map(getTwelveDataSymbolFormat);
-    console.log(
-      `🔷 Subscribing to ${
-        formattedSymbols.length
-      } symbols on Twelve Data: ${formattedSymbols.join(", ")}`
-    );
-    twelveDataWs.send(
-      JSON.stringify({
-        action: "subscribe",
-        params: { symbols: formattedSymbols.join(",") },
       })
     );
   }
