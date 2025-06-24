@@ -23,11 +23,9 @@ import {
 } from "chart.js";
 import { motion, AnimatePresence } from "framer-motion";
 
-// --- Axios Configuration ---
 axios.defaults.baseURL = import.meta.env.VITE_API_URL;
 axios.defaults.withCredentials = true;
 
-// --- Chart.js Registration ---
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -40,7 +38,6 @@ ChartJS.register(
   TimeScale
 );
 
-// --- SVG Icons ---
 const MenuIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -198,54 +195,6 @@ const ArrowUpTrayIcon = ({ className }) => (
       strokeLinecap="round"
       strokeLinejoin="round"
       d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
-    />
-  </svg>
-);
-const ClipboardIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
-    className={className}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v3.043m-7.416 0v3.043c0 .212.03.418.084.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"
-    />
-  </svg>
-);
-const BanknotesIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
-    className={className}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0 .75-.75V9.75M15 13.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-    />
-  </svg>
-);
-const CreditCardIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
-    className={className}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 21Z"
     />
   </svg>
 );
@@ -1914,65 +1863,33 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
   );
 });
 
-const PaymentMethodButton = ({ icon, text, onClick }) => (
-  <button
-    onClick={onClick}
-    className="w-full text-left p-4 flex items-center gap-4 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-lg transition-colors"
-  >
-    {icon}
-    <span className="font-semibold text-lg">{text}</span>
-  </button>
-);
-
-const DepositView = React.memo(({ onBack, onSelectMethod }) => (
+const DepositView = React.memo(({ onBack }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-red-400 hover:text-red-300 mb-6 cursor-pointer"
+      className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
     >
-      <ChevronLeftIcon /> Volver al Menú Principal
+      <ChevronLeftIcon /> Volver al Menú
     </button>
-    <h2 className="text-2xl font-bold mb-6 text-white">
-      Seleccione un Método de Depósito
-    </h2>
-    <div className="space-y-4">
-      <PaymentMethodButton
-        icon={<CreditCardIcon className="h-8 w-8 text-cyan-400" />}
-        text="Criptomonedas"
-        onClick={() => onSelectMethod("crypto", "deposit")}
-      />
-      <PaymentMethodButton
-        icon={<BanknotesIcon className="h-8 w-8 text-green-400" />}
-        text="Transferencia Bancaria"
-        onClick={() => onSelectMethod("bank", "deposit")}
-      />
-    </div>
+    <h2 className="text-xl font-bold mb-4 text-white">Depositar Fondos</h2>
+    <p className="text-neutral-400">
+      Aquí irá el formulario para depositar fondos.
+    </p>
   </div>
 ));
 
-const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
+const WithdrawView = React.memo(({ onBack }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-red-400 hover:text-red-300 mb-6 cursor-pointer"
+      className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
     >
-      <ChevronLeftIcon /> Volver al Menú Principal
+      <ChevronLeftIcon /> Volver al Menú
     </button>
-    <h2 className="text-2xl font-bold mb-6 text-white">
-      Seleccione un Método de Retiro
-    </h2>
-    <div className="space-y-4">
-      <PaymentMethodButton
-        icon={<CreditCardIcon className="h-8 w-8 text-cyan-400" />}
-        text="Criptomonedas"
-        onClick={() => onSelectMethod("crypto", "withdraw")}
-      />
-      <PaymentMethodButton
-        icon={<BanknotesIcon className="h-8 w-8 text-green-400" />}
-        text="Transferencia Bancaria"
-        onClick={() => onSelectMethod("bank", "withdraw")}
-      />
-    </div>
+    <h2 className="text-xl font-bold mb-4 text-white">Retirar Fondos</h2>
+    <p className="text-neutral-400">
+      Aquí irá el formulario para retirar fondos.
+    </p>
   </div>
 ));
 
@@ -1986,238 +1903,81 @@ const MenuButton = React.memo(({ icon, text, onClick }) => (
   </button>
 ));
 
-const SideMenu = React.memo(
-  ({ isOpen, onClose, setAlert, onSelectPaymentMethod }) => {
-    const [view, setView] = useState("main");
-    useEffect(() => {
-      if (isOpen) setView("main");
-    }, [isOpen]);
-
-    const handleSelectMethod = (method, type) => {
-      onSelectPaymentMethod(method, type);
-    };
-
-    return (
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={onClose}
-              className="fixed inset-0 bg-black/50 z-40"
-            />
-            <motion.div
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "tween", ease: "circOut", duration: 0.4 }}
-              className="fixed top-0 left-0 h-full w-80 bg-neutral-900 shadow-2xl z-50 border-r border-neutral-700 flex flex-col"
-            >
-              <div className="p-4 border-b border-neutral-700 flex-shrink-0">
-                <img
-                  className="mb-2"
-                  src="/bulltrodatw.png"
-                  width="220"
-                  alt="Logo"
-                />
-              </div>
-              <div className="flex-grow overflow-y-auto">
-                {view === "main" && (
-                  <div className="p-4 space-y-2">
-                    <MenuButton
-                      icon={
-                        <ArrowDownTrayIcon className="h-5 w-5 text-green-400" />
-                      }
-                      text="Depositar"
-                      onClick={() => setView("deposit")}
-                    />
-                    <MenuButton
-                      icon={
-                        <ArrowUpTrayIcon className="h-5 w-5 text-red-400" />
-                      }
-                      text="Retirar"
-                      onClick={() => setView("withdraw")}
-                    />
-                    <div className="my-2 h-px bg-neutral-700" />
-                    <MenuButton
-                      icon={
-                        <UserCircleIcon className="h-5 w-5 text-neutral-400" />
-                      }
-                      text="Completar Perfil"
-                      onClick={() => setView("profile")}
-                    />
-                  </div>
-                )}
-                {view === "profile" && (
-                  <UserProfile
-                    setAlert={setAlert}
-                    onBack={() => setView("main")}
-                  />
-                )}
-                {view === "deposit" && (
-                  <DepositView
-                    onBack={() => setView("main")}
-                    onSelectMethod={(method) =>
-                      handleSelectMethod(method, "deposit")
-                    }
-                  />
-                )}
-                {view === "withdraw" && (
-                  <WithdrawView
-                    onBack={() => setView("main")}
-                    onSelectMethod={(method) =>
-                      handleSelectMethod(method, "withdraw")
-                    }
-                  />
-                )}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    );
-  }
-);
-
-const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
-  const [network, setNetwork] = useState("TRC20");
-  const depositAddress = "TQmZ1fA2gB4iC3dE5fG6h7J8k9L0mN1oP2q";
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(depositAddress);
-    onSubmitted();
-  };
-
-  const handleWithdrawal = (e) => {
-    e.preventDefault();
-    onSubmitted();
-  };
-
+const SideMenu = React.memo(({ isOpen, onClose, setAlert }) => {
+  const [view, setView] = useState("main");
+  useEffect(() => {
+    if (isOpen) setView("main");
+  }, [isOpen]);
   return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={`${
-        type === "deposit" ? "Depositar" : "Retirar"
-      } con Criptomonedas`}
-      maxWidth="max-w-lg"
-    >
-      {type === "deposit" ? (
-        <div className="text-center">
-          <p className="text-neutral-400 mb-4">
-            Envía USDT a la siguiente dirección usando la red TRON (TRC20).
-          </p>
-          <div className="bg-neutral-800 p-4 rounded-lg my-4">
-            <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${depositAddress}`}
-              alt="QR Code"
-              className="mx-auto border-4 border-white rounded-lg"
-            />
-          </div>
-          <div className="bg-neutral-900/50 p-3 rounded-lg flex items-center justify-between gap-4">
-            <span className="font-mono text-sm break-all text-neutral-300">
-              {depositAddress}
-            </span>
-            <button
-              onClick={handleCopy}
-              className="p-2 rounded-md hover:bg-neutral-700 transition-colors flex-shrink-0"
-            >
-              <ClipboardIcon className="h-5 w-5" />
-            </button>
-          </div>
-          <p className="text-xs text-yellow-400 mt-4">
-            Asegúrate de enviar únicamente USDT en la red TRC20. Enviar otra
-            moneda o usar otra red podría resultar en la pérdida de tus fondos.
-          </p>
-        </div>
-      ) : (
-        <form onSubmit={handleWithdrawal} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-neutral-300 mb-1">
-              Tu Dirección de Billetera (USDT)
-            </label>
-            <input
-              required
-              type="text"
-              placeholder="Introduce tu dirección de billetera"
-              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-neutral-300 mb-1">
-              Red
-            </label>
-            <select
-              value={network}
-              onChange={(e) => setNetwork(e.target.value)}
-              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
-            >
-              <option value="TRC20">TRON (TRC20)</option>
-              <option value="ERC20">Ethereum (ERC20)</option>
-              <option value="BEP20">BNB Smart Chain (BEP20)</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-neutral-300 mb-1">
-              Monto a Retirar
-            </label>
-            <input
-              required
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
-            />
-          </div>
-          <div className="flex justify-end pt-4">
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 transition-colors"
-            >
-              Solicitar Retiro
-            </button>
-          </div>
-        </form>
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/50 z-40"
+          />
+          <motion.div
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ type: "tween", ease: "circOut", duration: 0.4 }}
+            className="fixed top-0 left-0 h-full w-80 bg-neutral-900 shadow-2xl z-50 border-r border-neutral-700 flex flex-col"
+          >
+            <div className="p-4 border-b border-neutral-700 flex-shrink-0">
+              <img
+                className="mb-2"
+                src="/bulltrodatw.png"
+                width="220"
+                alt="Logo"
+              />
+            </div>
+            <div className="flex-grow overflow-y-auto">
+              {view === "main" && (
+                <div className="p-4 space-y-2">
+                  <MenuButton
+                    icon={
+                      <ArrowDownTrayIcon className="h-5 w-5 text-green-400" />
+                    }
+                    text="Depositar"
+                    onClick={() => setView("deposit")}
+                  />
+                  <MenuButton
+                    icon={<ArrowUpTrayIcon className="h-5 w-5 text-red-400" />}
+                    text="Retirar"
+                    onClick={() => setView("withdraw")}
+                  />
+                  <div className="my-2 h-px bg-neutral-700" />
+                  <MenuButton
+                    icon={
+                      <UserCircleIcon className="h-5 w-5 text-neutral-400" />
+                    }
+                    text="Completar Perfil"
+                    onClick={() => setView("profile")}
+                  />
+                </div>
+              )}
+              {view === "profile" && (
+                <UserProfile
+                  setAlert={setAlert}
+                  onBack={() => setView("main")}
+                />
+              )}
+              {view === "deposit" && (
+                <DepositView onBack={() => setView("main")} />
+              )}
+              {view === "withdraw" && (
+                <WithdrawView onBack={() => setView("main")} />
+              )}
+            </div>
+          </motion.div>
+        </>
       )}
-    </Modal>
+    </AnimatePresence>
   );
-};
-
-const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => (
-  <Modal
-    isOpen={isOpen}
-    onClose={onClose}
-    title={`${type === "deposit" ? "Depositar" : "Retirar"} por Transferencia`}
-    maxWidth="max-w-lg"
-  >
-    <div className="space-y-4 text-neutral-300">
-      <p>
-        Para continuar, por favor contacta a soporte con los siguientes
-        detalles:
-      </p>
-      <ul className="list-disc list-inside bg-neutral-800/50 p-4 rounded-md">
-        <li>
-          Tipo de operación:{" "}
-          <span className="font-semibold text-white">
-            {type === "deposit" ? "Depósito" : "Retiro"}
-          </span>
-        </li>
-        <li>Monto deseado</li>
-        <li>Comprobante de la transacción (si es un depósito)</li>
-      </ul>
-      <div className="text-center pt-4">
-        <button
-          onClick={onSubmitted}
-          className="px-6 py-2 bg-green-600 hover:bg-green-500 rounded-md text-white font-bold"
-        >
-          Entendido
-        </button>
-      </div>
-    </div>
-  </Modal>
-);
+});
 
 const DashboardPage = () => {
   const {
@@ -2239,9 +1999,9 @@ const DashboardPage = () => {
       "TSLA",
       "NVDA",
       "AMZN",
-      "EUR/USD",
-      "GBP/USD",
-      "USD/JPY",
+      "EURUSD",
+      "GBPUSD",
+      "USDJPY",
       "XAU/USD",
       "WTI/USD",
     ],
@@ -2282,46 +2042,17 @@ const DashboardPage = () => {
   const [currentUserForOps, setCurrentUserForOps] = useState(null);
   const [currentOpDetails, setCurrentOpDetails] = useState(null);
   const [isRegCodeModalOpen, setIsRegCodeModalOpen] = useState(false);
-  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-  });
-  const [paymentModalConfig, setPaymentModalConfig] = useState({
-    isOpen: false,
-    type: "",
-    method: "",
-  });
   const [confirmationModal, setConfirmationModal] = useState({
     isOpen: false,
     title: "",
     children: null,
     onConfirm: () => {},
   });
-
-  const handleOpenPaymentModal = (method, type) => {
-    setPaymentModalConfig({ isOpen: true, method, type });
-    setIsSideMenuOpen(false);
-  };
-  const handleClosePaymentModal = () =>
-    setPaymentModalConfig({ isOpen: false, type: "", method: "" });
-
-  const handlePaymentSubmitted = () => {
-    handleClosePaymentModal();
-    setConfirmationModal({
-      isOpen: true,
-      title: "Solicitud Recibida",
-      children:
-        "Un asesor se comunicará con usted a la brevedad para completar la operación.",
-      onConfirm: () =>
-        setConfirmationModal({
-          isOpen: false,
-          title: "",
-          children: null,
-          onConfirm: () => {},
-        }),
-    });
-  };
+  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+  });
 
   const fetchData = useCallback(
     async (page = 1, filter = "todas") => {
@@ -2658,33 +2389,7 @@ const DashboardPage = () => {
         isOpen={isSideMenuOpen}
         onClose={() => setIsSideMenuOpen(false)}
         setAlert={setAlert}
-        onSelectPaymentMethod={handleOpenPaymentModal}
       />
-
-      {paymentModalConfig.method === "crypto" && (
-        <CryptoPaymentModal
-          isOpen={paymentModalConfig.isOpen}
-          onClose={handleClosePaymentModal}
-          type={paymentModalConfig.type}
-          onSubmitted={handlePaymentSubmitted}
-        />
-      )}
-      {paymentModalConfig.method === "bank" && (
-        <BankTransferModal
-          isOpen={paymentModalConfig.isOpen}
-          onClose={handleClosePaymentModal}
-          type={paymentModalConfig.type}
-          onSubmitted={handlePaymentSubmitted}
-        />
-      )}
-      <ConfirmationModal
-        isOpen={confirmationModal.isOpen}
-        onClose={confirmationModal.onConfirm}
-        title={confirmationModal.title}
-      >
-        {confirmationModal.children}
-      </ConfirmationModal>
-
       <AnimatePresence>
         {isSidebarVisible && (
           <>
@@ -2774,7 +2479,21 @@ const DashboardPage = () => {
         onClose={() => setIsRegCodeModalOpen(false)}
         setAlert={setAlert}
       />
-
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        onClose={() =>
+          setConfirmationModal({
+            isOpen: false,
+            title: "",
+            children: null,
+            onConfirm: () => {},
+          })
+        }
+        title={confirmationModal.title}
+        onConfirm={confirmationModal.onConfirm}
+      >
+        {confirmationModal.children}
+      </ConfirmationModal>
       <main className="flex-1 flex flex-col bg-black/50 overflow-hidden">
         <Header
           onOperation={handleOpenNewOpModal}
