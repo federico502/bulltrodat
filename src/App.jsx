@@ -23,11 +23,11 @@ import {
 } from "chart.js";
 import { motion, AnimatePresence } from "framer-motion";
 
-// --- Configuración de Axios ---
+// --- Axios Configuration ---
 axios.defaults.baseURL = import.meta.env.VITE_API_URL;
 axios.defaults.withCredentials = true;
 
-// Registrar los componentes de Chart.js
+// --- Chart.js Registration ---
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -40,7 +40,7 @@ ChartJS.register(
   TimeScale
 );
 
-// --- Iconos SVG ---
+// --- SVG Icons ---
 const MenuIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -201,6 +201,54 @@ const ArrowUpTrayIcon = ({ className }) => (
     />
   </svg>
 );
+const ClipboardIcon = ({ className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    className={className}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v3.043m-7.416 0v3.043c0 .212.03.418.084.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"
+    />
+  </svg>
+);
+const BanknotesIcon = ({ className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    className={className}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0 .75-.75V9.75M15 13.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+    />
+  </svg>
+);
+const CreditCardIcon = ({ className }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    className={className}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 21Z"
+    />
+  </svg>
+);
 
 const AppContext = createContext();
 
@@ -266,7 +314,6 @@ const AppProvider = ({ children }) => {
 const useFlashOnUpdate = (value) => {
   const [flashClass, setFlashClass] = useState("");
   const prevValueRef = useRef();
-
   useEffect(() => {
     const currentValue = parseFloat(value);
     if (prevValueRef.current !== undefined) {
@@ -276,11 +323,9 @@ const useFlashOnUpdate = (value) => {
         !isNaN(prevValue) &&
         currentValue !== prevValue
       ) {
-        if (currentValue > prevValue) {
-          setFlashClass("text-green-400");
-        } else {
-          setFlashClass("text-red-500");
-        }
+        setFlashClass(
+          currentValue > prevValue ? "text-green-400" : "text-red-500"
+        );
         const timer = setTimeout(() => setFlashClass(""), 300);
         return () => clearTimeout(timer);
       }
@@ -289,7 +334,6 @@ const useFlashOnUpdate = (value) => {
       prevValueRef.current = currentValue;
     }
   }, [value]);
-
   return flashClass;
 };
 
@@ -331,21 +375,15 @@ const Skeleton = ({ className }) => (
 
 const TradingViewWidget = React.memo(({ symbol }) => {
   const containerRef = useRef(null);
-
   const getTradingViewSymbol = (assetSymbol) => {
-    if (!assetSymbol) return "KUCOIN:BTCUSDT"; // Símbolo por defecto
+    if (!assetSymbol) return "KUCOIN:BTCUSDT";
     const s = assetSymbol.toUpperCase();
-
-    // **CORRECCIÓN AQUÍ**
-    // KuCoin en TradingView usa el formato 'BTCUSDT' (sin guion).
-    if (s.includes("-USDT")) {
-      return `KUCOIN:${s.replace("-", "")}`;
-    }
-    // Si ya viene sin guion (por alguna razón), también funciona
-    if (s.endsWith("USDT")) {
-      return `KUCOIN:${s}`;
-    }
-
+    if (s.includes("-USDT")) return `KUCOIN:${s.replace("-", "")}`;
+    if (s.endsWith("USDT")) return `KUCOIN:${s}`;
+    if (s === "WTI/USD") return "TVC:USOIL";
+    if (s === "BRENT/USD") return "TVC:UKOIL";
+    if (s === "XAU/USD") return "OANDA:XAUUSD";
+    if (s === "XAG/USD") return "OANDA:XAGUSD";
     const forexPairs = [
       "EURUSD",
       "USDJPY",
@@ -356,13 +394,8 @@ const TradingViewWidget = React.memo(({ symbol }) => {
       "AUDJPY",
     ];
     if (forexPairs.includes(s)) return `OANDA:${s}`;
-
-    const commodities = ["XAGUSD", "XAUUSD"];
-    if (commodities.includes(s)) return `OANDA:${s}`;
-
     return `NASDAQ:${s}`;
   };
-
   useEffect(() => {
     const tvSymbol = getTradingViewSymbol(symbol);
     const createWidget = () => {
@@ -384,7 +417,6 @@ const TradingViewWidget = React.memo(({ symbol }) => {
         container_id: containerRef.current.id,
       });
     };
-
     if (!document.getElementById("tradingview-script")) {
       const script = document.createElement("script");
       script.id = "tradingview-script";
@@ -395,14 +427,10 @@ const TradingViewWidget = React.memo(({ symbol }) => {
     } else {
       createWidget();
     }
-
     return () => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = "";
-      }
+      if (containerRef.current) containerRef.current.innerHTML = "";
     };
   }, [symbol]);
-
   return (
     <div
       id="tradingview-widget-container"
@@ -528,7 +556,7 @@ const StatisticsPanel = ({ stats, performanceData, isLoading }) => (
 
 const AssetPrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
-  const normalizedSymbol = symbol.toUpperCase().replace("-", "");
+  const normalizedSymbol = symbol.toUpperCase().replace(/[-/]/g, "");
   const price = realTimePrices[normalizedSymbol];
   const flashClass = useFlashOnUpdate(price);
   const baseColor = price ? "text-white" : "text-neutral-500";
@@ -593,7 +621,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
           type="text"
           value={newSymbol}
           onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
-          placeholder="Ej: DOGE-USDT"
+          placeholder="Ej: DOGE-USDT, WTI/USD"
           className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
         />
         <button
@@ -825,7 +853,9 @@ const LiveProfitCell = ({ operation }) => {
   const { realTimePrices } = useContext(AppContext);
   const calculateProfit = useCallback(() => {
     if (operation.cerrada) return parseFloat(operation.ganancia || 0);
-    const normalizedSymbol = operation.activo.toUpperCase().replace("-", "");
+    const normalizedSymbol = operation.activo
+      .toUpperCase()
+      .replace(/[-/]/g, "");
     const currentPrice = realTimePrices[normalizedSymbol];
     if (!currentPrice) return 0;
     return operation.tipo_operacion.toLowerCase() === "sell"
@@ -1102,7 +1132,7 @@ const Modal = ({
 
 const ModalLivePrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
-  const normalizedSymbol = symbol?.toUpperCase().replace("-", "");
+  const normalizedSymbol = symbol?.toUpperCase().replace(/[-/]/g, "");
   const price = realTimePrices[normalizedSymbol];
   const flashClass = useFlashOnUpdate(price);
   const baseColor = price ? "text-white" : "text-yellow-400";
@@ -1119,7 +1149,7 @@ const ModalLivePrice = React.memo(({ symbol }) => {
 const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const { type, asset, volume } = operationData || {};
   const { realTimePrices } = useContext(AppContext);
-  const normalizedAsset = asset?.toUpperCase().replace("-", "");
+  const normalizedAsset = asset?.toUpperCase().replace(/[-/]/g, "");
   const livePrice = realTimePrices[normalizedAsset];
   const requiredMargin = livePrice ? (livePrice * volume).toFixed(2) : "0.00";
   const [tp, setTp] = useState("");
@@ -1884,33 +1914,55 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
   );
 });
 
-const DepositView = React.memo(({ onBack }) => (
+const DepositView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
+      className="flex items-center text-red-400 hover:text-red-300 mb-6 cursor-pointer"
     >
-      <ChevronLeftIcon /> Volver al Menú
+      <ChevronLeftIcon /> Volver al Menú Principal
     </button>
-    <h2 className="text-xl font-bold mb-4 text-white">Depositar Fondos</h2>
-    <p className="text-neutral-400">
-      Aquí irá el formulario para depositar fondos.
-    </p>
+    <h2 className="text-2xl font-bold mb-6 text-white">
+      Seleccione un Método de Depósito
+    </h2>
+    <div className="space-y-4">
+      <PaymentMethodButton
+        icon={<CreditCardIcon className="h-8 w-8 text-cyan-400" />}
+        text="Criptomonedas"
+        onClick={() => onSelectMethod("crypto", "deposit")}
+      />
+      <PaymentMethodButton
+        icon={<BanknotesIcon className="h-8 w-8 text-green-400" />}
+        text="Transferencia Bancaria"
+        onClick={() => alert("Este método no está implementado aún.")}
+      />
+    </div>
   </div>
 ));
 
-const WithdrawView = React.memo(({ onBack }) => (
+const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
+      className="flex items-center text-red-400 hover:text-red-300 mb-6 cursor-pointer"
     >
-      <ChevronLeftIcon /> Volver al Menú
+      <ChevronLeftIcon /> Volver al Menú Principal
     </button>
-    <h2 className="text-xl font-bold mb-4 text-white">Retirar Fondos</h2>
-    <p className="text-neutral-400">
-      Aquí irá el formulario para retirar fondos.
-    </p>
+    <h2 className="text-2xl font-bold mb-6 text-white">
+      Seleccione un Método de Retiro
+    </h2>
+    <div className="space-y-4">
+      <PaymentMethodButton
+        icon={<CreditCardIcon className="h-8 w-8 text-cyan-400" />}
+        text="Criptomonedas"
+        onClick={() => onSelectMethod("crypto", "withdraw")}
+      />
+      <PaymentMethodButton
+        icon={<BanknotesIcon className="h-8 w-8 text-green-400" />}
+        text="Transferencia Bancaria"
+        onClick={() => alert("Este método no está implementado aún.")}
+      />
+    </div>
   </div>
 ));
 
@@ -1924,81 +1976,100 @@ const MenuButton = React.memo(({ icon, text, onClick }) => (
   </button>
 ));
 
-const SideMenu = React.memo(({ isOpen, onClose, setAlert }) => {
-  const [view, setView] = useState("main");
-  useEffect(() => {
-    if (isOpen) setView("main");
-  }, [isOpen]);
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/50 z-40"
-          />
-          <motion.div
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ type: "tween", ease: "circOut", duration: 0.4 }}
-            className="fixed top-0 left-0 h-full w-80 bg-neutral-900 shadow-2xl z-50 border-r border-neutral-700 flex flex-col"
-          >
-            <div className="p-4 border-b border-neutral-700 flex-shrink-0">
-              <img
-                className="mb-2"
-                src="/bulltrodatw.png"
-                width="220"
-                alt="Logo"
-              />
-            </div>
-            <div className="flex-grow overflow-y-auto">
-              {view === "main" && (
-                <div className="p-4 space-y-2">
-                  <MenuButton
-                    icon={
-                      <ArrowDownTrayIcon className="h-5 w-5 text-green-400" />
-                    }
-                    text="Depositar"
-                    onClick={() => setView("deposit")}
-                  />
-                  <MenuButton
-                    icon={<ArrowUpTrayIcon className="h-5 w-5 text-red-400" />}
-                    text="Retirar"
-                    onClick={() => setView("withdraw")}
-                  />
-                  <div className="my-2 h-px bg-neutral-700" />
-                  <MenuButton
-                    icon={
-                      <UserCircleIcon className="h-5 w-5 text-neutral-400" />
-                    }
-                    text="Completar Perfil"
-                    onClick={() => setView("profile")}
-                  />
-                </div>
-              )}
-              {view === "profile" && (
-                <UserProfile
-                  setAlert={setAlert}
-                  onBack={() => setView("main")}
+const SideMenu = React.memo(
+  ({ isOpen, onClose, setAlert, onSelectPaymentMethod }) => {
+    const [view, setView] = useState("main");
+    useEffect(() => {
+      if (isOpen) setView("main");
+    }, [isOpen]);
+
+    const handleSelectMethod = (method, type) => {
+      onSelectPaymentMethod(method, type);
+    };
+
+    return (
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onClose}
+              className="fixed inset-0 bg-black/50 z-40"
+            />
+            <motion.div
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "tween", ease: "circOut", duration: 0.4 }}
+              className="fixed top-0 left-0 h-full w-80 bg-neutral-900 shadow-2xl z-50 border-r border-neutral-700 flex flex-col"
+            >
+              <div className="p-4 border-b border-neutral-700 flex-shrink-0">
+                <img
+                  className="mb-2"
+                  src="/bulltrodatw.png"
+                  width="220"
+                  alt="Logo"
                 />
-              )}
-              {view === "deposit" && (
-                <DepositView onBack={() => setView("main")} />
-              )}
-              {view === "withdraw" && (
-                <WithdrawView onBack={() => setView("main")} />
-              )}
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-});
+              </div>
+              <div className="flex-grow overflow-y-auto">
+                {view === "main" && (
+                  <div className="p-4 space-y-2">
+                    <MenuButton
+                      icon={
+                        <ArrowDownTrayIcon className="h-5 w-5 text-green-400" />
+                      }
+                      text="Depositar"
+                      onClick={() => setView("deposit")}
+                    />
+                    <MenuButton
+                      icon={
+                        <ArrowUpTrayIcon className="h-5 w-5 text-red-400" />
+                      }
+                      text="Retirar"
+                      onClick={() => setView("withdraw")}
+                    />
+                    <div className="my-2 h-px bg-neutral-700" />
+                    <MenuButton
+                      icon={
+                        <UserCircleIcon className="h-5 w-5 text-neutral-400" />
+                      }
+                      text="Completar Perfil"
+                      onClick={() => setView("profile")}
+                    />
+                  </div>
+                )}
+                {view === "profile" && (
+                  <UserProfile
+                    setAlert={setAlert}
+                    onBack={() => setView("main")}
+                  />
+                )}
+                {view === "deposit" && (
+                  <DepositView
+                    onBack={() => setView("main")}
+                    onSelectMethod={(method) =>
+                      handleSelectMethod(method, "deposit")
+                    }
+                  />
+                )}
+                {view === "withdraw" && (
+                  <WithdrawView
+                    onBack={() => setView("main")}
+                    onSelectMethod={(method) =>
+                      handleSelectMethod(method, "withdraw")
+                    }
+                  />
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    );
+  }
+);
 
 const DashboardPage = () => {
   const {
@@ -2020,11 +2091,11 @@ const DashboardPage = () => {
       "TSLA",
       "NVDA",
       "AMZN",
-      "EURUSD",
-      "GBPUSD",
-      "USDJPY",
-      "XAUUSD",
-      "XAGUSD",
+      "EUR/USD",
+      "GBP/USD",
+      "USD/JPY",
+      "XAU/USD",
+      "WTI/USD",
     ],
     []
   );
@@ -2074,6 +2145,18 @@ const DashboardPage = () => {
     currentPage: 1,
     totalPages: 1,
   });
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentModalConfig, setPaymentModalConfig] = useState({
+    type: "",
+    method: "",
+  });
+
+  const handleOpenPaymentModal = (method, type) => {
+    setPaymentModalConfig({ method, type });
+    setIsPaymentModalOpen(true);
+    setIsSideMenuOpen(false);
+  };
+  const handleClosePaymentModal = () => setIsPaymentModalOpen(false);
 
   const fetchData = useCallback(
     async (page = 1, filter = "todas") => {
@@ -2177,7 +2260,7 @@ const DashboardPage = () => {
   useEffect(() => {
     const openOperations = operations.filter((op) => !op.cerrada);
     const pnl = openOperations.reduce((total, op) => {
-      const normalizedSymbol = op.activo.toUpperCase().replace("-", "");
+      const normalizedSymbol = op.activo.toUpperCase().replace(/[-/]/g, "");
       const currentPrice = realTimePrices[normalizedSymbol];
       if (!currentPrice) return total;
       return (
@@ -2219,7 +2302,7 @@ const DashboardPage = () => {
         setAlert({ message: "El volumen debe ser mayor a 0.", type: "error" });
         return;
       }
-      const normalizedAsset = selectedAsset.toUpperCase().replace("-", "");
+      const normalizedAsset = selectedAsset.toUpperCase().replace(/[-/]/g, "");
       const currentPrice = realTimePrices[normalizedAsset];
       if (!currentPrice) {
         setAlert({
@@ -2244,7 +2327,7 @@ const DashboardPage = () => {
 
   const handleConfirmOperation = useCallback(
     async (opDetails) => {
-      const normalizedAsset = selectedAsset.toUpperCase().replace("-", "");
+      const normalizedAsset = selectedAsset.toUpperCase().replace(/[-/]/g, "");
       const livePrice = realTimePrices[normalizedAsset];
       if (!livePrice) {
         setAlert({
@@ -2325,7 +2408,7 @@ const DashboardPage = () => {
 
   const handleOpRowClick = useCallback(
     (op) => {
-      const normalizedSymbol = op.activo.toUpperCase().replace("-", "");
+      const normalizedSymbol = op.activo.toUpperCase().replace(/[-/]/g, "");
       const currentPrice = realTimePrices[normalizedSymbol];
       const profit = op.cerrada
         ? parseFloat(op.ganancia || 0)
@@ -2410,7 +2493,17 @@ const DashboardPage = () => {
         isOpen={isSideMenuOpen}
         onClose={() => setIsSideMenuOpen(false)}
         setAlert={setAlert}
+        onSelectPaymentMethod={handleOpenPaymentModal}
       />
+      {paymentModalConfig.method === "crypto" && (
+        <CryptoPaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={handleClosePaymentModal}
+          type={paymentModalConfig.type}
+          setAlert={setAlert}
+        />
+      )}
+
       <AnimatePresence>
         {isSidebarVisible && (
           <>
