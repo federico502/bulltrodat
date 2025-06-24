@@ -106,33 +106,124 @@ app.use(sessionMiddleware);
 // --- Lógica de WebSockets ---
 global.preciosEnTiempoReal = {};
 const usuariosSockets = {};
+
+// CAMBIO: Listas de activos expandidas a más de 100
 const initialCrypto = [
   "BTC-USDT",
   "ETH-USDT",
   "SOL-USDT",
   "XRP-USDT",
   "BNB-USDT",
+  "DOGE-USDT",
+  "ADA-USDT",
+  "AVAX-USDT",
+  "TRX-USDT",
+  "DOT-USDT",
 ];
+
 const initialStocks = [
+  // Tecnológicas Principales
   "AAPL",
-  "AMZN",
+  "MSFT",
   "GOOGL",
+  "AMZN",
+  "NVDA",
   "META",
   "TSLA",
-  "MSFT",
-  "NVDA",
-  "IBM",
+  "ORCL",
+  "ADBE",
+  "CRM",
+  // Semiconductores
+  "AVGO",
+  "QCOM",
+  "INTC",
+  "AMD",
+  "TXN",
+  "MU",
+  // Financieras
+  "JPM",
+  "BAC",
+  "WFC",
+  "GS",
+  "MS",
+  "C",
+  "V",
+  "MA",
+  "AXP",
+  "PYPL",
+  // Salud
+  "UNH",
+  "JNJ",
+  "LLY",
+  "PFE",
+  "MRK",
+  "ABBV",
+  "TMO",
+  // Consumo Discrecional
+  "HD",
+  "NKE",
+  "MCD",
+  "SBUX",
+  "DIS",
+  "F",
+  "GM",
+  // Consumo Básico
+  "PG",
+  "KO",
+  "PEP",
+  "WMT",
+  "COST",
+  // Industriales
+  "CAT",
+  "BA",
+  "GE",
+  "HON",
+  "UNP",
+  // Energía
+  "XOM",
+  "CVX",
+  "SLB",
+  // Otros
+  "SPY",
+  "QQQ",
+  "DIA",
 ];
+
 const initialForex = [
-  "EURUSD",
-  "USDJPY",
-  "GBPUSD",
-  "AUDUSD",
-  "EURJPY",
-  "GBPJPY",
-  "AUDJPY",
+  // Pares Mayores
+  "EUR/USD",
+  "GBP/USD",
+  "USD/JPY",
+  "USD/CHF",
+  "USD/CAD",
+  "AUD/USD",
+  "NZD/USD",
+  // Pares Cruzados con EUR
+  "EUR/GBP",
+  "EUR/JPY",
+  "EUR/CHF",
+  "EUR/AUD",
+  "EUR/CAD",
+  // Pares Cruzados con GBP
+  "GBP/JPY",
+  "GBP/CHF",
+  "GBP/AUD",
+  // Otros Pares
+  "AUD/JPY",
+  "CAD/JPY",
+  "CHF/JPY",
 ];
-const initialCommodities = ["WTI/USD", "BRENT/USD", "XAU/USD", "XAG/USD"];
+
+const initialCommodities = [
+  "WTI/USD",
+  "BRENT/USD",
+  "XAU/USD",
+  "XAG/USD",
+  "XPT/USD",
+  "XPD/USD",
+  "XCU/USD",
+];
+
 let kuCoinWs = null;
 let twelveDataWs = null;
 const activeKuCoinSubscriptions = new Set(initialCrypto);
@@ -156,6 +247,9 @@ const knownCurrencies = new Set([
   "MXN",
   "XAU",
   "XAG",
+  "XPT",
+  "XPD",
+  "XCU",
 ]);
 
 function broadcast(data) {
@@ -623,14 +717,10 @@ app.post("/cerrar-operacion", async (req, res) => {
     }
     const tipo = tipo_operacion.toLowerCase();
     let gananciaFinal = 0;
-
-    // **CORRECCIÓN DEL BUG AQUÍ**
-    if (tipo === "compra" || tipo === "buy") {
+    if (tipo === "compra" || tipo === "buy")
       gananciaFinal = (precioActual - precio_entrada) * volumen;
-    } else if (tipo === "venta" || tipo === "sell") {
-      gananciaFinal = (precio_entrada - precioActual) * volumen; // Corregido
-    }
-
+    else if (tipo === "venta" || tipo === "sell")
+      gananciaFinal = (precio_entrada - precioActual) * volumen;
     await client.query(
       "UPDATE operaciones SET cerrada = true, ganancia = $1, precio_cierre = $2 WHERE id = $3",
       [gananciaFinal, precioActual, operacion_id]
