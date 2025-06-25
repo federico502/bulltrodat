@@ -23,15 +23,15 @@ const {
   TWELVE_DATA_API_KEY,
   ALPHA_VANTAGE_API_KEY,
   REGISTRATION_CODE = "ADMIN2024",
-  FRONTEND_URL,
+  FRONTEND_URLS, // CAMBIO: Ahora esperamos una lista de URLs separadas por comas
   NODE_ENV,
   PORT = 3000,
 } = process.env;
 
 // Validar que las variables críticas existan
-if (!DATABASE_URL || !SESSION_SECRET || !FRONTEND_URL) {
+if (!DATABASE_URL || !SESSION_SECRET || !FRONTEND_URLS) {
   console.error(
-    "CRITICAL ERROR: DATABASE_URL, SESSION_SECRET, or FRONTEND_URL is not set."
+    "CRITICAL ERROR: DATABASE_URL, SESSION_SECRET, or FRONTEND_URLS is not set."
   );
   process.exit(1);
 }
@@ -51,7 +51,8 @@ if (NODE_ENV === "production") {
   app.set("trust proxy", 1);
 }
 
-const allowedOrigins = [FRONTEND_URL];
+// CAMBIO: Leer múltiples URLs para CORS
+const allowedOrigins = FRONTEND_URLS.split(",").map((url) => url.trim());
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -107,7 +108,6 @@ app.use(sessionMiddleware);
 global.preciosEnTiempoReal = {};
 const usuariosSockets = {};
 
-// CAMBIO: Listas de activos expandidas a más de 100
 const initialCrypto = [
   "BTC-USDT",
   "ETH-USDT",
@@ -120,9 +120,7 @@ const initialCrypto = [
   "TRX-USDT",
   "DOT-USDT",
 ];
-
 const initialStocks = [
-  // Tecnológicas Principales
   "AAPL",
   "MSFT",
   "GOOGL",
@@ -133,14 +131,12 @@ const initialStocks = [
   "ORCL",
   "ADBE",
   "CRM",
-  // Semiconductores
   "AVGO",
   "QCOM",
   "INTC",
   "AMD",
   "TXN",
   "MU",
-  // Financieras
   "JPM",
   "BAC",
   "WFC",
@@ -151,7 +147,6 @@ const initialStocks = [
   "MA",
   "AXP",
   "PYPL",
-  // Salud
   "UNH",
   "JNJ",
   "LLY",
@@ -159,7 +154,6 @@ const initialStocks = [
   "MRK",
   "ABBV",
   "TMO",
-  // Consumo Discrecional
   "HD",
   "NKE",
   "MCD",
@@ -167,30 +161,24 @@ const initialStocks = [
   "DIS",
   "F",
   "GM",
-  // Consumo Básico
   "PG",
   "KO",
   "PEP",
   "WMT",
   "COST",
-  // Industriales
   "CAT",
   "BA",
   "GE",
   "HON",
   "UNP",
-  // Energía
   "XOM",
   "CVX",
   "SLB",
-  // Otros
   "SPY",
   "QQQ",
   "DIA",
 ];
-
 const initialForex = [
-  // Pares Mayores
   "EUR/USD",
   "GBP/USD",
   "USD/JPY",
@@ -198,22 +186,18 @@ const initialForex = [
   "USD/CAD",
   "AUD/USD",
   "NZD/USD",
-  // Pares Cruzados con EUR
   "EUR/GBP",
   "EUR/JPY",
   "EUR/CHF",
   "EUR/AUD",
   "EUR/CAD",
-  // Pares Cruzados con GBP
   "GBP/JPY",
   "GBP/CHF",
   "GBP/AUD",
-  // Otros Pares
   "AUD/JPY",
   "CAD/JPY",
   "CHF/JPY",
 ];
-
 const initialCommodities = [
   "WTI/USD",
   "BRENT/USD",
@@ -259,7 +243,6 @@ function broadcast(data) {
     }
   });
 }
-
 const getSymbolType = (symbol) => {
   const s = symbol.toUpperCase();
   if (s.includes("-USDT") || s.endsWith("USDT")) {
@@ -277,7 +260,6 @@ const getSymbolType = (symbol) => {
   }
   return "stock";
 };
-
 const getKuCoinSymbolFormat = (symbol) => {
   const s = symbol.toUpperCase();
   if (s.endsWith("USDT") && !s.includes("-")) {
@@ -285,7 +267,6 @@ const getKuCoinSymbolFormat = (symbol) => {
   }
   return s;
 };
-
 const getTwelveDataSymbolFormat = (symbol) => {
   const s = symbol.toUpperCase();
   if (getSymbolType(s) === "forex/commodity" && !s.includes("/")) {
@@ -293,7 +274,6 @@ const getTwelveDataSymbolFormat = (symbol) => {
   }
   return s;
 };
-
 function subscribeToKuCoin(symbols) {
   if (kuCoinWs && kuCoinWs.readyState === WebSocket.OPEN) {
     const topic = `/market/ticker:${symbols.join(",")}`;
@@ -309,7 +289,6 @@ function subscribeToKuCoin(symbols) {
     );
   }
 }
-
 function subscribeToTwelveData(symbols) {
   if (twelveDataWs && twelveDataWs.readyState === WebSocket.OPEN) {
     const formattedSymbols = symbols.map(getTwelveDataSymbolFormat);
@@ -326,7 +305,6 @@ function subscribeToTwelveData(symbols) {
     );
   }
 }
-
 async function iniciarWebSocketKuCoin() {
   try {
     console.log("Solicitando token para WebSocket de KuCoin...");
@@ -347,7 +325,6 @@ async function iniciarWebSocketKuCoin() {
     const wsUrl = `${endpoint}?token=${token}`;
     console.log("✅ Conectando al WebSocket de KuCoin...");
     kuCoinWs = new WebSocket(wsUrl);
-
     kuCoinWs.on("open", () => {
       console.log("✅ WebSocket conectado a KuCoin");
       if (activeKuCoinSubscriptions.size > 0)
@@ -384,7 +361,6 @@ async function iniciarWebSocketKuCoin() {
     setTimeout(iniciarWebSocketKuCoin, 10000);
   }
 }
-
 function iniciarWebSocketTwelveData() {
   if (!TWELVE_DATA_API_KEY) {
     console.error("🚫 Twelve Data WebSocket not started: API Key is missing.");
@@ -435,14 +411,12 @@ function iniciarWebSocketTwelveData() {
     twelveDataWs.close();
   });
 }
-
 async function getLatestPrice(symbol) {
   return (
     global.preciosEnTiempoReal[symbol.toUpperCase().replace(/[-/]/g, "")] ||
     null
   );
 }
-
 async function getFreshPriceFromApi(symbol) {
   const upperSymbol = symbol.toUpperCase();
   const type = getSymbolType(upperSymbol);
@@ -473,7 +447,6 @@ async function getFreshPriceFromApi(symbol) {
   }
   return null;
 }
-
 async function cerrarOperacionesAutomáticamente(operationId = null) {
   try {
     const result = await pool.query(
@@ -490,7 +463,6 @@ async function cerrarOperacionesAutomáticamente(operationId = null) {
       const tp = op.take_profit ? parseFloat(op.take_profit) : null;
       const sl = op.stop_loss ? parseFloat(op.stop_loss) : null;
       const tipo = op.tipo_operacion.toLowerCase();
-
       if (tipo === "buy" || tipo === "compra") {
         if ((tp && precioActual >= tp) || (sl && precioActual <= sl))
           cerrar = true;
@@ -529,18 +501,21 @@ async function cerrarOperacionesAutomáticamente(operationId = null) {
 }
 
 // --- RUTAS DE LA API ---
-
 app.get("/", (req, res) => res.send("Backend de Bulltrodat está funcionando."));
 
 app.post("/register", async (req, res) => {
-  const { nombre, email, password, codigo } = req.body;
+  const { nombre, email, password, codigo, platform_id } = req.body;
+  if (!platform_id)
+    return res
+      .status(400)
+      .json({ error: "Falta el identificador de la plataforma." });
   if (codigo !== REGISTRATION_CODE)
     return res.status(403).json({ error: "Código de registro inválido." });
   try {
     const hash = await bcrypt.hash(password, 10);
     await pool.query(
-      "INSERT INTO usuarios (nombre, email, password, rol, balance, balance_real) VALUES ($1, $2, $3, 'usuario', 10000, 0)",
-      [nombre, email, hash]
+      "INSERT INTO usuarios (nombre, email, password, rol, balance, balance_real, platform_id) VALUES ($1, $2, $3, 'usuario', 10000, 0, $4)",
+      [nombre, email, hash, platform_id]
     );
     res.json({ success: true });
   } catch (err) {
@@ -550,11 +525,16 @@ app.post("/register", async (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, platform_id } = req.body;
+  if (!platform_id)
+    return res
+      .status(400)
+      .json({ error: "Falta el identificador de la plataforma." });
   try {
-    const result = await pool.query("SELECT * FROM usuarios WHERE email = $1", [
-      email,
-    ]);
+    const result = await pool.query(
+      "SELECT * FROM usuarios WHERE email = $1 AND platform_id = $2",
+      [email, platform_id]
+    );
     const user = result.rows[0];
     if (user && (await bcrypt.compare(password, user.password))) {
       req.session.userId = user.id;
@@ -575,7 +555,7 @@ app.get("/me", async (req, res) => {
     return res.status(401).json({ error: "No autenticado" });
   try {
     const result = await pool.query(
-      "SELECT id, nombre, email, balance, rol, identificacion, telefono FROM usuarios WHERE id = $1",
+      "SELECT id, nombre, email, balance, rol, identificacion, telefono, platform_id FROM usuarios WHERE id = $1",
       [req.session.userId]
     );
     if (result.rows.length === 0)
@@ -802,7 +782,7 @@ app.get("/usuarios", async (req, res) => {
     const totalUsers = parseInt(totalResult.rows[0].count);
     const totalPages = Math.ceil(totalUsers / limit);
     const usuariosResult = await pool.query(
-      "SELECT id, nombre, email, balance, rol, identificacion, telefono FROM usuarios ORDER BY id ASC LIMIT $1 OFFSET $2",
+      "SELECT id, nombre, email, balance, rol, identificacion, telefono, platform_id FROM usuarios ORDER BY id ASC LIMIT $1 OFFSET $2",
       [limit, offset]
     );
     res.json({ users: usuariosResult.rows, totalPages, currentPage: page });
