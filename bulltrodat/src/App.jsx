@@ -1154,12 +1154,35 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const requiredMargin = livePrice ? (livePrice * volume).toFixed(2) : "0.00";
   const [tp, setTp] = useState("");
   const [sl, setSl] = useState("");
+
   useEffect(() => {
     if (!isOpen) {
       setTp("");
       setSl("");
     }
   }, [isOpen]);
+
+  const calculatePotentialProfit = (value, targetType) => {
+    if (!value || !livePrice || !volume) return null;
+    const targetPrice = parseFloat(value);
+    if (isNaN(targetPrice)) return null;
+
+    if (targetType === "tp") {
+      return type === "buy"
+        ? (targetPrice - livePrice) * volume
+        : (livePrice - targetPrice) * volume;
+    }
+    if (targetType === "sl") {
+      return type === "buy"
+        ? (targetPrice - livePrice) * volume
+        : (livePrice - targetPrice) * volume;
+    }
+    return null;
+  };
+
+  const potentialTpProfit = calculatePotentialProfit(tp, "tp");
+  const potentialSlProfit = calculatePotentialProfit(sl, "sl");
+
   const handleConfirm = () => {
     onConfirm({
       volumen: volume,
@@ -1169,6 +1192,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
     });
     onClose();
   };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -1190,26 +1214,43 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           <span className="font-mono text-white">${requiredMargin}</span>
         </p>
       </div>
-      <label className="block text-sm font-medium mb-2 text-neutral-300">
-        Take Profit (opcional):
-      </label>
-      <input
-        type="number"
-        value={tp}
-        onChange={(e) => setTp(e.target.value)}
-        placeholder="Precio"
-        className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"
-      />
-      <label className="block text-sm font-medium mb-2 text-neutral-300">
-        Stop Loss (opcional):
-      </label>
-      <input
-        type="number"
-        value={sl}
-        onChange={(e) => setSl(e.target.value)}
-        placeholder="Precio"
-        className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-red-500"
-      />
+
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-2 text-neutral-300">
+          Take Profit (opcional):
+        </label>
+        <input
+          type="number"
+          value={tp}
+          onChange={(e) => setTp(e.target.value)}
+          placeholder="Precio de cierre para tomar ganancias"
+          className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+        />
+        {potentialTpProfit !== null && (
+          <p className="text-xs mt-1 text-green-400">
+            Ganancia Potencial: ${potentialTpProfit.toFixed(2)}
+          </p>
+        )}
+      </div>
+
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-2 text-neutral-300">
+          Stop Loss (opcional):
+        </label>
+        <input
+          type="number"
+          value={sl}
+          onChange={(e) => setSl(e.target.value)}
+          placeholder="Precio de cierre para limitar pérdidas"
+          className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+        />
+        {potentialSlProfit !== null && (
+          <p className="text-xs mt-1 text-red-400">
+            Pérdida Potencial: ${potentialSlProfit.toFixed(2)}
+          </p>
+        )}
+      </div>
+
       <div className="flex justify-end mt-4">
         <button
           onClick={handleConfirm}
