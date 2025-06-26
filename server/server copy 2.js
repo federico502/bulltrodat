@@ -1,6 +1,8 @@
 import express from "express";
 import session from "express-session";
+
 import { Pool } from "pg";
+import { parse } from "pg-connection-string"; // Importar para parsear la URL de la DB
 import bcrypt from "bcryptjs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -10,14 +12,22 @@ import WebSocket, { WebSocketServer } from "ws";
 import http from "http";
 
 const app = express();
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 
 // =================================================================
-// CONFIGURACIÓN DE ACTIVOS Y API KEYS
+// CONFIGURACIÓN DESDE VARIABLES DE ENTORNO
 // =================================================================
-const TWELVE_DATA_API_KEY = "d27b034b039645d5a46048db830d80ed";
-const ALPHA_VANTAGE_API_KEY = "FFURID2ODU9B4X0V"; // API Key para el nuevo proveedor
+const TWELVE_DATA_API_KEY = process.env.TWELVE_DATA_API_KEY;
+const ALPHA_VANTAGE_API_KEY = process.env.ALPHA_VANTAGE_API_KEY;
+let REGISTRATION_CODE = process.env.REGISTRATION_CODE || "ADMIN2024";
+
+if (!TWELVE_DATA_API_KEY || !ALPHA_VANTAGE_API_KEY) {
+  console.error(
+    "CRITICAL: API keys for Twelve Data or Alpha Vantage are not set in environment variables."
+  );
+}
 
 const initialCrypto = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "BNBUSDT"];
 const initialStocks = [
@@ -52,10 +62,7 @@ const activeTwelveDataSubscriptions = new Set([
   ...initialForex,
   ...initialCommodities,
 ]);
-// =================================================================
-
 const usuariosSockets = {};
-let REGISTRATION_CODE = "ADMIN2024";
 
 function broadcast(data) {
   wss.clients.forEach((client) => {
@@ -84,9 +91,7 @@ const knownCurrencies = new Set([
 
 const getSymbolType = (symbol) => {
   const s = symbol.toUpperCase();
-  if (s.endsWith("USDT")) {
-    return "crypto";
-  }
+  if (s.endsWith("USDT")) return "crypto";
   if (s.length === 6) {
     const base = s.substring(0, 3);
     const quote = s.substring(3, 6);
@@ -111,7 +116,7 @@ const getTwelveDataSymbolFormat = (symbol) => {
 function subscribeToBinance(symbols) {
   if (binanceWs && binanceWs.readyState === WebSocket.OPEN) {
     console.log(
-      `🔷 Suscribiendo a ${symbols.length} símbolos en Binance: ${symbols.join(
+      `🔷 Subscribing to ${symbols.length} symbols on Binance: ${symbols.join(
         ", "
       )}`
     );
@@ -128,9 +133,9 @@ function subscribeToBinance(symbols) {
 function subscribeToTwelveData(symbols) {
   if (twelveDataWs && twelveDataWs.readyState === WebSocket.OPEN) {
     console.log(
-      `🔷 Suscribiendo a ${
+      `🔷 Subscribing to ${
         symbols.length
-      } símbolos en Twelve Data: ${symbols.join(", ")}`
+      } symbols on Twelve Data: ${symbols.join(", ")}`
     );
     twelveDataWs.send(
       JSON.stringify({
@@ -146,7 +151,7 @@ function iniciarWebSocketBinance() {
   binanceWs = new WebSocket(url);
 
   binanceWs.on("open", () => {
-    console.log("✅ WebSocket conectado a Binance");
+    console.log("✅ WebSocket connected to Binance");
     if (activeBinanceSubscriptions.size > 0) {
       subscribeToBinance(Array.from(activeBinanceSubscriptions));
     }
@@ -164,16 +169,16 @@ function iniciarWebSocketBinance() {
         });
       }
     } catch (err) {
-      console.error("❌ Error procesando mensaje de Binance:", err);
+      console.error("❌ Error processing message from Binance:", err);
     }
   });
 
   binanceWs.on("close", () => {
-    console.warn("🔁 Binance WebSocket cerrado, reconectando...");
+    console.warn("🔁 Binance WebSocket closed, reconnecting...");
     setTimeout(iniciarWebSocketBinance, 3000);
   });
   binanceWs.on("error", (err) => {
-    console.error("❌ Error WebSocket Binance:", err.message);
+    console.error("❌ Binance WebSocket error:", err.message);
     binanceWs.close();
   });
 }
@@ -182,12 +187,16 @@ let twelveDataRetryTimeout = 5000;
 const MAX_RETRY_TIMEOUT = 60000;
 
 function iniciarWebSocketTwelveData() {
+  if (!TWELVE_DATA_API_KEY) {
+    console.error("🚫 Twelve Data WebSocket not started: API Key is missing.");
+    return;
+  }
   twelveDataWs = new WebSocket(
     `wss://ws.twelvedata.com/v1/quotes/price?apikey=${TWELVE_DATA_API_KEY}`
   );
 
   twelveDataWs.on("open", () => {
-    console.log("✅ WebSocket conectado a Twelve Data");
+    console.log("✅ WebSocket connected to Twelve Data");
     twelveDataRetryTimeout = 5000;
     if (activeTwelveDataSubscriptions.size > 0) {
       subscribeToTwelveData(Array.from(activeTwelveDataSubscriptions));
@@ -206,18 +215,18 @@ function iniciarWebSocketTwelveData() {
           prices: { [internalSymbol]: price },
         });
       } else if (message.event === "subscribe-status") {
-        console.log("📈 Estado de suscripción de Twelve Data:", message);
+        console.log("📈 Twelve Data subscription status:", message);
       } else if (message.event === "error") {
-        console.error("❌ Error de la API de Twelve Data:", message);
+        console.error("❌ Twelve Data API error:", message);
       }
     } catch (err) {
-      console.error("❌ Error procesando mensaje de Twelve Data:", err);
+      console.error("❌ Error processing message from Twelve Data:", err);
     }
   });
 
   twelveDataWs.on("close", () => {
     console.warn(
-      `🔁 Twelve Data WebSocket cerrado. Reintentando en ${
+      `🔁 Twelve Data WebSocket closed. Retrying in ${
         twelveDataRetryTimeout / 1000
       }s...`
     );
@@ -229,7 +238,7 @@ function iniciarWebSocketTwelveData() {
   });
 
   twelveDataWs.on("error", (err) => {
-    console.error("❌ Error WebSocket Twelve Data:", err.message);
+    console.error("❌ Twelve Data WebSocket error:", err.message);
     twelveDataWs.close();
   });
 }
@@ -237,7 +246,11 @@ function iniciarWebSocketTwelveData() {
 // --- MANEJO DE MENSAJES DEL CLIENTE ---
 wss.on("connection", (ws, req) => {
   const userId = req.session.userId;
-  console.log(`✅ Cliente WebSocket conectado: ${userId}`);
+  if (!userId) {
+    ws.close(1008, "User not authenticated");
+    return;
+  }
+  console.log(`✅ WebSocket client connected: ${userId}`);
   usuariosSockets[userId] = ws;
 
   ws.send(
@@ -266,20 +279,17 @@ wss.on("connection", (ws, req) => {
           }
         });
 
-        if (newBinanceSymbols.length > 0) {
-          subscribeToBinance(newBinanceSymbols);
-        }
-        if (newTwelveDataSymbols.length > 0) {
+        if (newBinanceSymbols.length > 0) subscribeToBinance(newBinanceSymbols);
+        if (newTwelveDataSymbols.length > 0)
           subscribeToTwelveData(newTwelveDataSymbols);
-        }
       }
     } catch (error) {
-      console.error("Error procesando mensaje del cliente:", error);
+      console.error("Error processing client message:", error);
     }
   });
 
   ws.on("close", () => {
-    console.log(`🔌 Cliente WebSocket desconectado: ${userId}`);
+    console.log(`🔌 WebSocket client disconnected: ${userId}`);
     delete usuariosSockets[userId];
   });
 });
@@ -288,9 +298,6 @@ async function getLatestPrice(symbol) {
   return global.preciosEnTiempoReal[symbol.toUpperCase()] || null;
 }
 
-// =================================================================
-// OBTENCIÓN DE PRECIOS CON FALLBACK A ALPHA VANTAGE (CORREGIDO)
-// =================================================================
 async function getFreshPriceFromApi(symbol) {
   const upperSymbol = symbol.toUpperCase();
   const type = getSymbolType(upperSymbol);
@@ -305,9 +312,7 @@ async function getFreshPriceFromApi(symbol) {
       return parseFloat(data.price);
     }
 
-    // Para acciones, forex y materias primas, usamos la misma lógica de fallback.
     if (type === "forex/commodity" || type === "stock") {
-      // Intento 1: Twelve Data (para precios en tiempo real si están disponibles)
       const twelveDataSymbol = getTwelveDataSymbolFormat(upperSymbol);
       const tdResponse = await fetch(
         `https://api.twelvedata.com/price?symbol=${twelveDataSymbol}&apikey=${TWELVE_DATA_API_KEY}`
@@ -315,28 +320,19 @@ async function getFreshPriceFromApi(symbol) {
       if (tdResponse.ok) {
         const tdData = await tdResponse.json();
         if (tdData.price) {
-          console.log(`✅ Precio de ${upperSymbol} obtenido de Twelve Data.`);
           return parseFloat(tdData.price);
         }
       }
 
-      // Intento 2 (Fallback): Alpha Vantage
       const from_currency = upperSymbol.substring(0, 3);
       const to_currency = upperSymbol.substring(3, 6);
       let avResponse;
 
       if (type === "forex/commodity") {
-        console.log(
-          `⚠️ Twelve Data no proveyó precio para ${upperSymbol}. Intentando con Alpha Vantage...`
-        );
         avResponse = await fetch(
           `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${from_currency}&to_currency=${to_currency}&apikey=${ALPHA_VANTAGE_API_KEY}`
         );
       } else {
-        // type === 'stock'
-        console.log(
-          `⚠️ Twelve Data no proveyó precio para ${upperSymbol}. Intentando con Alpha Vantage...`
-        );
         avResponse = await fetch(
           `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${upperSymbol}&apikey=${ALPHA_VANTAGE_API_KEY}`
         );
@@ -345,29 +341,21 @@ async function getFreshPriceFromApi(symbol) {
       if (avResponse.ok) {
         const avData = await avResponse.json();
         if (avData["Global Quote"] && avData["Global Quote"]["05. price"]) {
-          // Respuesta para acciones
-          console.log(`✅ Precio de ${upperSymbol} obtenido de Alpha Vantage.`);
           return parseFloat(avData["Global Quote"]["05. price"]);
         }
         if (
           avData["Realtime Currency Exchange Rate"] &&
           avData["Realtime Currency Exchange Rate"]["5. Exchange Rate"]
         ) {
-          // Respuesta para Forex
-          console.log(`✅ Precio de ${upperSymbol} obtenido de Alpha Vantage.`);
           return parseFloat(
             avData["Realtime Currency Exchange Rate"]["5. Exchange Rate"]
           );
         }
       }
-
-      console.error(
-        `❌ No se pudo obtener el precio para ${upperSymbol} desde ningún proveedor.`
-      );
       return null;
     }
   } catch (error) {
-    console.error(`Error al obtener precio para ${symbol}:`, error);
+    console.error(`Error fetching price for ${symbol}:`, error);
     return null;
   }
   return null;
@@ -378,45 +366,60 @@ const __dirname = path.dirname(__filename);
 
 global.preciosEnTiempoReal = {};
 
-// CAMBIO 1: Puerto dinámico
 const port = process.env.PORT || 3000;
 
-// CAMBIO 2: Configuración de la Base de Datos
+// --- CONFIGURACIÓN DE BASE DE DATOS Y MIDDLEWARE ---
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error("DATABASE_URL environment variable is not set.");
+}
+const dbConfig = parse(connectionString);
 const db = new Pool({
-  connectionString: process.env.DATABASE_URL, // Render proveerá esta variable
+  ...dbConfig,
   ssl: {
-    rejectUnauthorized: false,
+    rejectUnauthorized: false, // Required for Render connections
   },
 });
 
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret) {
+  throw new Error("SESSION_SECRET environment variable is not set.");
+}
 const sessionParser = session({
-  secret: "clave_secreta_segura", // Considera mover esto a una variable de entorno también
+  secret: sessionSecret,
   resave: false,
-  saveUninitialized: true,
-  cookie: { secure: process.env.NODE_ENV === "production" }, // 'secure: true' en producción
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
+    sameSite: "lax",
+  },
 });
 
-// CAMBIO 3: Orígenes permitidos para CORS
-const allowedOrigins = [
-  "http://localhost:5173", // Para desarrollo local
-  process.env.CORS_ALLOWED_ORIGIN, // Para producción en Render
-];
+const frontendUrl = process.env.FRONTEND_URL;
+if (!frontendUrl) {
+  console.warn(
+    "WARNING: FRONTEND_URL is not set. CORS might block your frontend."
+  );
+}
+const allowedOrigins = [frontendUrl];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        const msg =
-          "La política de CORS para este sitio no permite acceso desde el origen especificado.";
-        callback(new Error(msg), false);
+      if (!origin && process.env.NODE_ENV !== "production") {
+        return callback(null, true);
       }
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        return callback(null, true);
+      }
+      const msg =
+        "The CORS policy for this site does not allow access from the specified Origin.";
+      return callback(new Error(msg), false);
     },
     credentials: true,
   })
 );
-
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "../public")));
 app.use(sessionParser);
@@ -436,6 +439,10 @@ app.post("/register", async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error(err);
+    if (err.code === "23505") {
+      // Unique constraint violation
+      return res.status(409).json({ error: "El email ya está registrado." });
+    }
     res.status(500).json({ error: "Error al registrar usuario" });
   }
 });
@@ -948,7 +955,6 @@ async function cerrarOperacionesAutomáticamente(operationId = null) {
       const entrada = parseFloat(op.precio_entrada);
       const tp = op.take_profit ? parseFloat(op.take_profit) : null;
       const sl = op.stop_loss ? parseFloat(op.stop_loss) : null;
-
       const tipo = op.tipo_operacion.toLowerCase();
 
       if (tipo === "buy" || tipo === "compra") {
@@ -1002,58 +1008,12 @@ async function cerrarOperacionesAutomáticamente(operationId = null) {
   }
 }
 
-async function checkTwelveDataApiKey() {
-  if (TWELVE_DATA_API_KEY === "YOUR_API_KEY_HERE" || !TWELVE_DATA_API_KEY) {
-    console.error(
-      "❌ CRITICAL: La clave de API de Twelve Data no está configurada en el archivo server.js."
-    );
-    return false;
-  }
-  try {
-    const response = await fetch(
-      `https://api.twelvedata.com/api_usage?apikey=${TWELVE_DATA_API_KEY}`
-    );
-    const data = await response.json();
-
-    if (response.status !== 200 || data.status === "error") {
-      console.error(
-        "❌ CRITICAL: La clave de API de Twelve Data parece ser inválida o ha expirado."
-      );
-      console.error(
-        "   Por favor, verifica tu clave en https://twelvedata.com/apikey"
-      );
-      console.error(
-        "   Respuesta de la API:",
-        data.message || "Sin mensaje de error detallado."
-      );
-      return false;
-    }
-
-    console.log("✅ La clave de API de Twelve Data es válida.");
-    return true;
-  } catch (error) {
-    console.error(
-      "❌ CRITICAL: No se pudo verificar la clave de API de Twelve Data. Puede ser un problema de red.",
-      error
-    );
-    return false;
-  }
-}
-
-server.listen(port, async () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${port}`);
-
-  const isApiKeyValid = await checkTwelveDataApiKey();
+// --- INICIO DEL SERVIDOR ---
+server.listen(port, () => {
+  console.log(`🚀 Server running on port ${port}`);
 
   iniciarWebSocketBinance();
-
-  if (isApiKeyValid) {
-    iniciarWebSocketTwelveData();
-  } else {
-    console.error(
-      "🚫 No se iniciará la conexión con Twelve Data debido a una clave de API inválida."
-    );
-  }
+  iniciarWebSocketTwelveData();
 
   setInterval(() => cerrarOperacionesAutomáticamente(), 1500);
 });
