@@ -2643,6 +2643,8 @@ const DashboardPage = () => {
     marginLevel: metrics.marginLevel.toFixed(2),
   };
 
+  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
+
   return (
     <div className="flex h-screen bg-black text-white font-sans overflow-hidden">
       <AnimatePresence>
@@ -2680,6 +2682,7 @@ const DashboardPage = () => {
       <ConfirmationModal
         isOpen={confirmationModal.isOpen}
         onClose={confirmationModal.onConfirm}
+        onConfirm={confirmationModal.onConfirm}
         title={confirmationModal.title}
       >
         {confirmationModal.children}
@@ -2706,7 +2709,7 @@ const DashboardPage = () => {
               <div className="flex-grow">
                 <img
                   className="mb-4"
-                  src="/bulltrodatw.png"
+                  src={platformLogo}
                   width="220"
                   alt="Logo"
                 />
@@ -2729,7 +2732,7 @@ const DashboardPage = () => {
       </AnimatePresence>
       <aside className="hidden lg:flex lg:flex-col w-72 bg-black/30 p-4 overflow-y-auto flex-shrink-0 border-r border-neutral-800">
         <div className="flex-grow">
-          <img className="mb-4" src="/bulltrodatw.png" width="220" alt="Logo" />
+          <img className="mb-4" src={platformLogo} width="220" alt="Logo" />
           <AssetLists
             assets={userAssets}
             onAddAsset={handleAddAsset}
@@ -2831,20 +2834,6 @@ const DashboardPage = () => {
   );
 };
 
-const App = () => {
-  const { isAppLoading, isAuthenticated } = useContext(AppContext);
-  if (isAppLoading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-xl font-bold animate-pulse">
-          <img src="/bulltrodatw.png" width="220" alt="Cargando..." />
-        </div>
-      </div>
-    );
-  }
-  return isAuthenticated ? <DashboardPage /> : <LoginPage />;
-};
-
 const LoginPage = () => {
   const { setUser, setIsAuthenticated } = useContext(AppContext);
   const [isLogin, setIsLogin] = useState(true);
@@ -2854,14 +2843,18 @@ const LoginPage = () => {
   const [codigo, setCodigo] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
+
+    const platform_id = import.meta.env.VITE_PLATFORM_ID || "default_platform";
     const url = isLogin ? "/login" : "/register";
     const payload = isLogin
-      ? { email, password }
-      : { nombre, email, password, codigo };
+      ? { email, password, platform_id }
+      : { nombre, email, password, codigo, platform_id };
+
     try {
       const { data } = await axios.post(url, payload);
       if (isLogin) {
@@ -2883,13 +2876,16 @@ const LoginPage = () => {
       setError(err.response?.data?.error || "Ocurrió un error.");
     }
   };
+
+  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
+
   return (
     <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-4">
       <div className="bg-neutral-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-neutral-700">
         <img
           className="mb-3 mx-auto"
-          src="/bulltrodatw.png"
-          alt="Logo de Bulltrodat"
+          src={platformLogo}
+          alt="Logo de la Plataforma"
         />
         <p className="text-center text-neutral-400 mb-6">
           {isLogin ? "Inicia sesión para continuar" : "Crea tu cuenta"}
@@ -2980,6 +2976,23 @@ const LoginPage = () => {
       </div>
     </div>
   );
+};
+
+const App = () => {
+  const { isAppLoading, isAuthenticated } = useContext(AppContext);
+
+  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
+
+  if (isAppLoading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white text-xl font-bold animate-pulse">
+          <img src={platformLogo} width="220" alt="Cargando..." />
+        </div>
+      </div>
+    );
+  }
+  return isAuthenticated ? <DashboardPage /> : <LoginPage />;
 };
 
 export default function Root() {
