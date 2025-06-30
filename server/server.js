@@ -27,9 +27,6 @@ const {
   PORT = 3000,
 } = process.env;
 
-// ==========================================================
-// CORRECCIÓN: Declarar REGISTRATION_CODE con 'let'
-// ==========================================================
 let REGISTRATION_CODE = process.env.REGISTRATION_CODE || "ADMIN2024";
 
 // Validar que las variables críticas existan
@@ -473,23 +470,48 @@ async function cerrarOperacionesAutomáticamente(operationId = null) {
 // --- RUTAS DE LA API ---
 app.get("/", (req, res) => res.send("Backend de Bulltrodat está funcionando."));
 
+// ==========================================================
+// RUTA DE REGISTRO ACTUALIZADA
+// ==========================================================
 app.post("/register", async (req, res) => {
-  const { nombre, email, password, codigo, platform_id } = req.body;
-  if (!platform_id)
+  const { nombre, email, password, codigo, telefono, platform_id } = req.body;
+
+  if (!platform_id) {
     return res
       .status(400)
       .json({ error: "Falta el identificador de la plataforma." });
-  if (codigo !== REGISTRATION_CODE)
-    return res.status(403).json({ error: "Código de registro inválido." });
+  }
+
+  // Validación específica para cada plataforma
+  if (platform_id === "bulltrodat") {
+    if (codigo !== REGISTRATION_CODE) {
+      return res.status(403).json({ error: "Código de registro inválido." });
+    }
+  } else if (platform_id === "bulltrading") {
+    if (!telefono) {
+      return res
+        .status(400)
+        .json({ error: "El número de teléfono es obligatorio." });
+    }
+  } else {
+    return res.status(400).json({ error: "Plataforma no reconocida." });
+  }
+
   try {
     const hash = await bcrypt.hash(password, 10);
+    // Insertar el usuario con el teléfono (será null si no se proporciona)
     await pool.query(
-      "INSERT INTO usuarios (nombre, email, password, rol, balance, balance_real, platform_id) VALUES ($1, $2, $3, 'usuario', 0, 0, $4)",
-      [nombre, email, hash, platform_id]
+      "INSERT INTO usuarios (nombre, email, password, rol, balance, balance_real, platform_id, telefono) VALUES ($1, $2, $3, 'usuario', 10000, 0, $4, $5)",
+      [nombre, email, hash, platform_id, telefono || null]
     );
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: "Error al registrar usuario" });
+    console.error("Error en /register: ", err);
+    res
+      .status(500)
+      .json({
+        error: "Error al registrar usuario. El email podría ya estar en uso.",
+      });
   }
 });
 
@@ -943,7 +965,6 @@ app.post("/admin/registration-code", async (req, res) => {
     if (!newCode || typeof newCode !== "string")
       return res.status(400).json({ error: "Código inválido" });
 
-    // AHORA ESTO FUNCIONA PORQUE REGISTRATION_CODE ES 'let'
     REGISTRATION_CODE = newCode;
 
     console.log(`✅ Código de registro cambiado a: ${REGISTRATION_CODE}`);

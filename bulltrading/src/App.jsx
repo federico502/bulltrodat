@@ -2881,7 +2881,22 @@ const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nombre, setNombre] = useState("");
-  const [codigo, setCodigo] = useState("");
+
+  // --- NUEVOS ESTADOS PARA EL TELÉFONO ---
+  const [telefono, setTelefono] = useState("");
+  const [countryCode, setCountryCode] = useState("+57"); // Indicativo por defecto
+
+  // Lista de indicativos de países
+  const countryCodes = [
+    { name: "Colombia", code: "+57" },
+    { name: "United States", code: "+1" },
+    { name: "Spain", code: "+34" },
+    { name: "Mexico", code: "+52" },
+    { name: "Argentina", code: "+54" },
+    { name: "Peru", code: "+51" },
+    { name: "Chile", code: "+56" },
+  ];
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -2892,9 +2907,18 @@ const LoginPage = () => {
 
     const platform_id = import.meta.env.VITE_PLATFORM_ID || "default_platform";
     const url = isLogin ? "/login" : "/register";
+
+    // --- PAYLOAD ACTUALIZADO ---
+    // Ahora envía el teléfono completo en lugar del código de registro
     const payload = isLogin
       ? { email, password, platform_id }
-      : { nombre, email, password, codigo, platform_id };
+      : {
+          nombre,
+          email,
+          password,
+          telefono: `${countryCode}${telefono}`,
+          platform_id,
+        };
 
     try {
       const { data } = await axios.post(url, payload);
@@ -2918,7 +2942,8 @@ const LoginPage = () => {
     }
   };
 
-  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
+  const platformLogo =
+    import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
 
   return (
     <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-4">
@@ -2946,27 +2971,47 @@ const LoginPage = () => {
             <>
               <div className="mb-4">
                 <label className="block text-neutral-300 mb-2" htmlFor="nombre">
-                  Nombre
+                  Nombre Completo
                 </label>
                 <input
                   type="text"
                   id="nombre"
+                  required
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
                   className="w-full p-2 bg-neutral-700 text-white rounded-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
+
+              {/* --- NUEVO CAMPO DE TELÉFONO --- */}
               <div className="mb-4">
-                <label className="block text-neutral-300 mb-2" htmlFor="codigo">
-                  Código de Registro
+                <label
+                  className="block text-neutral-300 mb-2"
+                  htmlFor="telefono"
+                >
+                  Número de Teléfono
                 </label>
-                <input
-                  type="text"
-                  id="codigo"
-                  value={codigo}
-                  onChange={(e) => setCodigo(e.target.value)}
-                  className="w-full p-2 bg-neutral-700 text-white rounded-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
+                <div className="flex">
+                  <select
+                    value={countryCode}
+                    onChange={(e) => setCountryCode(e.target.value)}
+                    className="p-2 bg-neutral-700 text-white rounded-l-md border-r-0 border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
+                  >
+                    {countryCodes.map((country) => (
+                      <option key={country.code} value={country.code}>
+                        {country.code} ({country.name})
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="tel"
+                    id="telefono"
+                    required
+                    value={telefono}
+                    onChange={(e) => setTelefono(e.target.value)}
+                    className="w-full p-2 bg-neutral-700 text-white rounded-r-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </div>
               </div>
             </>
           )}
@@ -2977,6 +3022,7 @@ const LoginPage = () => {
             <input
               type="email"
               id="email"
+              required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full p-2 bg-neutral-700 text-white rounded-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -2989,6 +3035,7 @@ const LoginPage = () => {
             <input
               type="password"
               id="password"
+              required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full p-2 bg-neutral-700 text-white rounded-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
@@ -3022,7 +3069,8 @@ const LoginPage = () => {
 const App = () => {
   const { isAppLoading, isAuthenticated } = useContext(AppContext);
 
-  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
+  const platformLogo =
+    import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
 
   if (isAppLoading) {
     return (
