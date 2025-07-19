@@ -104,7 +104,7 @@ const sessionMiddleware = session({
 });
 app.use(sessionMiddleware);
 
-// --- Lógica de WebSockets ---
+// --- Lógica de WebSockets (sin cambios) ---
 global.preciosEnTiempoReal = {};
 const usuariosSockets = {};
 
@@ -330,12 +330,8 @@ async function iniciarWebSocketKuCoin() {
         console.error("❌ Error procesando mensaje de KuCoin:", err);
       }
     });
-    kuCoinWs.on("close", () => {
-      setTimeout(iniciarWebSocketKuCoin, 5000);
-    });
-    kuCoinWs.on("error", (err) => {
-      kuCoinWs.close();
-    });
+    kuCoinWs.on("close", () => setTimeout(iniciarWebSocketKuCoin, 5000));
+    kuCoinWs.on("error", (err) => kuCoinWs.close());
   } catch (error) {
     setTimeout(iniciarWebSocketKuCoin, 10000);
   }
@@ -376,9 +372,7 @@ function iniciarWebSocketTwelveData() {
       MAX_RETRY_TIMEOUT
     );
   });
-  twelveDataWs.on("error", (err) => {
-    twelveDataWs.close();
-  });
+  twelveDataWs.on("error", (err) => twelveDataWs.close());
 }
 async function getLatestPrice(symbol) {
   return (
@@ -468,10 +462,10 @@ async function cerrarOperacionesAutomáticamente(operationId = null) {
 }
 
 // --- RUTAS DE LA API ---
-app.get("/", (req, res) => res.send("Backend de Bulltrodat está funcionando."));
+app.get("/", (req, res) => res.send("Backend de Trading está funcionando."));
 
 // ==========================================================
-// RUTA DE REGISTRO ACTUALIZADA
+// RUTA DE REGISTRO ACTUALIZADA PARA 3 PLATAFORMAS
 // ==========================================================
 app.post("/register", async (req, res) => {
   const { nombre, email, password, codigo, telefono, platform_id } = req.body;
@@ -493,6 +487,9 @@ app.post("/register", async (req, res) => {
         .status(400)
         .json({ error: "El número de teléfono es obligatorio." });
     }
+  } else if (platform_id === "luxtrading") {
+    // Para LuxTrading no se requiere ni código ni teléfono.
+    // No hay validación extra necesaria aquí, solo que el platform_id sea correcto.
   } else {
     return res.status(400).json({ error: "Plataforma no reconocida." });
   }
@@ -507,13 +504,14 @@ app.post("/register", async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error("Error en /register: ", err);
-    res
-      .status(500)
-      .json({
-        error: "Error al registrar usuario. El email podría ya estar en uso.",
-      });
+    res.status(500).json({
+      error: "Error al registrar usuario. El email podría ya estar en uso.",
+    });
   }
 });
+
+// El resto de las rutas no necesitan cambios, ya que filtran por session.userId o platform_id
+// de forma dinámica.
 
 app.post("/login", async (req, res) => {
   const { email, password, platform_id } = req.body;
