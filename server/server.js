@@ -498,7 +498,7 @@ app.post("/register", async (req, res) => {
     const hash = await bcrypt.hash(password, 10);
     // Insertar el usuario con el teléfono (será null si no se proporciona)
     await pool.query(
-      "INSERT INTO usuarios (nombre, email, password, rol, balance, balance_real, platform_id, telefono) VALUES ($1, $2, $3, 'usuario', 10000, 0, $4, $5)",
+      "INSERT INTO usuarios (nombre, email, password, rol, balance, balance_real, platform_id, telefono) VALUES ($1, $2, $3, 'usuario', 0, 0, $4, $5)",
       [nombre, email, hash, platform_id, telefono || null]
     );
     res.json({ success: true });

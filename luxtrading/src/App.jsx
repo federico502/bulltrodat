@@ -2233,20 +2233,23 @@ const DashboardPage = () => {
       if (!user) return;
       setIsLoadingData(true);
       try {
-        const [historialRes, statsRes, balanceRes, performanceRes] =
-          await Promise.all([
-            axios.get(`/historial?page=${page}&limit=5&filter=${filter}`),
-            axios.get("/estadisticas"),
-            axios.get("/balance"),
-            axios.get("/rendimiento"),
-          ]);
+        // Sequential fetching to improve stability on mobile devices
+        const historialRes = await axios.get(
+          `/historial?page=${page}&limit=5&filter=${filter}`
+        );
         setOperations(historialRes.data.operations);
         setPagination({
           currentPage: historialRes.data.currentPage,
           totalPages: historialRes.data.totalPages,
         });
+
+        const statsRes = await axios.get("/estadisticas");
         setStats(statsRes.data);
+
+        const balanceRes = await axios.get("/balance");
         setBalance(parseFloat(balanceRes.data.balance));
+
+        const performanceRes = await axios.get("/rendimiento");
         setPerformanceData(performanceRes.data);
       } catch (error) {
         console.error("Failed to fetch data:", error);
