@@ -908,7 +908,7 @@ const FlashingMetric = ({ value, prefix = "", suffix = "" }) => {
 };
 
 const FinancialMetrics = ({ metrics, isLoading }) => (
-  <BentoCard className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-4 justify-items-center p-4 text-xs sm:text-sm">
+  <BentoCard className="grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-4 justify-items-center p-4 text-xs sm:text-sm">
     {isLoading ? (
       Array.from({ length: 5 }).map((_, i) => (
         <Skeleton key={i} className="h-10 w-full" />
@@ -933,7 +933,7 @@ const FinancialMetrics = ({ metrics, isLoading }) => (
           <p className="text-slate-400">M. Libre</p>
           <FlashingMetric value={parseFloat(metrics.freeMargin)} prefix="$" />
         </div>
-        <div className="text-center col-span-2 md:col-span-1">
+        <div className="text-center col-span-2">
           <p className="text-slate-400">Nivel Margen</p>
           <FlashingMetric value={parseFloat(metrics.marginLevel)} suffix="%" />
         </div>
@@ -2909,19 +2909,20 @@ const DashboardPage = () => {
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
         />
 
-        <div className="flex-1 p-2 sm:p-4 grid grid-cols-1 lg:grid-cols-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
-          <div className="lg:col-span-4 xl:col-span-3 lg:row-span-2 min-h-[400px]">
+        <div className="flex-1 p-2 sm:p-4 grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
+          {/* Fila 1: Gráfico y Panel Derecho */}
+          <div className="lg:col-span-2 xl:col-span-3 min-h-[450px]">
             <BentoCard className="h-full w-full p-0 overflow-hidden">
               <TradingViewWidget symbol={selectedAsset} />
             </BentoCard>
           </div>
 
-          <div className="lg:col-span-4 xl:col-span-1 lg:row-span-2 flex flex-col gap-4">
+          <div className="lg:col-span-1 flex flex-col gap-4">
             <FinancialMetrics
               metrics={displayMetrics}
               isLoading={isLoadingData}
             />
-            <div className="hidden xl:block">
+            <div className="hidden lg:block space-y-4">
               <StatisticsPanel
                 stats={stats}
                 performanceData={performanceData}
@@ -2930,7 +2931,8 @@ const DashboardPage = () => {
             </div>
           </div>
 
-          <div className="lg:col-span-4 min-h-[300px]">
+          {/* Fila 2: Historial de Operaciones */}
+          <div className="lg:col-span-3 xl:col-span-4 min-h-[300px]">
             <OperationsHistory
               operations={operations}
               setOperations={setOperations}
