@@ -2909,14 +2909,14 @@ const DashboardPage = () => {
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
         />
 
-        <div className="flex-1 p-2 sm:p-4 grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
-          <div className="lg:col-span-3 xl:col-span-3 lg:row-span-2 min-h-[400px]">
+        <div className="flex-1 p-2 sm:p-4 grid grid-cols-1 lg:grid-cols-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
+          <div className="lg:col-span-4 xl:col-span-3 lg:row-span-2 min-h-[400px]">
             <BentoCard className="h-full w-full p-0 overflow-hidden">
               <TradingViewWidget symbol={selectedAsset} />
             </BentoCard>
           </div>
 
-          <div className="lg:col-span-3 xl:col-span-1 lg:row-span-2 flex flex-col gap-4">
+          <div className="lg:col-span-4 xl:col-span-1 lg:row-span-2 flex flex-col gap-4">
             <FinancialMetrics
               metrics={displayMetrics}
               isLoading={isLoadingData}
@@ -2930,7 +2930,7 @@ const DashboardPage = () => {
             </div>
           </div>
 
-          <div className="lg:col-span-3 xl:col-span-4 min-h-[300px]">
+          <div className="lg:col-span-4 min-h-[300px]">
             <OperationsHistory
               operations={operations}
               setOperations={setOperations}
