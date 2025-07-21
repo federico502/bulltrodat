@@ -767,7 +767,7 @@ const ProfileMenu = React.memo(
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -10 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="origin-top-right absolute right-0 mt-2 w-64 rounded-xl shadow-2xl bg-slate-800/90 backdrop-blur-lg ring-1 ring-white/10 focus:outline-none z-50 p-2 border border-slate-700"
+              className="origin-top-right absolute right-0 mt-2 w-64 rounded-xl shadow-2xl bg-slate-800/90 backdrop-blur-lg ring-1 ring-white/10 focus:outline-none z-[60] p-2 border border-slate-700"
             >
               <div className="px-3 py-2 border-b border-slate-700 mb-2">
                 <p className="text-sm font-semibold text-white truncate">
@@ -840,7 +840,7 @@ const Header = ({
   );
 
   return (
-    <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-slate-950/30 border-b border-white/10 backdrop-blur-lg">
+    <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-slate-950/30 border-b border-white/10 backdrop-blur-lg z-20">
       <div className="flex items-center gap-4">
         <button
           onClick={onToggleMainSidebar}
@@ -2910,28 +2910,12 @@ const DashboardPage = () => {
         />
 
         <div className="flex-1 p-2 sm:p-4 grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
-          {/* Fila 1: Gráfico y Panel Derecho */}
-          <div className="lg:col-span-2 xl:col-span-3 min-h-[450px]">
+          <div className="lg:col-span-3 xl:col-span-4 min-h-[450px]">
             <BentoCard className="h-full w-full p-0 overflow-hidden">
               <TradingViewWidget symbol={selectedAsset} />
             </BentoCard>
           </div>
 
-          <div className="lg:col-span-1 flex flex-col gap-4">
-            <FinancialMetrics
-              metrics={displayMetrics}
-              isLoading={isLoadingData}
-            />
-            <div className="hidden lg:block space-y-4">
-              <StatisticsPanel
-                stats={stats}
-                performanceData={performanceData}
-                isLoading={isLoadingData}
-              />
-            </div>
-          </div>
-
-          {/* Fila 2: Historial de Operaciones */}
           <div className="lg:col-span-3 xl:col-span-4 min-h-[300px]">
             <OperationsHistory
               operations={operations}
