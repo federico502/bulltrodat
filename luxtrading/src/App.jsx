@@ -41,213 +41,85 @@ ChartJS.register(
 );
 
 // --- SVG Icons ---
-const MenuIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-6 w-6"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M4 6h16M4 12h16M4 18h16"
-    />
-  </svg>
-);
-const PlusIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-4 w-4"
-    viewBox="0 0 20 20"
-    fill="currentColor"
-  >
-    <path
-      fillRule="evenodd"
-      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-      clipRule="evenodd"
-    />
-  </svg>
-);
-const UserGroupIcon = ({ className }) => (
+const Icon = ({ path, className = "h-5 w-5" }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     className={className}
-    viewBox="0 0 20 20"
-    fill="currentColor"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={2}
   >
-    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d={path} />
   </svg>
+);
+
+const MenuIcon = () => (
+  <Icon path="M4 6h16M4 12h16M4 18h16" className="h-6 w-6" />
+);
+const PlusIcon = () => <Icon path="M12 4v16m8-8H4" />;
+const UserGroupIcon = ({ className }) => (
+  <Icon
+    path="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.124-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.124-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+    className={className}
+  />
 );
 const LogoutIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
+  <Icon
+    path="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
     className={className}
-    viewBox="0 0 20 20"
-    fill="currentColor"
-  >
-    <path
-      fillRule="evenodd"
-      d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V5h10a1 1 0 100-2H3zm12.293 4.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L16.586 13H9a1 1 0 110-2h7.586l-1.293-1.293a1 1 0 010-1.414z"
-      clipRule="evenodd"
-    />
-  </svg>
+  />
 );
-const XIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-6 w-6"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M6 18L18 6M6 6l12 12"
-    />
-  </svg>
+const XIcon = ({ className = "h-6 w-6" }) => (
+  <Icon path="M6 18L18 6M6 6l12 12" className={className} />
 );
 const ViewListIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-4 w-4"
-    viewBox="0 0 20 20"
-    fill="currentColor"
-  >
-    <path
-      fillRule="evenodd"
-      d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
-      clipRule="evenodd"
-    />
-  </svg>
+  <Icon path="M4 6h16M4 10h16M4 14h16M4 18h16" className="h-4 w-4" />
 );
 const KeyIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
+  <Icon
+    path="M15 7a4 4 0 11-8 0 4 4 0 018 0zM9 9a2 2 0 11-4 0 2 2 0 014 0zM9 15a4 4 0 100-8 4 4 0 000 8zM9 15c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
     className={className}
-    viewBox="0 0 20 20"
-    fill="currentColor"
-  >
-    <path
-      fillRule="evenodd"
-      d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a4 4 0 100 8 4 4 0 000-8z"
-      clipRule="evenodd"
-    />
-  </svg>
+  />
 );
 const UserCircleIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
+  <Icon
+    path="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"
     className={className}
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"
-    />
-  </svg>
+  />
 );
 const ChevronLeftIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-5 w-5 mr-2"
-    viewBox="0 0 20 20"
-    fill="currentColor"
-  >
-    <path
-      fillRule="evenodd"
-      d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-      clipRule="evenodd"
-    />
-  </svg>
+  <Icon path="M15 19l-7-7 7-7" className="h-5 w-5 mr-2" />
 );
 const ArrowDownTrayIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
+  <Icon
+    path="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
     className={className}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
-    />
-  </svg>
+  />
 );
 const ArrowUpTrayIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
+  <Icon
+    path="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
     className={className}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
-    />
-  </svg>
+  />
 );
 const ClipboardIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
+  <Icon
+    path="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
     className={className}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v3.043m-7.416 0v3.043c0 .212.03.418.084.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"
-    />
-  </svg>
+  />
 );
 const BanknotesIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
+  <Icon
+    path="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0 .75-.75V9.75M15 13.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
     className={className}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0 .75-.75V9.75M15 13.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-    />
-  </svg>
+  />
 );
 const CreditCardIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
+  <Icon
+    path="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 21Z"
     className={className}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 21Z"
-    />
-  </svg>
+  />
 );
 
 const AppContext = createContext();
@@ -324,7 +196,7 @@ const useFlashOnUpdate = (value) => {
         currentValue !== prevValue
       ) {
         setFlashClass(
-          currentValue > prevValue ? "text-green-400" : "text-red-500"
+          currentValue > prevValue ? "text-green-400" : "text-red-400"
         );
         const timer = setTimeout(() => setFlashClass(""), 300);
         return () => clearTimeout(timer);
@@ -362,7 +234,7 @@ const Card = React.forwardRef(({ children, className = "", ...props }, ref) => (
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5 }}
-    className={`bg-black/20 p-4 rounded-lg border border-neutral-800 backdrop-blur-sm ${className}`}
+    className={`bg-neutral-900/50 p-4 rounded-lg border border-neutral-800 backdrop-blur-sm ${className}`}
     {...props}
   >
     {children}
@@ -592,7 +464,7 @@ const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
         className="text-neutral-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
         title={`Eliminar ${symbol}`}
       >
-        <XIcon />
+        <XIcon className="h-4 w-4" />
       </button>
     </div>
   </li>
@@ -622,11 +494,11 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
           value={newSymbol}
           onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
           placeholder="Ej: DOGE-USDT, WTI/USD"
-          className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+          className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
         />
         <button
           type="submit"
-          className="bg-red-600 hover:bg-red-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
+          className="bg-cyan-600 hover:bg-cyan-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
         >
           <PlusIcon />
         </button>
@@ -680,7 +552,7 @@ const ProfileMenu = React.memo(
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="bg-neutral-800 cursor-pointer text-white p-2 rounded-full hover:bg-red-500 transition-colors"
+          className="bg-neutral-800 cursor-pointer text-white p-2 rounded-full hover:bg-cyan-500 transition-colors"
           title="Cuenta"
         >
           <UserCircleIcon className="h-6 w-6" />
@@ -751,7 +623,7 @@ const Header = ({
   const { user, logout, selectedAsset } = useContext(AppContext);
   const [volume, setVolume] = useState(0.01);
   return (
-    <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-black/20 border-b border-neutral-800">
+    <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-neutral-900/30 border-b border-neutral-800">
       <div className="flex items-center gap-4">
         <button
           onClick={onToggleMainSidebar}
@@ -812,7 +684,7 @@ const FlashingMetric = ({ value, prefix = "", suffix = "" }) => {
       className={`font-bold px-2 py-1 rounded-md transition-colors duration-300 ${finalColorClass}`}
     >
       {prefix}
-      {!isNaN(value) ? value.toFixed(2) : "0.00"}
+      {!isNaN(value) ? value : "0.00"}
       {suffix}
     </span>
   );
@@ -970,7 +842,7 @@ const OperationsHistory = ({
 
   return (
     <Card className="flex-grow flex flex-col overflow-hidden">
-      <div className="p-3 bg-black/20 flex justify-between items-center flex-shrink-0">
+      <div className="p-3 bg-neutral-900/30 flex justify-between items-center flex-shrink-0">
         <h3 className="text-base font-bold text-white">
           Historial de Operaciones
         </h3>
@@ -982,7 +854,7 @@ const OperationsHistory = ({
             id="filter"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="bg-neutral-800 text-white text-sm rounded-md p-1 border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
+            className="bg-neutral-800 text-white text-sm rounded-md p-1 border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
           >
             <option value="todas">Todas</option>
             <option value="abiertas">Abiertas</option>
@@ -1317,7 +1189,7 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
             className={`px-2 py-0.5 rounded-full text-xs ${
               operation.cerrada
                 ? "bg-neutral-600 text-white"
-                : "bg-blue-500 text-white"
+                : "bg-cyan-500 text-white"
             }`}
           >
             {operation.cerrada ? "Cerrada" : "Abierta"}
@@ -1433,7 +1305,7 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
                 <td className="p-2">
                   <button
                     onClick={() => handleSavePrice(op.id)}
-                    className="bg-red-600 text-white px-3 py-1 text-xs rounded hover:bg-red-500 cursor-pointer"
+                    className="bg-cyan-600 text-white px-3 py-1 text-xs rounded hover:bg-cyan-500 cursor-pointer"
                   >
                     Guardar
                   </button>
@@ -1468,8 +1340,8 @@ const UserCard = React.memo(
           <span
             className={`px-2 py-0.5 rounded-full text-xs ${
               user.rol === "admin"
-                ? "bg-red-500/20 text-red-400"
-                : "bg-blue-500/20 text-blue-400"
+                ? "bg-cyan-500/20 text-cyan-400"
+                : "bg-neutral-500/20 text-neutral-400"
             }`}
           >
             {user.rol}
@@ -1537,7 +1409,7 @@ const UserCard = React.memo(
             title="Eliminar Usuario"
             className="bg-red-600 text-white p-1 text-xs rounded hover:bg-red-500 cursor-pointer"
           >
-            <XIcon />
+            <XIcon className="h-4 w-4" />
           </button>
         </div>
       </Card>
@@ -1640,7 +1512,7 @@ const UserTableRow = React.memo(
             title="Eliminar Usuario"
             className="bg-red-600 text-white p-1 text-xs rounded hover:bg-red-500 cursor-pointer"
           >
-            <XIcon />
+            <XIcon className="h-4 w-4" />
           </button>
         </td>
       </tr>
@@ -1826,12 +1698,12 @@ const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
           type="text"
           value={newCode}
           onChange={(e) => setNewCode(e.target.value)}
-          className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-red-500"
+          className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-cyan-500"
         />
         <div className="flex justify-end mt-4">
           <button
             onClick={handleSave}
-            className="px-5 py-2 rounded-md text-white font-bold transition-colors bg-red-600 hover:bg-red-500 cursor-pointer"
+            className="px-5 py-2 rounded-md text-white font-bold transition-colors bg-cyan-600 hover:bg-cyan-500 cursor-pointer"
           >
             Guardar Código
           </button>
@@ -1884,7 +1756,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
     <div className="p-4">
       <button
         onClick={onBack}
-        className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
+        className="flex items-center text-cyan-400 hover:text-cyan-300 mb-4 cursor-pointer"
       >
         <ChevronLeftIcon /> Volver al Menú
       </button>
@@ -1945,7 +1817,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
         <div className="flex justify-end">
           <button
             onClick={handleSave}
-            className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 cursor-pointer transition-colors"
+            className="px-5 py-2 rounded-md text-white font-bold bg-cyan-600 hover:bg-cyan-500 cursor-pointer transition-colors"
           >
             Guardar Cambios
           </button>
@@ -1969,7 +1841,7 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-red-400 hover:text-red-300 mb-6 cursor-pointer"
+      className="flex items-center text-cyan-400 hover:text-cyan-300 mb-6 cursor-pointer"
     >
       <ChevronLeftIcon /> Volver al Menú Principal
     </button>
@@ -1995,7 +1867,7 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-red-400 hover:text-red-300 mb-6 cursor-pointer"
+      className="flex items-center text-cyan-400 hover:text-cyan-300 mb-6 cursor-pointer"
     >
       <ChevronLeftIcon /> Volver al Menú Principal
     </button>
@@ -2183,7 +2055,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
               required
               type="text"
               placeholder="Introduce tu dirección de billetera"
-              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
           </div>
           <div>
@@ -2193,7 +2065,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
             <select
               value={network}
               onChange={(e) => setNetwork(e.target.value)}
-              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
             >
               <option value="TRC20">TRON (TRC20)</option>
               <option value="ERC20">Ethereum (ERC20)</option>
@@ -2209,13 +2081,13 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
               type="number"
               step="0.01"
               placeholder="0.00"
-              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
           </div>
           <div className="flex justify-end pt-4">
             <button
               type="submit"
-              className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 transition-colors"
+              className="px-5 py-2 rounded-md text-white font-bold bg-cyan-600 hover:bg-cyan-500 transition-colors"
             >
               Solicitar Retiro
             </button>
@@ -2687,7 +2559,7 @@ const DashboardPage = () => {
   const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
 
   return (
-    <div className="flex h-screen bg-black text-white font-sans overflow-hidden">
+    <div className="flex h-screen bg-neutral-900 text-white font-sans overflow-hidden">
       <AnimatePresence>
         {alert.message && (
           <Toast
@@ -2722,7 +2594,9 @@ const DashboardPage = () => {
       )}
       <ConfirmationModal
         isOpen={confirmationModal.isOpen}
-        onClose={confirmationModal.onConfirm}
+        onClose={() =>
+          setConfirmationModal((prev) => ({ ...prev, isOpen: false }))
+        }
         onConfirm={confirmationModal.onConfirm}
         title={confirmationModal.title}
       >
@@ -2771,7 +2645,7 @@ const DashboardPage = () => {
           </>
         )}
       </AnimatePresence>
-      <aside className="hidden lg:flex lg:flex-col w-72 bg-black/30 p-4 overflow-y-auto flex-shrink-0 border-r border-neutral-800">
+      <aside className="hidden lg:flex lg:flex-col w-72 bg-neutral-900/30 p-4 overflow-y-auto flex-shrink-0 border-r border-neutral-800">
         <div className="flex-grow">
           <img className="mb-4" src={platformLogo} width="220" alt="Logo" />
           <AssetLists
@@ -2819,7 +2693,7 @@ const DashboardPage = () => {
         setAlert={setAlert}
       />
 
-      <main className="flex-1 flex flex-col bg-black/50 overflow-hidden">
+      <main className="flex-1 flex flex-col bg-neutral-900/50 overflow-hidden">
         <Header
           onOperation={handleOpenNewOpModal}
           onManageUsers={() => setIsUsersModalOpen(true)}
@@ -2848,7 +2722,7 @@ const DashboardPage = () => {
             />
           </div>
         </div>
-        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm p-3 border-t border-neutral-800 flex justify-around items-center gap-2">
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-neutral-900/80 backdrop-blur-sm p-3 border-t border-neutral-800 flex justify-around items-center gap-2">
           <button
             onClick={() => handleOpenNewOpModal("sell", mobileVolume)}
             className="flex-1 bg-red-600 hover:bg-red-500 transition-all text-white px-4 py-3 text-sm font-bold rounded-md"
@@ -2881,12 +2755,11 @@ const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nombre, setNombre] = useState("");
-
-  // --- NUEVOS ESTADOS PARA EL TELÉFONO ---
   const [telefono, setTelefono] = useState("");
-  const [countryCode, setCountryCode] = useState("+57"); // Indicativo por defecto
+  const [countryCode, setCountryCode] = useState("+57");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  // Lista de indicativos de países
   const countryCodes = [
     { name: "Colombia", code: "+57" },
     { name: "United States", code: "+1" },
@@ -2897,19 +2770,14 @@ const LoginPage = () => {
     { name: "Chile", code: "+56" },
   ];
 
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
 
-    const platform_id = import.meta.env.VITE_PLATFORM_ID || "default_platform";
+    const platform_id = import.meta.env.VITE_PLATFORM_ID || "luxtrading";
     const url = isLogin ? "/login" : "/register";
 
-    // --- PAYLOAD ACTUALIZADO ---
-    // Ahora envía el teléfono completo en lugar del código de registro
     const payload = isLogin
       ? { email, password, platform_id }
       : {
@@ -2979,11 +2847,10 @@ const LoginPage = () => {
                   required
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
-                  className="w-full p-2 bg-neutral-700 text-white rounded-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="w-full p-2 bg-neutral-700 text-white rounded-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                 />
               </div>
 
-              {/* --- NUEVO CAMPO DE TELÉFONO --- */}
               <div className="mb-4">
                 <label
                   className="block text-neutral-300 mb-2"
@@ -2995,7 +2862,7 @@ const LoginPage = () => {
                   <select
                     value={countryCode}
                     onChange={(e) => setCountryCode(e.target.value)}
-                    className="p-2 bg-neutral-700 text-white rounded-l-md border-r-0 border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
+                    className="p-2 bg-neutral-700 text-white rounded-l-md border-r-0 border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
                   >
                     {countryCodes.map((country) => (
                       <option key={country.code} value={country.code}>
@@ -3009,7 +2876,7 @@ const LoginPage = () => {
                     required
                     value={telefono}
                     onChange={(e) => setTelefono(e.target.value)}
-                    className="w-full p-2 bg-neutral-700 text-white rounded-r-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full p-2 bg-neutral-700 text-white rounded-r-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   />
                 </div>
               </div>
@@ -3025,7 +2892,7 @@ const LoginPage = () => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-2 bg-neutral-700 text-white rounded-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full p-2 bg-neutral-700 text-white rounded-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
           </div>
           <div className="mb-6">
@@ -3038,12 +2905,12 @@ const LoginPage = () => {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2 bg-neutral-700 text-white rounded-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full p-2 bg-neutral-700 text-white rounded-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
           </div>
           <button
             type="submit"
-            className="w-full bg-red-600 text-white p-3 rounded-md hover:bg-red-500 font-bold transition-colors shadow-lg cursor-pointer"
+            className="w-full bg-cyan-600 text-white p-3 rounded-md hover:bg-cyan-500 font-bold transition-colors shadow-lg cursor-pointer"
           >
             {isLogin ? "Entrar" : "Crear Cuenta"}
           </button>
@@ -3056,7 +2923,7 @@ const LoginPage = () => {
               setError("");
               setSuccess("");
             }}
-            className="text-red-400 hover:underline ml-1 font-semibold cursor-pointer"
+            className="text-cyan-400 hover:underline ml-1 font-semibold cursor-pointer"
           >
             {isLogin ? "Regístrate" : "Inicia sesión"}
           </button>
@@ -3074,7 +2941,7 @@ const App = () => {
 
   if (isAppLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
         <div className="text-white text-xl font-bold animate-pulse">
           <img src={platformLogo} width="220" alt="Cargando..." />
         </div>
