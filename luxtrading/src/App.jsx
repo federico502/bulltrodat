@@ -277,7 +277,7 @@ const Card = React.forwardRef(({ children, className = "", ...props }, ref) => (
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5 }}
-    className={`bg-black/20 p-4 rounded-lg border border-neutral-800 backdrop-blur-sm ${className}`}
+    className={`bg-neutral-900 p-4 rounded-lg border border-neutral-800 ${className}`}
     {...props}
   >
     {children}
@@ -608,12 +608,12 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
             onChange={handleInputChange}
             onFocus={() => newSymbol && setShowRecommendations(true)}
             placeholder="Ej: EUR/USD, TSLA"
-            className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+            className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
             autoComplete="off"
           />
           <button
             type="submit"
-            className="bg-red-600 hover:bg-red-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
+            className="bg-cyan-600 hover:bg-cyan-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
           >
             <Icons.Plus />
           </button>
@@ -629,7 +629,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
               <li
                 key={rec}
                 onClick={() => handleRecommendationClick(rec)}
-                className="px-3 py-2 text-sm text-neutral-300 hover:bg-red-500/50 cursor-pointer"
+                className="px-3 py-2 text-sm text-neutral-300 hover:bg-cyan-500/50 cursor-pointer"
               >
                 {rec}
               </li>
@@ -686,7 +686,7 @@ const ProfileMenu = React.memo(
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="bg-neutral-800 cursor-pointer text-white p-2 rounded-full hover:bg-red-500 transition-colors"
+          className="bg-neutral-800 cursor-pointer text-white p-2 rounded-full hover:bg-cyan-500 transition-colors"
           title="Cuenta"
         >
           <Icons.UserCircle className="h-6 w-6" />
@@ -759,7 +759,7 @@ const Header = ({
   const { user, logout, selectedAsset } = useContext(AppContext);
   const [volume, setVolume] = useState(0.01);
   return (
-    <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-black/20 border-b border-neutral-800">
+    <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-neutral-950/50 border-b border-neutral-800">
       <div className="flex items-center gap-4">
         <button
           onClick={onToggleMainSidebar}
@@ -780,7 +780,7 @@ const Header = ({
             onChange={(e) => setVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-2 border border-neutral-700 bg-neutral-800 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-neutral-500 focus:outline-none"
+            className="w-24 p-2 border border-neutral-700 bg-neutral-800 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none"
           />
           <button
             onClick={() => onOperation("buy", volume)}
