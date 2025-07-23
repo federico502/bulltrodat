@@ -377,23 +377,57 @@ const TradingViewWidget = React.memo(({ symbol }) => {
   const containerRef = useRef(null);
   const getTradingViewSymbol = (assetSymbol) => {
     if (!assetSymbol) return "KUCOIN:BTCUSDT";
-    const s = assetSymbol.toUpperCase();
+    let s = assetSymbol.toUpperCase();
+
+    // Handle crypto pairs like BTC-USDT
     if (s.includes("-USDT")) return `KUCOIN:${s.replace("-", "")}`;
     if (s.endsWith("USDT")) return `KUCOIN:${s}`;
+
+    // Handle commodities
     if (s === "WTI/USD") return "TVC:USOIL";
     if (s === "BRENT/USD") return "TVC:UKOIL";
     if (s === "XAU/USD") return "OANDA:XAUUSD";
     if (s === "XAG/USD") return "OANDA:XAGUSD";
-    const forexPairs = [
-      "EURUSD",
-      "USDJPY",
-      "GBPUSD",
-      "AUDUSD",
-      "EURJPY",
-      "GBPJPY",
-      "AUDJPY",
-    ];
-    if (forexPairs.includes(s)) return `OANDA:${s}`;
+
+    // Handle forex pairs like EUR/USD by removing the slash
+    if (s.includes("/")) {
+      const sanitizedSymbol = s.replace("/", "");
+      const forexPairs = [
+        "EURUSD",
+        "USDJPY",
+        "GBPUSD",
+        "AUDUSD",
+        "USDCAD",
+        "USDCHF",
+        "NZDUSD",
+        "EURJPY",
+        "GBPJPY",
+        "AUDJPY",
+        "CADJPY",
+        "CHFJPY",
+        "NZDJPY",
+        "EURGBP",
+        "EURAUD",
+        "EURCAD",
+        "EURCHF",
+        "EURNZD",
+        "GBPAUD",
+        "GBPCAD",
+        "GBPCHF",
+        "GBPNZD",
+        "AUDCAD",
+        "AUDCHF",
+        "AUDNZD",
+        "CADCHF",
+        "NZDCAD",
+        "NZDCHF",
+      ];
+      if (forexPairs.includes(sanitizedSymbol)) {
+        return `OANDA:${sanitizedSymbol}`;
+      }
+    }
+
+    // Fallback for stocks
     return `NASDAQ:${s}`;
   };
   useEffect(() => {
@@ -2684,7 +2718,8 @@ const DashboardPage = () => {
     marginLevel: metrics.marginLevel.toFixed(2),
   };
 
-  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
+  const platformLogo =
+    import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
 
   return (
     <div className="flex h-screen bg-black text-white font-sans overflow-hidden">
