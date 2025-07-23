@@ -23,11 +23,11 @@ import {
 } from "chart.js";
 import { motion, AnimatePresence } from "framer-motion";
 
-// --- Axios Configuration ---
+// --- Configuración de Axios ---
 axios.defaults.baseURL = import.meta.env.VITE_API_URL;
 axios.defaults.withCredentials = true;
 
-// --- Chart.js Registration ---
+// --- Registro de Chart.js ---
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -40,7 +40,7 @@ ChartJS.register(
   TimeScale
 );
 
-// --- SVG Icons ---
+// --- Iconos SVG ---
 const Icon = ({ path, className = "h-5 w-5" }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -118,6 +118,15 @@ const Icons = {
       className={className}
     />
   ),
+  Eye: ({ className }) => (
+    <Icon path="M15 12a3 3 0 11-6 0 3 3 0 016 0z" className={className} />
+  ),
+  EyeOff: ({ className }) => (
+    <Icon
+      path="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a9.97 9.97 0 01-2.14 3.354m-4.243-4.243l-4.242-4.242"
+      className={className}
+    />
+  ),
 };
 
 // Lista de todos los activos disponibles para las recomendaciones
@@ -165,6 +174,7 @@ const ALL_AVAILABLE_ASSETS = [
   "BRENT/USD",
 ];
 
+// --- Contexto de la App ---
 const AppContext = createContext();
 
 const AppProvider = ({ children }) => {
@@ -175,6 +185,7 @@ const AppProvider = ({ children }) => {
   const [selectedAsset, setSelectedAsset] = useState("BTC-USDT");
 
   const checkUser = useCallback(async () => {
+    setIsAppLoading(true);
     try {
       const { data } = await axios.get("/me");
       setUser(data);
@@ -193,9 +204,14 @@ const AppProvider = ({ children }) => {
   }, [checkUser]);
 
   const logout = useCallback(async () => {
-    await axios.post("/logout");
-    setUser(null);
-    setIsAuthenticated(false);
+    try {
+      await axios.post("/logout");
+    } catch (error) {
+      console.error("Logout failed", error);
+    } finally {
+      setUser(null);
+      setIsAuthenticated(false);
+    }
   }, []);
 
   const value = useMemo(
@@ -226,29 +242,32 @@ const AppProvider = ({ children }) => {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
+// --- Hooks y Componentes de UI ---
 const useFlashOnUpdate = (value) => {
   const [flashClass, setFlashClass] = useState("");
-  const prevValueRef = useRef();
+  const prevValueRef = useRef(value);
+
   useEffect(() => {
     const currentValue = parseFloat(value);
-    if (prevValueRef.current !== undefined) {
-      const prevValue = parseFloat(prevValueRef.current);
-      if (
-        !isNaN(currentValue) &&
-        !isNaN(prevValue) &&
-        currentValue !== prevValue
-      ) {
-        setFlashClass(
-          currentValue > prevValue ? "text-green-400" : "text-red-500"
-        );
-        const timer = setTimeout(() => setFlashClass(""), 300);
-        return () => clearTimeout(timer);
-      }
-    }
-    if (!isNaN(currentValue)) {
-      prevValueRef.current = currentValue;
+    const prevValue = parseFloat(prevValueRef.current);
+
+    if (
+      !isNaN(currentValue) &&
+      !isNaN(prevValue) &&
+      currentValue !== prevValue
+    ) {
+      setFlashClass(
+        currentValue > prevValue ? "text-green-400" : "text-red-500"
+      );
+      const timer = setTimeout(() => setFlashClass(""), 300);
+      return () => clearTimeout(timer);
     }
   }, [value]);
+
+  useEffect(() => {
+    prevValueRef.current = value;
+  });
+
   return flashClass;
 };
 
@@ -277,7 +296,7 @@ const Card = React.forwardRef(({ children, className = "", ...props }, ref) => (
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5 }}
-    className={`bg-neutral-900 p-4 rounded-lg border border-neutral-800 ${className}`}
+    className={`bg-black/20 p-4 rounded-lg border border-neutral-800 backdrop-blur-sm ${className}`}
     {...props}
   >
     {children}
@@ -290,7 +309,8 @@ const Skeleton = ({ className }) => (
 
 const TradingViewWidget = React.memo(({ symbol }) => {
   const containerRef = useRef(null);
-  const getTradingViewSymbol = (assetSymbol) => {
+
+  const getTradingViewSymbol = useCallback((assetSymbol) => {
     if (!assetSymbol) return "KUCOIN:BTCUSDT";
     let s = assetSymbol.toUpperCase();
 
@@ -340,14 +360,18 @@ const TradingViewWidget = React.memo(({ symbol }) => {
     }
 
     return `NASDAQ:${s}`;
-  };
+  }, []);
+
   useEffect(() => {
     const tvSymbol = getTradingViewSymbol(symbol);
+    let widget = null;
+
     const createWidget = () => {
       if (!containerRef.current || typeof window.TradingView === "undefined")
         return;
+
       containerRef.current.innerHTML = "";
-      new window.TradingView.widget({
+      widget = new window.TradingView.widget({
         autosize: true,
         symbol: tvSymbol,
         interval: "D",
@@ -362,6 +386,7 @@ const TradingViewWidget = React.memo(({ symbol }) => {
         container_id: containerRef.current.id,
       });
     };
+
     if (!document.getElementById("tradingview-script")) {
       const script = document.createElement("script");
       script.id = "tradingview-script";
@@ -372,10 +397,15 @@ const TradingViewWidget = React.memo(({ symbol }) => {
     } else {
       createWidget();
     }
+
     return () => {
-      if (containerRef.current) containerRef.current.innerHTML = "";
+      // The widget library might handle its own cleanup, but this is a safeguard.
+      if (containerRef.current) {
+        containerRef.current.innerHTML = "";
+      }
     };
-  }, [symbol]);
+  }, [symbol, getTradingViewSymbol]);
+
   return (
     <div
       id="tradingview-widget-container"
@@ -417,26 +447,36 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 };
 
 const PerformanceChart = ({ performanceData, isLoading }) => {
-  const chartData = {
-    labels: performanceData.map((d) => new Date(d.fecha).toLocaleDateString()),
-    datasets: [
-      {
-        label: "Ganancia Diaria",
-        data: performanceData.map((d) => parseFloat(d.ganancia_dia || 0)),
-        fill: true,
-        backgroundColor: "rgba(22, 163, 74, 0.2)",
-        borderColor: "#22c55e",
-        tension: 0.4,
-        pointRadius: 0,
-      },
-    ],
-  };
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: { x: { display: false }, y: { display: false } },
-    plugins: { legend: { display: false } },
-  };
+  const chartData = useMemo(
+    () => ({
+      labels: performanceData.map((d) =>
+        new Date(d.fecha).toLocaleDateString()
+      ),
+      datasets: [
+        {
+          label: "Ganancia Diaria",
+          data: performanceData.map((d) => parseFloat(d.ganancia_dia || 0)),
+          fill: true,
+          backgroundColor: "rgba(22, 163, 74, 0.2)",
+          borderColor: "#22c55e",
+          tension: 0.4,
+          pointRadius: 0,
+        },
+      ],
+    }),
+    [performanceData]
+  );
+
+  const chartOptions = useMemo(
+    () => ({
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: { x: { display: false }, y: { display: false } },
+      plugins: { legend: { display: false } },
+    }),
+    []
+  );
+
   return (
     <Card className="mt-4">
       <h3 className="text-white font-bold text-base mb-4">Rendimiento</h3>
@@ -461,10 +501,8 @@ const StatisticsPanel = ({ stats, performanceData, isLoading }) => (
       <h3 className="text-white font-bold text-base mb-4">Estadísticas</h3>
       {isLoading ? (
         <div className="grid grid-cols-2 gap-4">
-          <Skeleton className="h-5" />
-          <Skeleton className="h-5" />
-          <Skeleton className="h-5" />
-          <Skeleton className="h-5" />
+          <Skeleton className="h-5" /> <Skeleton className="h-5" />
+          <Skeleton className="h-5" /> <Skeleton className="h-5" />
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 text-neutral-300 text-sm">
@@ -511,7 +549,7 @@ const AssetPrice = React.memo(({ symbol }) => {
       <span
         className={`font-mono text-xs transition-colors duration-300 ${finalColorClass}`}
       >
-        {price?.toFixed(4) || "---"}
+        {price ? price.toFixed(4) : "---"}
       </span>
     </div>
   );
@@ -537,7 +575,7 @@ const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
         className="text-neutral-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
         title={`Eliminar ${symbol}`}
       >
-        <Icons.X />
+        <Icons.X className="h-4 w-4" />
       </button>
     </div>
   </li>
@@ -598,6 +636,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
       setShowRecommendations(false);
     }
   };
+
   return (
     <div className="mb-6">
       <div ref={searchContainerRef} className="relative">
@@ -608,12 +647,12 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
             onChange={handleInputChange}
             onFocus={() => newSymbol && setShowRecommendations(true)}
             placeholder="Ej: EUR/USD, TSLA"
-            className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+            className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
             autoComplete="off"
           />
           <button
             type="submit"
-            className="bg-cyan-600 hover:bg-cyan-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
+            className="bg-red-600 hover:bg-red-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
           >
             <Icons.Plus />
           </button>
@@ -629,7 +668,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
               <li
                 key={rec}
                 onClick={() => handleRecommendationClick(rec)}
-                className="px-3 py-2 text-sm text-neutral-300 hover:bg-cyan-500/50 cursor-pointer"
+                className="px-3 py-2 text-sm text-neutral-300 hover:bg-red-500/50 cursor-pointer"
               >
                 {rec}
               </li>
@@ -686,7 +725,7 @@ const ProfileMenu = React.memo(
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="bg-neutral-800 cursor-pointer text-white p-2 rounded-full hover:bg-cyan-500 transition-colors"
+          className="bg-neutral-800 cursor-pointer text-white p-2 rounded-full hover:bg-red-500 transition-colors"
           title="Cuenta"
         >
           <Icons.UserCircle className="h-6 w-6" />
@@ -759,7 +798,7 @@ const Header = ({
   const { user, logout, selectedAsset } = useContext(AppContext);
   const [volume, setVolume] = useState(0.01);
   return (
-    <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-neutral-950/50 border-b border-neutral-800">
+    <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-black/20 border-b border-neutral-800">
       <div className="flex items-center gap-4">
         <button
           onClick={onToggleMainSidebar}
@@ -780,7 +819,7 @@ const Header = ({
             onChange={(e) => setVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-2 border border-neutral-700 bg-neutral-800 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none"
+            className="w-24 p-2 border border-neutral-700 bg-neutral-800 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-neutral-500 focus:outline-none"
           />
           <button
             onClick={() => onOperation("buy", volume)}
@@ -820,7 +859,7 @@ const FlashingMetric = ({ value, prefix = "", suffix = "" }) => {
       className={`font-bold px-2 py-1 rounded-md transition-colors duration-300 ${finalColorClass}`}
     >
       {prefix}
-      {!isNaN(value) ? value.toFixed(2) : "0.00"}
+      {!isNaN(parseFloat(value)) ? parseFloat(value).toFixed(2) : "0.00"}
       {suffix}
     </span>
   );
@@ -838,19 +877,19 @@ const FinancialMetrics = ({ metrics, isLoading }) => (
         </div>
         <div className="text-center">
           <p className="text-neutral-400">Equidad</p>
-          <FlashingMetric value={parseFloat(metrics.equity)} prefix="$" />
+          <FlashingMetric value={metrics.equity} prefix="$" />
         </div>
         <div className="text-center">
           <p className="text-neutral-400">M. Usado</p>
-          <FlashingMetric value={parseFloat(metrics.usedMargin)} prefix="$" />
+          <FlashingMetric value={metrics.usedMargin} prefix="$" />
         </div>
         <div className="text-center">
           <p className="text-neutral-400">M. Libre</p>
-          <FlashingMetric value={parseFloat(metrics.freeMargin)} prefix="$" />
+          <FlashingMetric value={metrics.freeMargin} prefix="$" />
         </div>
         <div className="text-center col-span-2 md:col-span-1">
           <p className="text-neutral-400">Nivel Margen</p>
-          <FlashingMetric value={parseFloat(metrics.marginLevel)} suffix="%" />
+          <FlashingMetric value={metrics.marginLevel} suffix="%" />
         </div>
       </>
     )}
@@ -865,7 +904,7 @@ const LiveProfitCell = ({ operation }) => {
       .toUpperCase()
       .replace(/[-/]/g, "");
     const currentPrice = realTimePrices[normalizedSymbol];
-    if (!currentPrice) return 0;
+    if (typeof currentPrice !== "number") return 0;
     return operation.tipo_operacion.toLowerCase() === "sell"
       ? (operation.precio_entrada - currentPrice) * operation.volumen
       : (currentPrice - operation.precio_entrada) * operation.volumen;
@@ -886,6 +925,7 @@ const OperationsHistory = ({
   isLoading,
   pagination,
   onPageChange,
+  setAlert,
 }) => {
   const handleCloseOperation = async (e, opId) => {
     e.stopPropagation();
@@ -906,9 +946,19 @@ const OperationsHistory = ({
               : op
           )
         );
+        setAlert({ message: "Operación cerrada con éxito.", type: "success" });
+      } else {
+        setAlert({
+          message: data.error || "No se pudo cerrar la operación.",
+          type: "error",
+        });
       }
     } catch (error) {
       console.error("Error closing operation:", error);
+      setAlert({
+        message: "Error de red al cerrar la operación.",
+        type: "error",
+      });
     }
   };
   const columns = [
@@ -1149,7 +1199,7 @@ const ModalLivePrice = React.memo(({ symbol }) => {
     <span
       className={`font-mono transition-colors duration-300 ${finalColorClass}`}
     >
-      ${price?.toFixed(4) || "Cargando..."}
+      ${price ? price.toFixed(4) : "Cargando..."}
     </span>
   );
 });
@@ -1222,7 +1272,6 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           <span className="font-mono text-white">${requiredMargin}</span>
         </p>
       </div>
-
       <div className="mb-4">
         <label className="block text-sm font-medium mb-2 text-neutral-300">
           Take Profit (opcional):
@@ -1240,7 +1289,6 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           </p>
         )}
       </div>
-
       <div className="mb-4">
         <label className="block text-sm font-medium mb-2 text-neutral-300">
           Stop Loss (opcional):
@@ -1258,7 +1306,6 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           </p>
         )}
       </div>
-
       <div className="flex justify-end mt-4">
         <button
           onClick={handleConfirm}
@@ -1363,6 +1410,7 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
     currentPage: 1,
     totalPages: 1,
   });
+
   const fetchUserOperations = useCallback(
     (page = 1) => {
       if (isOpen && user) {
@@ -1382,9 +1430,11 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
     },
     [isOpen, user]
   );
+
   useEffect(() => {
     fetchUserOperations(1);
   }, [isOpen, user, fetchUserOperations]);
+
   const handlePriceChange = (opId, value) =>
     setEditingPrices((prev) => ({ ...prev, [opId]: value }));
   const handleSavePrice = async (opId) => {
@@ -1394,6 +1444,7 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
       fetchUserOperations(pagination.currentPage);
     }
   };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -1668,6 +1719,7 @@ const ManageUsersModal = ({
     currentPage: 1,
     totalPages: 1,
   });
+
   const fetchUsers = useCallback(
     (page = 1) => {
       if (isOpen) {
@@ -1689,11 +1741,13 @@ const ManageUsersModal = ({
     },
     [isOpen]
   );
+
   useEffect(() => {
     if (isOpen) {
       fetchUsers(1);
     }
   }, [isOpen, fetchUsers]);
+
   const handleUserUpdate = (userId, field, value) => {
     setUsers((currentUsers) =>
       currentUsers.map((user) =>
@@ -1701,6 +1755,7 @@ const ManageUsersModal = ({
       )
     );
   };
+
   const handleSave = useCallback(
     async (userData) => {
       const payload = { ...userData };
@@ -1719,6 +1774,7 @@ const ManageUsersModal = ({
     },
     [fetchUsers, pagination.currentPage, setAlert]
   );
+
   return (
     <Modal
       isOpen={isOpen}
@@ -1801,6 +1857,7 @@ const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
         );
     }
   }, [isOpen, setAlert]);
+
   const handleSave = async () => {
     try {
       await axios.post("/admin/registration-code", { newCode });
@@ -1810,6 +1867,7 @@ const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
       setAlert({ message: "Error al actualizar el código", type: "error" });
     }
   };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -1875,10 +1933,12 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
     user?.identificacion || ""
   );
   const [telefono, setTelefono] = useState(user?.telefono || "");
+
   useEffect(() => {
     setIdentificacion(user?.identificacion || "");
     setTelefono(user?.telefono || "");
   }, [user]);
+
   const handleSave = async () => {
     try {
       await axios.put("/me/profile", { identificacion, telefono });
@@ -1888,6 +1948,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
       setAlert({ message: "Error al actualizar el perfil", type: "error" });
     }
   };
+
   return (
     <div className="p-4">
       <button
@@ -2296,6 +2357,7 @@ const DashboardPage = () => {
     ],
     []
   );
+
   const [userAssets, setUserAssets] = useState(() => {
     try {
       const savedAssets = localStorage.getItem("userTradingAssets");
@@ -2309,6 +2371,7 @@ const DashboardPage = () => {
       return initialAssets;
     }
   });
+
   const [operations, setOperations] = useState([]);
   const [stats, setStats] = useState({});
   const [balance, setBalance] = useState(0);
@@ -2377,22 +2440,20 @@ const DashboardPage = () => {
       if (!user) return;
       setIsLoadingData(true);
       try {
-        const historialRes = await axios.get(
-          `/historial?page=${page}&limit=5&filter=${filter}`
-        );
+        const [historialRes, statsRes, balanceRes, performanceRes] =
+          await Promise.all([
+            axios.get(`/historial?page=${page}&limit=5&filter=${filter}`),
+            axios.get("/estadisticas"),
+            axios.get("/balance"),
+            axios.get("/rendimiento"),
+          ]);
         setOperations(historialRes.data.operations);
         setPagination({
           currentPage: historialRes.data.currentPage,
           totalPages: historialRes.data.totalPages,
         });
-
-        const statsRes = await axios.get("/estadisticas");
         setStats(statsRes.data);
-
-        const balanceRes = await axios.get("/balance");
         setBalance(parseFloat(balanceRes.data.balance));
-
-        const performanceRes = await axios.get("/rendimiento");
         setPerformanceData(performanceRes.data);
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -2409,21 +2470,28 @@ const DashboardPage = () => {
   }, [user, fetchData]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !userAssets.length) return;
+
     const connectWebSocket = () => {
       const wsUrl = import.meta.env.VITE_WSS_URL;
-      if (!wsUrl) return;
+      if (!wsUrl) {
+        console.error("WebSocket URL is not defined.");
+        return;
+      }
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
+
       ws.onopen = () => {
+        console.log("WebSocket connected. Subscribing to assets.");
         ws.send(JSON.stringify({ type: "subscribe", symbols: userAssets }));
       };
+
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.type === "price_update")
+          if (data.type === "price_update") {
             setRealTimePrices((prev) => ({ ...prev, ...data.prices }));
-          else if (data.tipo === "operacion_cerrada") {
+          } else if (data.tipo === "operacion_cerrada") {
             setAlert({
               message: `Operación #${data.operacion_id} (${
                 data.activo
@@ -2435,27 +2503,33 @@ const DashboardPage = () => {
             fetchData(pagination.currentPage, opHistoryFilter);
           }
         } catch (error) {
-          console.error("Error procesando mensaje de WebSocket:", error);
+          console.error("Error processing WebSocket message:", error);
         }
       };
-      ws.onclose = () => setTimeout(connectWebSocket, 3000);
+
+      ws.onclose = (e) => {
+        console.log(
+          "WebSocket disconnected. Attempting to reconnect...",
+          e.reason
+        );
+        setTimeout(connectWebSocket, 3000);
+      };
+
       ws.onerror = (error) => {
-        console.error("❌ Error de WebSocket:", error);
+        console.error("❌ WebSocket Error:", error);
         ws.close();
       };
     };
+
     connectWebSocket();
+
     return () => {
-      if (wsRef.current) wsRef.current.close();
+      if (wsRef.current) {
+        console.log("Closing WebSocket connection.");
+        wsRef.current.close();
+      }
     };
-  }, [
-    user,
-    userAssets,
-    fetchData,
-    pagination.currentPage,
-    opHistoryFilter,
-    setRealTimePrices,
-  ]);
+  }, [user, userAssets]); // Only reconnect if user or assets list change
 
   useEffect(() => {
     localStorage.setItem("userTradingAssets", JSON.stringify(userAssets));
@@ -2478,7 +2552,7 @@ const DashboardPage = () => {
     const pnl = openOperations.reduce((total, op) => {
       const normalizedSymbol = op.activo.toUpperCase().replace(/[-/]/g, "");
       const currentPrice = realTimePrices[normalizedSymbol];
-      if (!currentPrice) return total;
+      if (typeof currentPrice !== "number") return total;
       return (
         total +
         (op.tipo_operacion.toLowerCase() === "sell"
@@ -2586,7 +2660,8 @@ const DashboardPage = () => {
       }
 
       if (upperSymbol && !userAssets.includes(upperSymbol)) {
-        setUserAssets((prevAssets) => [...prevAssets, upperSymbol]);
+        const newAssets = [...userAssets, upperSymbol];
+        setUserAssets(newAssets);
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
           wsRef.current.send(
             JSON.stringify({ type: "subscribe", symbols: [upperSymbol] })
@@ -2605,12 +2680,10 @@ const DashboardPage = () => {
 
   const handleRemoveAsset = useCallback(
     (symbol) => {
-      setUserAssets((prevAssets) => prevAssets.filter((a) => a !== symbol));
+      const newAssets = userAssets.filter((a) => a !== symbol);
+      setUserAssets(newAssets);
       if (selectedAsset === symbol) {
-        const newAssetList = userAssets.filter((a) => a !== symbol);
-        setSelectedAsset(
-          newAssetList.length > 0 ? newAssetList[0] : "BTC-USDT"
-        );
+        setSelectedAsset(newAssets.length > 0 ? newAssets[0] : "BTC-USDT");
       }
       setAlert({ message: `${symbol} eliminado.`, type: "success" });
     },
@@ -2628,7 +2701,7 @@ const DashboardPage = () => {
       const currentPrice = realTimePrices[normalizedSymbol];
       const profit = op.cerrada
         ? parseFloat(op.ganancia || 0)
-        : currentPrice
+        : typeof currentPrice === "number"
         ? op.tipo_operacion.toLowerCase() === "sell"
           ? (op.precio_entrada - currentPrice) * op.volumen
           : (currentPrice - op.precio_entrada) * op.volumen
@@ -2714,7 +2787,6 @@ const DashboardPage = () => {
         setAlert={setAlert}
         onSelectPaymentMethod={handleOpenPaymentModal}
       />
-
       {paymentModalConfig.method === "crypto" && (
         <CryptoPaymentModal
           isOpen={paymentModalConfig.isOpen}
@@ -2733,7 +2805,9 @@ const DashboardPage = () => {
       )}
       <ConfirmationModal
         isOpen={confirmationModal.isOpen}
-        onClose={confirmationModal.onConfirm}
+        onClose={() =>
+          setConfirmationModal((prev) => ({ ...prev, isOpen: false }))
+        }
         onConfirm={confirmationModal.onConfirm}
         title={confirmationModal.title}
       >
@@ -2856,6 +2930,7 @@ const DashboardPage = () => {
               isLoading={isLoadingData}
               pagination={pagination}
               onPageChange={handlePageChange}
+              setAlert={setAlert}
             />
           </div>
         </div>
@@ -2886,192 +2961,257 @@ const DashboardPage = () => {
   );
 };
 
+// --- NUEVO LOGIN/REGISTER DINÁMICO ---
 const LoginPage = () => {
   const { setUser, setIsAuthenticated } = useContext(AppContext);
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [nombre, setNombre] = useState("");
-
-  // --- NUEVOS ESTADOS PARA EL TELÉFONO ---
-  const [telefono, setTelefono] = useState("");
-  const [countryCode, setCountryCode] = useState("+57"); // Indicativo por defecto
-
-  // Lista de indicativos de países
-  const countryCodes = [
-    { name: "Colombia", code: "+57" },
-    { name: "United States", code: "+1" },
-    { name: "Spain", code: "+34" },
-    { name: "Mexico", code: "+52" },
-    { name: "Argentina", code: "+54" },
-    { name: "Peru", code: "+51" },
-    { name: "Chile", code: "+56" },
-  ];
-
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const handleSubmit = async (e) => {
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+
+  const [regName, setRegName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regPhone, setRegPhone] = useState("");
+  const [countryCode, setCountryCode] = useState("+57");
+
+  const countryCodes = useMemo(
+    () => [
+      { name: "Colombia", code: "+57" },
+      { name: "United States", code: "+1" },
+      { name: "Spain", code: "+34" },
+      { name: "Mexico", code: "+52" },
+      { name: "Argentina", code: "+54" },
+      { name: "Peru", code: "+51" },
+      { name: "Chile", code: "+56" },
+    ],
+    []
+  );
+
+  const handleAuth = async (e, action) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-
     const platform_id = import.meta.env.VITE_PLATFORM_ID || "default_platform";
-    const url = isLogin ? "/login" : "/register";
 
-    // --- PAYLOAD ACTUALIZADO ---
-    // Ahora envía el teléfono completo en lugar del código de registro
-    const payload = isLogin
-      ? { email, password, platform_id }
-      : {
-          nombre,
-          email,
-          password,
-          telefono: `${countryCode}${telefono}`,
+    if (action === "login") {
+      try {
+        const { data } = await axios.post("/login", {
+          email: loginEmail,
+          password: loginPassword,
           platform_id,
-        };
-
-    try {
-      const { data } = await axios.post(url, payload);
-      if (isLogin) {
+        });
         if (data.success) {
           setUser(data.user);
           setIsAuthenticated(true);
         } else {
           setError(data.error || "Credenciales inválidas");
         }
-      } else {
+      } catch (err) {
+        setError(
+          err.response?.data?.error ||
+            "Ocurrió un error en el inicio de sesión."
+        );
+      }
+    } else {
+      // register
+      try {
+        const payload = {
+          nombre: regName,
+          email: regEmail,
+          password: regPassword,
+          telefono: `${countryCode}${regPhone}`,
+          platform_id,
+        };
+        const { data } = await axios.post("/register", payload);
         if (data.success) {
           setSuccess("Registro exitoso. Por favor, inicie sesión.");
           setIsLogin(true);
         } else {
           setError(data.error || "Error en el registro");
         }
+      } catch (err) {
+        setError(
+          err.response?.data?.error || "Ocurrió un error en el registro."
+        );
       }
-    } catch (err) {
-      setError(err.response?.data?.error || "Ocurrió un error.");
     }
   };
 
   const platformLogo =
     import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
+  const formVariants = {
+    hidden: { opacity: 0, x: 300 },
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: { type: "spring", stiffness: 100, damping: 20 },
+    },
+    exit: { opacity: 0, x: -300, transition: { ease: "easeInOut" } },
+  };
 
   return (
-    <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-4">
-      <div className="bg-neutral-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-neutral-700">
-        <img
-          className="mb-3 mx-auto"
-          src={platformLogo}
-          alt="Logo de la Plataforma"
-        />
-        <p className="text-center text-neutral-400 mb-6">
-          {isLogin ? "Inicia sesión para continuar" : "Crea tu cuenta"}
-        </p>
-        {error && (
-          <p className="bg-red-500/20 border border-red-500 text-red-300 text-center p-2 rounded-md mb-4 text-sm">
-            {error}
-          </p>
-        )}
-        {success && (
-          <p className="bg-green-500/20 border border-green-500 text-green-300 text-center p-2 rounded-md mb-4 text-sm">
-            {success}
-          </p>
-        )}
-        <form onSubmit={handleSubmit}>
-          {!isLogin && (
-            <>
-              <div className="mb-4">
-                <label className="block text-neutral-300 mb-2" htmlFor="nombre">
-                  Nombre Completo
-                </label>
-                <input
-                  type="text"
-                  id="nombre"
-                  required
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  className="w-full p-2 bg-neutral-700 text-white rounded-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
-              </div>
+    <div
+      className="min-h-screen bg-neutral-900 flex items-center justify-center p-4 bg-cover bg-center"
+      style={{
+        backgroundImage:
+          "url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=2070&auto=format&fit=crop')",
+      }}
+    >
+      <div className="relative w-full max-w-4xl h-[600px] bg-black/50 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden flex">
+        {/* Panel de Bienvenida */}
+        <div className="w-1/2 text-white p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-red-600 to-red-800">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <img src={platformLogo} alt="Logo" className="w-48 mx-auto mb-4" />
+            <h1 className="text-3xl font-bold mb-2">
+              {isLogin ? "¡Bienvenido de Nuevo!" : "Crea tu Cuenta"}
+            </h1>
+            <p className="mb-6">
+              {isLogin
+                ? "Para seguir conectado, por favor inicia sesión con tu información personal."
+                : "Ingresa tus datos para comenzar tu viaje con nosotros."}
+            </p>
+            <button
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setError("");
+                setSuccess("");
+              }}
+              className="bg-white/20 hover:bg-white/30 font-bold py-2 px-6 rounded-full transition-all"
+            >
+              {isLogin ? "Registrarse" : "Iniciar Sesión"}
+            </button>
+          </motion.div>
+        </div>
 
-              {/* --- NUEVO CAMPO DE TELÉFONO --- */}
-              <div className="mb-4">
-                <label
-                  className="block text-neutral-300 mb-2"
-                  htmlFor="telefono"
+        {/* Panel de Formularios */}
+        <div className="w-1/2 p-12 flex flex-col justify-center">
+          <AnimatePresence mode="wait">
+            {isLogin ? (
+              <motion.div
+                key="login"
+                variants={formVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <h2 className="text-3xl font-bold text-white mb-6 text-center">
+                  Iniciar Sesión
+                </h2>
+                {error && (
+                  <p className="text-red-400 text-center text-sm mb-4">
+                    {error}
+                  </p>
+                )}
+                <form
+                  onSubmit={(e) => handleAuth(e, "login")}
+                  className="space-y-4"
                 >
-                  Número de Teléfono
-                </label>
-                <div className="flex">
-                  <select
-                    value={countryCode}
-                    onChange={(e) => setCountryCode(e.target.value)}
-                    className="p-2 bg-neutral-700 text-white rounded-l-md border-r-0 border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
-                  >
-                    {countryCodes.map((country) => (
-                      <option key={country.code} value={country.code}>
-                        {country.code} ({country.name})
-                      </option>
-                    ))}
-                  </select>
                   <input
-                    type="tel"
-                    id="telefono"
-                    required
-                    value={telefono}
-                    onChange={(e) => setTelefono(e.target.value)}
-                    className="w-full p-2 bg-neutral-700 text-white rounded-r-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    type="email"
+                    placeholder="Email"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    className="w-full p-3 bg-neutral-700/50 text-white rounded-lg border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
-                </div>
-              </div>
-            </>
-          )}
-          <div className="mb-4">
-            <label className="block text-neutral-300 mb-2" htmlFor="email">
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-2 bg-neutral-700 text-white rounded-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
-            />
-          </div>
-          <div className="mb-6">
-            <label className="block text-neutral-300 mb-2" htmlFor="password">
-              Contraseña
-            </label>
-            <input
-              type="password"
-              id="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2 bg-neutral-700 text-white rounded-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-red-600 text-white p-3 rounded-md hover:bg-red-500 font-bold transition-colors shadow-lg cursor-pointer"
-          >
-            {isLogin ? "Entrar" : "Crear Cuenta"}
-          </button>
-        </form>
-        <p className="text-center text-neutral-400 mt-6 text-sm">
-          {isLogin ? "¿No tienes cuenta?" : "¿Ya tienes cuenta?"}{" "}
-          <button
-            onClick={() => {
-              setIsLogin(!isLogin);
-              setError("");
-              setSuccess("");
-            }}
-            className="text-red-400 hover:underline ml-1 font-semibold cursor-pointer"
-          >
-            {isLogin ? "Regístrate" : "Inicia sesión"}
-          </button>
-        </p>
+                  <input
+                    type="password"
+                    placeholder="Contraseña"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    className="w-full p-3 bg-neutral-700/50 text-white rounded-lg border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                  <button
+                    type="submit"
+                    className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
+                  >
+                    Entrar
+                  </button>
+                </form>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="register"
+                variants={formVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <h2 className="text-3xl font-bold text-white mb-4 text-center">
+                  Crear Cuenta
+                </h2>
+                {error && (
+                  <p className="text-red-400 text-center text-sm mb-2">
+                    {error}
+                  </p>
+                )}
+                {success && (
+                  <p className="text-green-400 text-center text-sm mb-2">
+                    {success}
+                  </p>
+                )}
+                <form
+                  onSubmit={(e) => handleAuth(e, "register")}
+                  className="space-y-3"
+                >
+                  <input
+                    type="text"
+                    placeholder="Nombre Completo"
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
+                    className="w-full p-2 bg-neutral-700/50 text-white rounded-lg border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={regEmail}
+                    onChange={(e) => setRegEmail(e.target.value)}
+                    className="w-full p-2 bg-neutral-700/50 text-white rounded-lg border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={countryCode}
+                      onChange={(e) => setCountryCode(e.target.value)}
+                      className="p-2 bg-neutral-700/50 text-white rounded-l-lg border-r-0 border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
+                    >
+                      {countryCodes.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.code}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="tel"
+                      placeholder="Teléfono"
+                      value={regPhone}
+                      onChange={(e) => setRegPhone(e.target.value)}
+                      className="w-full p-2 bg-neutral-700/50 text-white rounded-r-lg border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+                  <input
+                    type="password"
+                    placeholder="Contraseña"
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    className="w-full p-2 bg-neutral-700/50 text-white rounded-lg border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                  <button
+                    type="submit"
+                    className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
+                  >
+                    Crear Cuenta
+                  </button>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </div>
   );
@@ -3079,7 +3219,6 @@ const LoginPage = () => {
 
 const App = () => {
   const { isAppLoading, isAuthenticated } = useContext(AppContext);
-
   const platformLogo =
     import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
 
