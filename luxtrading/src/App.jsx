@@ -3094,7 +3094,6 @@ const App = () => {
   }
   return isAuthenticated ? <DashboardPage /> : <LoginPage />;
 };
-
 export default function Root() {
   return (
     <AppProvider>
