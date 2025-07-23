@@ -41,215 +41,131 @@ ChartJS.register(
 );
 
 // --- SVG Icons ---
-const MenuIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-6 w-6"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M4 6h16M4 12h16M4 18h16"
-    />
-  </svg>
-);
-const PlusIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-4 w-4"
-    viewBox="0 0 20 20"
-    fill="currentColor"
-  >
-    <path
-      fillRule="evenodd"
-      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-      clipRule="evenodd"
-    />
-  </svg>
-);
-const UserGroupIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-    viewBox="0 0 20 20"
-    fill="currentColor"
-  >
-    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-  </svg>
-);
-const LogoutIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-    viewBox="0 0 20 20"
-    fill="currentColor"
-  >
-    <path
-      fillRule="evenodd"
-      d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V5h10a1 1 0 100-2H3zm12.293 4.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L16.586 13H9a1 1 0 110-2h7.586l-1.293-1.293a1 1 0 010-1.414z"
-      clipRule="evenodd"
-    />
-  </svg>
-);
-const XIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-6 w-6"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M6 18L18 6M6 6l12 12"
-    />
-  </svg>
-);
-const ViewListIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-4 w-4"
-    viewBox="0 0 20 20"
-    fill="currentColor"
-  >
-    <path
-      fillRule="evenodd"
-      d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
-      clipRule="evenodd"
-    />
-  </svg>
-);
-const KeyIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-    viewBox="0 0 20 20"
-    fill="currentColor"
-  >
-    <path
-      fillRule="evenodd"
-      d="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a4 4 0 100 8 4 4 0 000-8z"
-      clipRule="evenodd"
-    />
-  </svg>
-);
-const UserCircleIcon = ({ className }) => (
+const Icon = ({ path, className = "h-5 w-5" }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     className={className}
     fill="none"
     viewBox="0 0 24 24"
     stroke="currentColor"
+    strokeWidth={2}
   >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"
-    />
-  </svg>
-);
-const ChevronLeftIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-5 w-5 mr-2"
-    viewBox="0 0 20 20"
-    fill="currentColor"
-  >
-    <path
-      fillRule="evenodd"
-      d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-      clipRule="evenodd"
-    />
-  </svg>
-);
-const ArrowDownTrayIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
-    className={className}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
-    />
-  </svg>
-);
-const ArrowUpTrayIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
-    className={className}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
-    />
-  </svg>
-);
-const ClipboardIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
-    className={className}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v3.043m-7.416 0v3.043c0 .212.03.418.084.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"
-    />
-  </svg>
-);
-const BanknotesIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
-    className={className}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0 .75-.75V9.75M15 13.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-    />
-  </svg>
-);
-const CreditCardIcon = ({ className }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 24 24"
-    strokeWidth={1.5}
-    stroke="currentColor"
-    className={className}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 21Z"
-    />
+    <path strokeLinecap="round" strokeLinejoin="round" d={path} />
   </svg>
 );
 
+const Icons = {
+  Menu: () => <Icon path="M4 6h16M4 12h16M4 18h16" className="h-6 w-6" />,
+  Plus: () => <Icon path="M12 4v16m8-8H4" />,
+  UserGroup: ({ className }) => (
+    <Icon
+      path="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.124-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.124-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+      className={className}
+    />
+  ),
+  Logout: ({ className }) => (
+    <Icon
+      path="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+      className={className}
+    />
+  ),
+  X: ({ className = "h-6 w-6" }) => (
+    <Icon path="M6 18L18 6M6 6l12 12" className={className} />
+  ),
+  ViewList: () => (
+    <Icon path="M4 6h16M4 10h16M4 14h16M4 18h16" className="h-4 w-4" />
+  ),
+  Key: ({ className }) => (
+    <Icon
+      path="M15 7a4 4 0 11-8 0 4 4 0 018 0zM9 9a2 2 0 11-4 0 2 2 0 014 0zM9 15a4 4 0 100-8 4 4 0 000 8zM9 15c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+      className={className}
+    />
+  ),
+  UserCircle: ({ className }) => (
+    <Icon
+      path="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"
+      className={className}
+    />
+  ),
+  ChevronLeft: () => <Icon path="M15 19l-7-7 7-7" className="h-5 w-5 mr-2" />,
+  ArrowDownTray: ({ className }) => (
+    <Icon
+      path="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+      className={className}
+    />
+  ),
+  ArrowUpTray: ({ className }) => (
+    <Icon
+      path="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+      className={className}
+    />
+  ),
+  Clipboard: ({ className }) => (
+    <Icon
+      path="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+      className={className}
+    />
+  ),
+  Banknotes: ({ className }) => (
+    <Icon
+      path="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0 .75-.75V9.75M15 13.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+      className={className}
+    />
+  ),
+  CreditCard: ({ className }) => (
+    <Icon
+      path="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 21Z"
+      className={className}
+    />
+  ),
+};
+
+// Lista de todos los activos disponibles para las recomendaciones
+const ALL_AVAILABLE_ASSETS = [
+  // Cryptos
+  "BTC-USDT",
+  "ETH-USDT",
+  "SOL-USDT",
+  "XRP-USDT",
+  "DOGE-USDT",
+  "ADA-USDT",
+  "AVAX-USDT",
+  "LTC-USDT",
+  "BCH-USDT",
+  "LINK-USDT",
+  // Stocks
+  "AAPL",
+  "MSFT",
+  "GOOGL",
+  "AMZN",
+  "NVDA",
+  "TSLA",
+  "META",
+  "JPM",
+  "JNJ",
+  // Forex
+  "EUR/USD",
+  "GBP/USD",
+  "USD/JPY",
+  "USD/CHF",
+  "AUD/USD",
+  "USD/CAD",
+  "NZD/USD",
+  "EUR/GBP",
+  "EUR/JPY",
+  "EUR/CHF",
+  "GBP/JPY",
+  "GBP/CHF",
+  "AUD/JPY",
+  "CAD/JPY",
+  // Commodities
+  "XAU/USD",
+  "XAG/USD",
+  "WTI/USD",
+  "BRENT/USD",
+];
+
+// --- Contexto de la App ---
 const AppContext = createContext();
 
 const AppProvider = ({ children }) => {
@@ -311,6 +227,7 @@ const AppProvider = ({ children }) => {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
+// --- Hooks y Componentes de UI ---
 const useFlashOnUpdate = (value) => {
   const [flashClass, setFlashClass] = useState("");
   const prevValueRef = useRef();
@@ -379,17 +296,14 @@ const TradingViewWidget = React.memo(({ symbol }) => {
     if (!assetSymbol) return "KUCOIN:BTCUSDT";
     let s = assetSymbol.toUpperCase();
 
-    // Handle crypto pairs like BTC-USDT
     if (s.includes("-USDT")) return `KUCOIN:${s.replace("-", "")}`;
     if (s.endsWith("USDT")) return `KUCOIN:${s}`;
 
-    // Handle commodities
     if (s === "WTI/USD") return "TVC:USOIL";
     if (s === "BRENT/USD") return "TVC:UKOIL";
     if (s === "XAU/USD") return "OANDA:XAUUSD";
     if (s === "XAG/USD") return "OANDA:XAGUSD";
 
-    // Handle forex pairs like EUR/USD by removing the slash
     if (s.includes("/")) {
       const sanitizedSymbol = s.replace("/", "");
       const forexPairs = [
@@ -427,7 +341,6 @@ const TradingViewWidget = React.memo(({ symbol }) => {
       }
     }
 
-    // Fallback for stocks
     return `NASDAQ:${s}`;
   };
   useEffect(() => {
@@ -550,10 +463,8 @@ const StatisticsPanel = ({ stats, performanceData, isLoading }) => (
       <h3 className="text-white font-bold text-base mb-4">Estadísticas</h3>
       {isLoading ? (
         <div className="grid grid-cols-2 gap-4">
-          <Skeleton className="h-5" />
-          <Skeleton className="h-5" />
-          <Skeleton className="h-5" />
-          <Skeleton className="h-5" />
+          <Skeleton className="h-5" /> <Skeleton className="h-5" />
+          <Skeleton className="h-5" /> <Skeleton className="h-5" />
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 text-neutral-300 text-sm">
@@ -635,6 +546,44 @@ const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
 const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
   const { setSelectedAsset, selectedAsset } = useContext(AppContext);
   const [newSymbol, setNewSymbol] = useState("");
+  const [recommendations, setRecommendations] = useState([]);
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  const searchContainerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target)
+      ) {
+        setShowRecommendations(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleInputChange = (e) => {
+    const value = e.target.value.toUpperCase();
+    setNewSymbol(value);
+    if (value) {
+      const filtered = ALL_AVAILABLE_ASSETS.filter((asset) =>
+        asset.toUpperCase().includes(value)
+      );
+      setRecommendations(filtered);
+      setShowRecommendations(true);
+    } else {
+      setShowRecommendations(false);
+    }
+  };
+
+  const handleRecommendationClick = (symbol) => {
+    setNewSymbol(symbol);
+    setShowRecommendations(false);
+  };
+
   const handleAssetClick = useCallback(
     (symbol) => {
       setSelectedAsset(symbol);
@@ -646,26 +595,50 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
     if (newSymbol) {
       onAddAsset(newSymbol);
       setNewSymbol("");
+      setShowRecommendations(false);
     }
   };
+
   return (
     <div className="mb-6">
-      <form onSubmit={handleSubmit} className="mb-4 flex gap-2">
-        <input
-          type="text"
-          value={newSymbol}
-          onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
-          placeholder="Ej: DOGE-USDT, WTI/USD"
-          className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
-        />
-        <button
-          type="submit"
-          className="bg-red-600 hover:bg-red-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
-        >
-          <PlusIcon />
-        </button>
-      </form>
-      <h2 className="text-neutral-400 font-bold text-sm tracking-wider uppercase mb-3 px-2">
+      <div ref={searchContainerRef} className="relative">
+        <form onSubmit={handleSubmit} className="mb-1 flex gap-2">
+          <input
+            type="text"
+            value={newSymbol}
+            onChange={handleInputChange}
+            onFocus={() => newSymbol && setShowRecommendations(true)}
+            placeholder="Ej: EUR/USD, TSLA"
+            className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+            autoComplete="off"
+          />
+          <button
+            type="submit"
+            className="bg-red-600 hover:bg-red-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
+          >
+            <PlusIcon />
+          </button>
+        </form>
+        {showRecommendations && recommendations.length > 0 && (
+          <motion.ul
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="absolute w-full bg-neutral-800 border border-neutral-700 rounded-md mt-1 max-h-40 overflow-y-auto z-20"
+          >
+            {recommendations.map((rec) => (
+              <li
+                key={rec}
+                onClick={() => handleRecommendationClick(rec)}
+                className="px-3 py-2 text-sm text-neutral-300 hover:bg-red-500/50 cursor-pointer"
+              >
+                {rec}
+              </li>
+            ))}
+          </motion.ul>
+        )}
+      </div>
+      <h2 className="text-neutral-400 font-bold text-sm tracking-wider uppercase mt-4 mb-3 px-2">
         Mis Activos
       </h2>
       <ul className="space-y-1 max-h-48 overflow-y-auto">
