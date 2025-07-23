@@ -555,7 +555,13 @@ const AssetPrice = React.memo(({ symbol }) => {
 });
 
 const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
-  <li
+  <motion.li
+    layout
+    initial={{ opacity: 0, y: -10 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, x: -20 }}
+    whileHover={{ scale: 1.03 }}
+    whileTap={{ scale: 0.98 }}
     onClick={() => onClick(symbol)}
     className={`cursor-pointer transition-all duration-200 rounded-md flex justify-between items-center p-2 group ${
       isSelected
@@ -577,7 +583,7 @@ const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
         <Icons.X className="h-4 w-4" />
       </button>
     </div>
-  </li>
+  </motion.li>
 ));
 
 const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
@@ -679,15 +685,17 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
         Mis Activos
       </h2>
       <ul className="space-y-1 max-h-48 overflow-y-auto">
-        {assets.map((symbol) => (
-          <AssetRow
-            key={symbol}
-            symbol={symbol}
-            isSelected={selectedAsset === symbol}
-            onClick={handleAssetClick}
-            onRemove={onRemoveAsset}
-          />
-        ))}
+        <AnimatePresence>
+          {assets.map((symbol) => (
+            <AssetRow
+              key={symbol}
+              symbol={symbol}
+              isSelected={selectedAsset === symbol}
+              onClick={handleAssetClick}
+              onRemove={onRemoveAsset}
+            />
+          ))}
+        </AnimatePresence>
       </ul>
     </div>
   );
@@ -806,12 +814,13 @@ const Header = ({
           <Icons.Menu />
         </button>
         <div className="hidden sm:flex items-center space-x-2">
-          <button
+          <motion.button
+            whileTap={{ scale: 0.95 }}
             onClick={() => onOperation("sell", volume)}
             className="bg-red-600 hover:bg-red-500 transition-all text-white px-5 py-2 text-sm font-bold rounded-md shadow-lg shadow-red-500/20 hover:shadow-red-500/40 cursor-pointer"
           >
             SELL
-          </button>
+          </motion.button>
           <input
             type="number"
             value={volume}
@@ -820,12 +829,13 @@ const Header = ({
             min="0.01"
             className="w-24 p-2 border border-neutral-700 bg-neutral-800 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-neutral-500 focus:outline-none"
           />
-          <button
+          <motion.button
+            whileTap={{ scale: 0.95 }}
             onClick={() => onOperation("buy", volume)}
             className="bg-green-600 hover:bg-green-500 transition-all text-white px-5 py-2 text-sm font-bold rounded-md shadow-lg shadow-green-500/20 hover:shadow-green-500/40 cursor-pointer"
           >
             BUY
-          </button>
+          </motion.button>
         </div>
       </div>
       <div className="text-center">
@@ -865,28 +875,30 @@ const FlashingMetric = ({ value, prefix = "", suffix = "" }) => {
 };
 
 const FinancialMetrics = ({ metrics, isLoading }) => (
-  <Card className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-4 justify-items-center p-3 text-xs sm:text-sm">
+  <Card className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 md:gap-4 justify-items-center p-3 text-xs sm:text-sm">
     {isLoading ? (
-      <Skeleton className="h-5 w-full col-span-full" />
+      Array.from({ length: 5 }).map((_, i) => (
+        <Skeleton key={i} className="h-8 w-full" />
+      ))
     ) : (
       <>
-        <div className="text-center">
+        <div className="text-center p-2 w-full">
           <p className="text-neutral-400">Balance</p>
           <span className="font-bold text-white">${metrics.balance}</span>
         </div>
-        <div className="text-center">
+        <div className="text-center p-2 w-full">
           <p className="text-neutral-400">Equidad</p>
           <FlashingMetric value={metrics.equity} prefix="$" />
         </div>
-        <div className="text-center">
+        <div className="text-center p-2 w-full">
           <p className="text-neutral-400">M. Usado</p>
           <FlashingMetric value={metrics.usedMargin} prefix="$" />
         </div>
-        <div className="text-center">
+        <div className="text-center p-2 w-full">
           <p className="text-neutral-400">M. Libre</p>
           <FlashingMetric value={metrics.freeMargin} prefix="$" />
         </div>
-        <div className="text-center col-span-2 md:col-span-1">
+        <div className="text-center p-2 w-full col-span-2 sm:col-span-1 md:col-span-1">
           <p className="text-neutral-400">Nivel Margen</p>
           <FlashingMetric value={metrics.marginLevel} suffix="%" />
         </div>
@@ -973,56 +985,75 @@ const OperationsHistory = ({
     "G-P",
     "Acción",
   ];
-  const renderMobileCard = (op) => (
-    <Card key={op.id} className="text-sm" onClick={() => onRowClick(op)}>
-      <div className="flex justify-between items-center mb-3">
-        <span className="font-bold text-lg text-white">{op.activo}</span>
-        <span
-          className={`px-2 py-1 rounded-md text-xs font-bold ${
-            op.tipo_operacion.toLowerCase().includes("buy")
-              ? "bg-green-500/20 text-green-400"
-              : "bg-red-500/20 text-red-400"
-          }`}
-        >
-          {op.tipo_operacion}
-        </span>
-      </div>
-      <div className="grid grid-cols-2 gap-2 text-neutral-300 mb-4">
-        <div>
-          <span className="font-semibold text-neutral-500">Vol:</span>{" "}
-          {op.volumen}
-        </div>
-        <div>
-          <span className="font-semibold text-neutral-500">Entrada:</span>{" "}
-          {parseFloat(op.precio_entrada).toFixed(4)}
-        </div>
-        <div>
-          <span className="font-semibold text-neutral-500">TP:</span>{" "}
-          {op.take_profit ? parseFloat(op.take_profit).toFixed(2) : "-"}
-        </div>
-        <div>
-          <span className="font-semibold text-neutral-500">SL:</span>{" "}
-          {op.stop_loss ? parseFloat(op.stop_loss).toFixed(2) : "-"}
-        </div>
-      </div>
-      <div className="flex justify-between items-center pt-2 border-t border-neutral-700">
-        <div className="text-neutral-400">
-          G/P: <LiveProfitCell operation={op} />
-        </div>
-        {op.cerrada ? (
-          <span className="bg-neutral-700 px-2 py-1 rounded-md text-xs">
-            Cerrado
-          </span>
-        ) : (
-          <button
-            onClick={(e) => handleCloseOperation(e, op.id)}
-            className="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1 rounded-md text-xs transition-colors cursor-pointer"
+
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: (i) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        delay: i * 0.05,
+      },
+    }),
+  };
+
+  const renderMobileCard = (op, index) => (
+    <motion.div
+      custom={index}
+      initial="hidden"
+      animate="visible"
+      variants={cardVariants}
+    >
+      <Card key={op.id} className="text-sm" onClick={() => onRowClick(op)}>
+        <div className="flex justify-between items-center mb-3">
+          <span className="font-bold text-lg text-white">{op.activo}</span>
+          <span
+            className={`px-2 py-1 rounded-md text-xs font-bold ${
+              op.tipo_operacion.toLowerCase().includes("buy")
+                ? "bg-green-500/20 text-green-400"
+                : "bg-red-500/20 text-red-400"
+            }`}
           >
-            Cerrar
-          </button>
-        )}
-      </div>
-    </Card>
+            {op.tipo_operacion}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-neutral-300 mb-4">
+          <div>
+            <span className="font-semibold text-neutral-500">Vol:</span>{" "}
+            {op.volumen}
+          </div>
+          <div>
+            <span className="font-semibold text-neutral-500">Entrada:</span>{" "}
+            {parseFloat(op.precio_entrada).toFixed(4)}
+          </div>
+          <div>
+            <span className="font-semibold text-neutral-500">TP:</span>{" "}
+            {op.take_profit ? parseFloat(op.take_profit).toFixed(2) : "-"}
+          </div>
+          <div>
+            <span className="font-semibold text-neutral-500">SL:</span>{" "}
+            {op.stop_loss ? parseFloat(op.stop_loss).toFixed(2) : "-"}
+          </div>
+        </div>
+        <div className="flex justify-between items-center pt-2 border-t border-neutral-700">
+          <div className="text-neutral-400">
+            G/P: <LiveProfitCell operation={op} />
+          </div>
+          {op.cerrada ? (
+            <span className="bg-neutral-700 px-2 py-1 rounded-md text-xs">
+              Cerrado
+            </span>
+          ) : (
+            <button
+              onClick={(e) => handleCloseOperation(e, op.id)}
+              className="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1 rounded-md text-xs transition-colors cursor-pointer"
+            >
+              Cerrar
+            </button>
+          )}
+        </div>
+      </Card>
+    </motion.div>
   );
 
   return (
@@ -2934,12 +2965,13 @@ const DashboardPage = () => {
           </div>
         </div>
         <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm p-3 border-t border-neutral-800 flex justify-around items-center gap-2">
-          <button
+          <motion.button
+            whileTap={{ scale: 0.95 }}
             onClick={() => handleOpenNewOpModal("sell", mobileVolume)}
             className="flex-1 bg-red-600 hover:bg-red-500 transition-all text-white px-4 py-3 text-sm font-bold rounded-md"
           >
             SELL
-          </button>
+          </motion.button>
           <input
             type="number"
             value={mobileVolume}
@@ -2948,12 +2980,13 @@ const DashboardPage = () => {
             min="0.01"
             className="w-24 p-3 border border-neutral-700 bg-neutral-800 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-neutral-500 focus:outline-none"
           />
-          <button
+          <motion.button
+            whileTap={{ scale: 0.95 }}
             onClick={() => handleOpenNewOpModal("buy", mobileVolume)}
             className="flex-1 bg-green-600 hover:bg-green-500 transition-all text-white px-4 py-3 text-sm font-bold rounded-md"
           >
             BUY
-          </button>
+          </motion.button>
         </div>
       </main>
     </div>
@@ -3059,19 +3092,23 @@ const LoginPage = () => {
           "url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=2070&auto=format&fit=crop')",
       }}
     >
-      <div className="relative w-full max-w-4xl h-[600px] bg-black/50 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden flex">
+      <div className="relative w-full max-w-4xl min-h-[600px] bg-black/50 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
         {/* Panel de Bienvenida */}
-        <div className="w-1/2 text-white p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-cyan-00 to-cyan-500">
+        <div className="w-full md:w-1/2 text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-cyan-600 to-cyan-800">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <img src={platformLogo} alt="Logo" className="w-48 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold mb-2">
+            <img
+              src={platformLogo}
+              alt="Logo"
+              className="w-40 sm:w-48 mx-auto mb-4"
+            />
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">
               {isLogin ? "¡Bienvenido de Nuevo!" : "Crea tu Cuenta"}
             </h1>
-            <p className="mb-6">
+            <p className="mb-6 text-sm sm:text-base">
               {isLogin
                 ? "Para seguir conectado, por favor inicia sesión con tu información personal."
                 : "Ingresa tus datos para comenzar tu viaje con nosotros."}
@@ -3090,7 +3127,7 @@ const LoginPage = () => {
         </div>
 
         {/* Panel de Formularios */}
-        <div className="w-1/2 p-12 flex flex-col justify-center">
+        <div className="w-full md:w-1/2 p-8 sm:p-12 flex flex-col justify-center">
           <AnimatePresence mode="wait">
             {isLogin ? (
               <motion.div
@@ -3100,7 +3137,7 @@ const LoginPage = () => {
                 animate="visible"
                 exit="exit"
               >
-                <h2 className="text-3xl font-bold text-white mb-6 text-center">
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6 text-center">
                   Iniciar Sesión
                 </h2>
                 {error && (
@@ -3142,7 +3179,7 @@ const LoginPage = () => {
                 animate="visible"
                 exit="exit"
               >
-                <h2 className="text-3xl font-bold text-white mb-4 text-center">
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 text-center">
                   Crear Cuenta
                 </h2>
                 {error && (
