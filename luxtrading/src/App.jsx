@@ -21,12 +21,7 @@ import {
   Filler,
   TimeScale,
 } from "chart.js";
-import {
-  motion,
-  AnimatePresence,
-  useSpring,
-  useTransform,
-} from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 // --- Configuración de Axios ---
 axios.defaults.baseURL = import.meta.env.VITE_API_URL;
@@ -3100,7 +3095,7 @@ const LoginPage = () => {
     >
       <div className="relative w-full max-w-4xl min-h-[600px] bg-black/50 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
         {/* Panel de Bienvenida */}
-        <div className="w-full md:w-1/2 text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-cyan-600 to-cyan-800">
+        <div className="w-full md:w-1/2 text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-cyan-00 to-cyan-500">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -3220,7 +3215,7 @@ const LoginPage = () => {
                     <select
                       value={countryCode}
                       onChange={(e) => setCountryCode(e.target.value)}
-                      className="p-2 bg-white/5 text-white rounded-l-lg border-r-0 border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
+                      className="p-2 bg-white/5 text-white rounded-l-lg border-r-0 border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
                     >
                       {countryCodes.map((c) => (
                         <option key={c.code} value={c.code}>
