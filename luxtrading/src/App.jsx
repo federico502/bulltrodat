@@ -21,7 +21,12 @@ import {
   Filler,
   TimeScale,
 } from "chart.js";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  useSpring,
+  useTransform,
+} from "framer-motion";
 
 // --- Configuración de Axios ---
 axios.defaults.baseURL = import.meta.env.VITE_API_URL;
@@ -296,7 +301,7 @@ const Card = React.forwardRef(({ children, className = "", ...props }, ref) => (
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5 }}
-    className={`bg-black/20 p-4 rounded-lg border border-neutral-800 backdrop-blur-sm ${className}`}
+    className={`bg-white/5 p-4 rounded-xl border border-white/10 backdrop-blur-lg shadow-lg ${className}`}
     {...props}
   >
     {children}
@@ -304,7 +309,7 @@ const Card = React.forwardRef(({ children, className = "", ...props }, ref) => (
 ));
 
 const Skeleton = ({ className }) => (
-  <div className={`animate-pulse bg-neutral-800 rounded-md ${className}`} />
+  <div className={`animate-pulse bg-white/10 rounded-md ${className}`} />
 );
 
 const TradingViewWidget = React.memo(({ symbol }) => {
@@ -384,6 +389,7 @@ const TradingViewWidget = React.memo(({ symbol }) => {
         hide_top_toolbar: false,
         allow_symbol_change: false,
         container_id: containerRef.current.id,
+        backgroundColor: "rgba(0,0,0,0)",
       });
     };
 
@@ -427,7 +433,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       <button
         onClick={handlePrevious}
         disabled={currentPage === 1}
-        className="px-3 py-1 bg-neutral-700 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-600 transition-colors text-xs"
+        className="px-3 py-1 bg-white/10 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/20 transition-colors text-xs"
       >
         Anterior
       </button>
@@ -437,7 +443,7 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       <button
         onClick={handleNext}
         disabled={currentPage === totalPages}
-        className="px-3 py-1 bg-neutral-700 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-600 transition-colors text-xs"
+        className="px-3 py-1 bg-white/10 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/20 transition-colors text-xs"
       >
         Siguiente
       </button>
@@ -566,7 +572,7 @@ const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
     className={`cursor-pointer transition-all duration-200 rounded-md flex justify-between items-center p-2 group ${
       isSelected
         ? "bg-cyan-500/20 text-white"
-        : "hover:bg-neutral-800 text-neutral-300"
+        : "hover:bg-white/10 text-neutral-300"
     }`}
   >
     <span className="font-semibold">{symbol}</span>
@@ -652,7 +658,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
             onChange={handleInputChange}
             onFocus={() => newSymbol && setShowRecommendations(true)}
             placeholder="Ej: EUR/USD, TSLA"
-            className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
             autoComplete="off"
           />
           <button
@@ -667,7 +673,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="absolute w-full bg-neutral-800 border border-neutral-700 rounded-md mt-1 max-h-40 overflow-y-auto z-20"
+            className="absolute w-full bg-neutral-900 border border-white/10 rounded-md mt-1 max-h-40 overflow-y-auto z-20"
           >
             {recommendations.map((rec) => (
               <li
@@ -704,7 +710,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
 const MenuItem = ({ icon, text, onClick }) => (
   <button
     onClick={onClick}
-    className="flex items-center w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700 rounded-md transition-colors"
+    className="flex items-center w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-white/10 rounded-md transition-colors"
   >
     {icon}
     <span className="ml-3">{text}</span>
@@ -732,7 +738,7 @@ const ProfileMenu = React.memo(
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="bg-neutral-800 cursor-pointer text-white p-2 rounded-full hover:bg-cyan-500 transition-colors"
+          className="bg-white/10 cursor-pointer text-white p-2 rounded-full hover:bg-cyan-500 transition-colors"
           title="Cuenta"
         >
           <Icons.UserCircle className="h-6 w-6" />
@@ -744,9 +750,9 @@ const ProfileMenu = React.memo(
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -10 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="origin-top-right absolute right-0 mt-2 w-64 rounded-xl shadow-2xl bg-neutral-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-50 p-2 border border-neutral-700"
+              className="origin-top-right absolute right-0 mt-2 w-64 rounded-xl shadow-2xl bg-neutral-900 ring-1 ring-white/10 focus:outline-none z-50 p-2 border border-white/10"
             >
-              <div className="px-3 py-2 border-b border-neutral-700 mb-2">
+              <div className="px-3 py-2 border-b border-white/10 mb-2">
                 <p className="text-sm font-semibold text-white truncate">
                   {user?.nombre || "Usuario"}
                 </p>
@@ -778,7 +784,7 @@ const ProfileMenu = React.memo(
                     />
                   </>
                 )}
-                <div className="my-1 h-px bg-neutral-700" />
+                <div className="my-1 h-px bg-white/10" />
                 <MenuItem
                   icon={
                     <Icons.Logout className="h-5 w-5 cursor-pointer text-cyan-400" />
@@ -805,11 +811,11 @@ const Header = ({
   const { user, logout, selectedAsset } = useContext(AppContext);
   const [volume, setVolume] = useState(0.01);
   return (
-    <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-black/20 border-b border-neutral-800">
+    <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-black/20 border-b border-white/10">
       <div className="flex items-center gap-4">
         <button
           onClick={onToggleMainSidebar}
-          className="p-2 rounded-full hover:bg-neutral-700 lg:hidden"
+          className="p-2 rounded-full hover:bg-white/10 lg:hidden"
         >
           <Icons.Menu />
         </button>
@@ -827,7 +833,7 @@ const Header = ({
             onChange={(e) => setVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-2 border border-neutral-700 bg-neutral-800 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-neutral-500 focus:outline-none"
+            className="w-24 p-2 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none"
           />
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -1035,7 +1041,7 @@ const OperationsHistory = ({
             {op.stop_loss ? parseFloat(op.stop_loss).toFixed(2) : "-"}
           </div>
         </div>
-        <div className="flex justify-between items-center pt-2 border-t border-neutral-700">
+        <div className="flex justify-between items-center pt-2 border-t border-white/10">
           <div className="text-neutral-400">
             G/P: <LiveProfitCell operation={op} />
           </div>
@@ -1070,7 +1076,7 @@ const OperationsHistory = ({
             id="filter"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="bg-neutral-800 text-white text-sm rounded-md p-1 border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
+            className="bg-white/5 text-white text-sm rounded-md p-1 border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
           >
             <option value="todas">Todas</option>
             <option value="abiertas">Abiertas</option>
@@ -1080,7 +1086,7 @@ const OperationsHistory = ({
       </div>
       <div className="flex-grow overflow-y-auto">
         <table className="hidden sm:table w-full text-sm text-left text-neutral-300">
-          <thead className="bg-neutral-800/50 text-xs uppercase sticky top-0 z-10 backdrop-blur-sm">
+          <thead className="bg-white/5 text-xs uppercase sticky top-0 z-10 backdrop-blur-sm">
             <tr>
               {columns.map((h) => (
                 <th key={h} className="px-3 py-2 font-medium whitespace-nowrap">
@@ -1089,7 +1095,7 @@ const OperationsHistory = ({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-800">
+          <tbody className="divide-y divide-white/10">
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
@@ -1103,7 +1109,7 @@ const OperationsHistory = ({
               : operations.map((op) => (
                   <tr
                     key={op.id}
-                    className="hover:bg-neutral-800/50 cursor-pointer"
+                    className="hover:bg-white/5 cursor-pointer"
                     onClick={() => onRowClick(op)}
                   >
                     <td className="px-3 py-2 whitespace-nowrap">
@@ -1168,7 +1174,7 @@ const OperationsHistory = ({
             : operations.map(renderMobileCard)}
         </div>
       </div>
-      <div className="p-2 border-t border-neutral-800">
+      <div className="p-2 border-t border-white/10">
         <Pagination
           currentPage={pagination.currentPage}
           totalPages={pagination.totalPages}
@@ -1199,10 +1205,10 @@ const Modal = ({
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className={`bg-neutral-900 rounded-lg shadow-xl w-full ${maxWidth} text-white border border-neutral-700 flex flex-col max-h-[90vh]`}
+          className={`bg-neutral-900 rounded-lg shadow-xl w-full ${maxWidth} text-white border border-white/10 flex flex-col max-h-[90vh]`}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex-shrink-0 flex justify-between items-center p-4 sm:p-6 border-b border-neutral-700">
+          <div className="flex-shrink-0 flex justify-between items-center p-4 sm:p-6 border-b border-white/10">
             <h2 className="text-xl font-bold">{title}</h2>
             <button
               onClick={onClose}
@@ -1311,7 +1317,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           value={tp}
           onChange={(e) => setTp(e.target.value)}
           placeholder="Precio de cierre para tomar ganancias"
-          className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+          className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
         />
         {potentialTpProfit !== null && (
           <p className="text-xs mt-1 text-green-400">
@@ -1328,7 +1334,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           value={sl}
           onChange={(e) => setSl(e.target.value)}
           placeholder="Precio de cierre para limitar pérdidas"
-          className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+          className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
         />
         {potentialSlProfit !== null && (
           <p className="text-xs mt-1 text-red-400">
@@ -1503,7 +1509,7 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
           </thead>
           <tbody className="bg-neutral-800">
             {operations.map((op) => (
-              <tr key={op.id} className="border-b border-neutral-700">
+              <tr key={op.id} className="border-b border-white/10">
                 <td className="p-2">{op.id}</td>
                 <td className="p-2">{op.activo}</td>
                 <td className="p-2">{op.tipo_operacion}</td>
@@ -1514,7 +1520,7 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
                     step="any"
                     defaultValue={op.precio_entrada}
                     onChange={(e) => handlePriceChange(op.id, e.target.value)}
-                    className="w-full p-1 bg-neutral-700 rounded border border-neutral-600"
+                    className="w-full p-1 bg-white/5 rounded border border-white/10"
                   />
                 </td>
                 <td className="p-2">{new Date(op.fecha).toLocaleString()}</td>
@@ -1572,7 +1578,7 @@ const UserCard = React.memo(
               name="balance"
               value={user.balance}
               onChange={handleInputChange}
-              className="flex-1 p-1 bg-neutral-700 rounded border border-neutral-600"
+              className="flex-1 p-1 bg-white/5 rounded border border-white/10"
             />
           </div>
           <div className="flex items-center">
@@ -1582,7 +1588,7 @@ const UserCard = React.memo(
               name="identificacion"
               value={user.identificacion}
               onChange={handleInputChange}
-              className="flex-1 p-1 bg-neutral-700 rounded border border-neutral-600"
+              className="flex-1 p-1 bg-white/5 rounded border border-white/10"
             />
           </div>
           <div className="flex items-center">
@@ -1592,7 +1598,7 @@ const UserCard = React.memo(
               name="telefono"
               value={user.telefono}
               onChange={handleInputChange}
-              className="flex-1 p-1 bg-neutral-700 rounded border border-neutral-600"
+              className="flex-1 p-1 bg-white/5 rounded border border-white/10"
             />
           </div>
           <div className="flex items-center">
@@ -1603,11 +1609,11 @@ const UserCard = React.memo(
               value={user.password || ""}
               placeholder="No cambiar"
               onChange={handleInputChange}
-              className="flex-1 p-1 bg-neutral-700 rounded border border-neutral-600"
+              className="flex-1 p-1 bg-white/5 rounded border border-white/10"
             />
           </div>
         </div>
-        <div className="flex justify-end gap-2 pt-2 border-t border-neutral-700">
+        <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
           <button
             onClick={() => onSave(user)}
             className="bg-green-600 text-white px-3 py-1 text-xs rounded hover:bg-green-500 cursor-pointer"
@@ -1641,7 +1647,7 @@ const UserTableRow = React.memo(
       onDataChange(user.id, name, value);
     };
     return (
-      <tr className="border-b border-neutral-700">
+      <tr className="border-b border-white/10">
         <td className="p-2 whitespace-nowrap">{user.id}</td>
         <td className="p-2">
           <input
@@ -1649,7 +1655,7 @@ const UserTableRow = React.memo(
             name="nombre"
             value={user.nombre}
             onChange={handleInputChange}
-            className="w-full p-1 bg-neutral-700 rounded border border-neutral-600"
+            className="w-full p-1 bg-white/5 rounded border border-white/10"
           />
         </td>
         <td className="p-2">
@@ -1658,7 +1664,7 @@ const UserTableRow = React.memo(
             name="email"
             value={user.email}
             onChange={handleInputChange}
-            className="w-full p-1 bg-neutral-700 rounded border border-neutral-600"
+            className="w-full p-1 bg-white/5 rounded border border-white/10"
           />
         </td>
         <td className="p-2">
@@ -1668,7 +1674,7 @@ const UserTableRow = React.memo(
             step="any"
             value={user.balance}
             onChange={handleInputChange}
-            className="w-full p-1 bg-neutral-700 rounded border border-neutral-600"
+            className="w-full p-1 bg-white/5 rounded border border-white/10"
           />
         </td>
         <td className="p-2">
@@ -1676,7 +1682,7 @@ const UserTableRow = React.memo(
             name="rol"
             value={user.rol}
             onChange={handleInputChange}
-            className="w-full p-1 bg-neutral-700 rounded border border-neutral-600 cursor-pointer"
+            className="w-full p-1 bg-white/5 rounded border border-white/10 cursor-pointer"
           >
             <option value="usuario">Usuario</option>
             <option value="admin">Admin</option>
@@ -1688,7 +1694,7 @@ const UserTableRow = React.memo(
             name="identificacion"
             value={user.identificacion}
             onChange={handleInputChange}
-            className="w-full p-1 bg-neutral-700 rounded border border-neutral-600"
+            className="w-full p-1 bg-white/5 rounded border border-white/10"
           />
         </td>
         <td className="p-2">
@@ -1697,7 +1703,7 @@ const UserTableRow = React.memo(
             name="telefono"
             value={user.telefono}
             onChange={handleInputChange}
-            className="w-full p-1 bg-neutral-700 rounded border border-neutral-600"
+            className="w-full p-1 bg-white/5 rounded border border-white/10"
           />
         </td>
         <td className="p-2">
@@ -1707,7 +1713,7 @@ const UserTableRow = React.memo(
             placeholder="No cambiar"
             value={user.password || ""}
             onChange={handleInputChange}
-            className="w-full p-1 bg-neutral-700 rounded border border-neutral-600"
+            className="w-full p-1 bg-white/5 rounded border border-white/10"
           />
         </td>
         <td className="p-2 flex gap-2">
@@ -1913,7 +1919,7 @@ const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
           type="text"
           readOnly
           value={code}
-          className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded mb-4 focus:outline-none"
+          className="w-full p-2 bg-white/5 border border-white/10 rounded mb-4 focus:outline-none"
         />
         <label className="block text-sm font-medium mb-2 text-neutral-300">
           Nuevo Código:
@@ -1922,7 +1928,7 @@ const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
           type="text"
           value={newCode}
           onChange={(e) => setNewCode(e.target.value)}
-          className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          className="w-full p-2 bg-white/5 border border-white/10 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-cyan-500"
         />
         <div className="flex justify-end mt-4">
           <button
@@ -1997,7 +2003,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
             type="text"
             readOnly
             value={user?.nombre || ""}
-            className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded"
           />
         </div>
         <div>
@@ -2008,7 +2014,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
             type="email"
             readOnly
             value={user?.email || ""}
-            className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded"
           />
         </div>
         <div>
@@ -2023,7 +2029,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
             type="text"
             value={identificacion}
             onChange={(e) => setIdentificacion(e.target.value)}
-            className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded"
           />
         </div>
         <div>
@@ -2038,7 +2044,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
             type="text"
             value={telefono}
             onChange={(e) => setTelefono(e.target.value)}
-            className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded"
           />
         </div>
         <div className="flex justify-end">
@@ -2057,7 +2063,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
 const PaymentMethodButton = ({ icon, text, onClick }) => (
   <button
     onClick={onClick}
-    className="w-full text-left p-4 flex items-center gap-4 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-lg transition-colors"
+    className="w-full text-left p-4 flex items-center gap-4 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
   >
     {icon}
     <span className="font-semibold text-lg">{text}</span>
@@ -2119,7 +2125,7 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
 const MenuButton = React.memo(({ icon, text, onClick }) => (
   <button
     onClick={onClick}
-    className="w-full text-left p-2 rounded hover:bg-neutral-800 transition-colors flex items-center text-neutral-300 cursor-pointer"
+    className="w-full text-left p-2 rounded hover:bg-white/10 transition-colors flex items-center text-neutral-300 cursor-pointer"
   >
     {icon}
     <span className="ml-3">{text}</span>
@@ -2153,9 +2159,9 @@ const SideMenu = React.memo(
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "tween", ease: "circOut", duration: 0.4 }}
-              className="fixed top-0 left-0 h-full w-80 bg-neutral-900 shadow-2xl z-50 border-r border-neutral-700 flex flex-col"
+              className="fixed top-0 left-0 h-full w-80 bg-neutral-900 shadow-2xl z-50 border-r border-white/10 flex flex-col"
             >
-              <div className="p-4 border-b border-neutral-700 flex-shrink-0">
+              <div className="p-4 border-b border-white/10 flex-shrink-0">
                 <img
                   className="mb-2"
                   src="/bulltrodatw.png"
@@ -2180,7 +2186,7 @@ const SideMenu = React.memo(
                       text="Retirar"
                       onClick={() => setView("withdraw")}
                     />
-                    <div className="my-2 h-px bg-neutral-700" />
+                    <div className="my-2 h-px bg-white/10" />
                     <MenuButton
                       icon={
                         <Icons.UserCircle className="h-5 w-5 text-neutral-400" />
@@ -2282,7 +2288,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
               required
               type="text"
               placeholder="Introduce tu dirección de billetera"
-              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
           </div>
           <div>
@@ -2292,7 +2298,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
             <select
               value={network}
               onChange={(e) => setNetwork(e.target.value)}
-              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
             >
               <option value="TRC20">TRON (TRC20)</option>
               <option value="ERC20">Ethereum (ERC20)</option>
@@ -2308,7 +2314,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
               type="number"
               step="0.01"
               placeholder="0.00"
-              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
           </div>
           <div className="flex justify-end pt-4">
@@ -2337,7 +2343,7 @@ const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => (
         Para continuar, por favor contacta a soporte con los siguientes
         detalles:
       </p>
-      <ul className="list-disc list-inside bg-neutral-800/50 p-4 rounded-md">
+      <ul className="list-disc list-inside bg-white/5 p-4 rounded-md">
         <li>
           Tipo de operación:{" "}
           <span className="font-semibold text-white">
@@ -2860,7 +2866,7 @@ const DashboardPage = () => {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="fixed top-0 left-0 h-full w-72 bg-neutral-900 p-4 overflow-y-auto flex-shrink-0 border-r border-neutral-800 flex flex-col z-40 lg:hidden"
+              className="fixed top-0 left-0 h-full w-72 bg-neutral-900 p-4 overflow-y-auto flex-shrink-0 border-r border-white/10 flex flex-col z-40 lg:hidden"
             >
               <div className="flex-grow">
                 <img
@@ -2886,7 +2892,7 @@ const DashboardPage = () => {
           </>
         )}
       </AnimatePresence>
-      <aside className="hidden lg:flex lg:flex-col w-72 bg-black/30 p-4 overflow-y-auto flex-shrink-0 border-r border-neutral-800">
+      <aside className="hidden lg:flex lg:flex-col w-72 bg-black/30 p-4 overflow-y-auto flex-shrink-0 border-r border-white/10">
         <div className="flex-grow">
           <img className="mb-4" src={platformLogo} width="220" alt="Logo" />
           <AssetLists
@@ -2934,7 +2940,7 @@ const DashboardPage = () => {
         setAlert={setAlert}
       />
 
-      <main className="flex-1 flex flex-col bg-black/50 overflow-hidden">
+      <main className="flex-1 flex flex-col bg-transparent overflow-hidden">
         <Header
           onOperation={handleOpenNewOpModal}
           onManageUsers={() => setIsUsersModalOpen(true)}
@@ -2943,7 +2949,7 @@ const DashboardPage = () => {
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
         />
         <div className="flex-1 flex flex-col p-2 sm:p-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
-          <div className="flex-grow min-h-[300px] sm:min-h-[400px] bg-black rounded-lg shadow-2xl shadow-black/30">
+          <div className="flex-grow min-h-[300px] sm:min-h-[400px] bg-black/20 rounded-xl shadow-2xl border border-white/10">
             <TradingViewWidget symbol={selectedAsset} />
           </div>
           <FinancialMetrics
@@ -2964,7 +2970,7 @@ const DashboardPage = () => {
             />
           </div>
         </div>
-        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm p-3 border-t border-neutral-800 flex justify-around items-center gap-2">
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm p-3 border-t border-white/10 flex justify-around items-center gap-2">
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={() => handleOpenNewOpModal("sell", mobileVolume)}
@@ -2978,7 +2984,7 @@ const DashboardPage = () => {
             onChange={(e) => setMobileVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-3 border border-neutral-700 bg-neutral-800 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-neutral-500 focus:outline-none"
+            className="w-24 p-3 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none"
           />
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -3154,14 +3160,14 @@ const LoginPage = () => {
                     placeholder="Email"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    className="w-full p-3 bg-neutral-700/50 text-white rounded-lg border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   />
                   <input
                     type="password"
                     placeholder="Contraseña"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full p-3 bg-neutral-700/50 text-white rounded-lg border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   />
                   <button
                     type="submit"
@@ -3201,20 +3207,20 @@ const LoginPage = () => {
                     placeholder="Nombre Completo"
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
-                    className="w-full p-2 bg-neutral-700/50 text-white rounded-lg border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   />
                   <input
                     type="email"
                     placeholder="Email"
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
-                    className="w-full p-2 bg-neutral-700/50 text-white rounded-lg border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   />
                   <div className="flex gap-2">
                     <select
                       value={countryCode}
                       onChange={(e) => setCountryCode(e.target.value)}
-                      className="p-2 bg-neutral-700/50 text-white rounded-l-lg border-r-0 border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
+                      className="p-2 bg-white/5 text-white rounded-l-lg border-r-0 border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
                     >
                       {countryCodes.map((c) => (
                         <option key={c.code} value={c.code}>
@@ -3227,7 +3233,7 @@ const LoginPage = () => {
                       placeholder="Teléfono"
                       value={regPhone}
                       onChange={(e) => setRegPhone(e.target.value)}
-                      className="w-full p-2 bg-neutral-700/50 text-white rounded-r-lg border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      className="w-full p-2 bg-white/5 text-white rounded-r-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     />
                   </div>
                   <input
@@ -3235,7 +3241,7 @@ const LoginPage = () => {
                     placeholder="Contraseña"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
-                    className="w-full p-2 bg-neutral-700/50 text-white rounded-lg border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
                   />
                   <button
                     type="submit"
