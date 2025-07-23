@@ -23,11 +23,11 @@ import {
 } from "chart.js";
 import { motion, AnimatePresence } from "framer-motion";
 
-// --- Configuración de Axios ---
+// --- Axios Configuration ---
 axios.defaults.baseURL = import.meta.env.VITE_API_URL;
 axios.defaults.withCredentials = true;
 
-// --- Registro de Chart.js ---
+// --- Chart.js Registration ---
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -40,7 +40,7 @@ ChartJS.register(
   TimeScale
 );
 
-// --- Iconos SVG ---
+// --- SVG Icons ---
 const Icon = ({ path, className = "h-5 w-5" }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -56,10 +56,10 @@ const Icon = ({ path, className = "h-5 w-5" }) => (
 
 const Icons = {
   Menu: () => <Icon path="M4 6h16M4 12h16M4 18h16" className="h-6 w-6" />,
-  Plus: () => <Icon path="M12 4v16m8-8H4" />,
+  Plus: () => <Icon path="M12 4v16m8-8H4" className="h-4 w-4" />,
   UserGroup: ({ className }) => (
     <Icon
-      path="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.124-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.124-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+      path="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"
       className={className}
     />
   ),
@@ -77,7 +77,7 @@ const Icons = {
   ),
   Key: ({ className }) => (
     <Icon
-      path="M15 7a4 4 0 11-8 0 4 4 0 018 0zM9 9a2 2 0 11-4 0 2 2 0 014 0zM9 15a4 4 0 100-8 4 4 0 000 8zM9 15c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+      path="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a4 4 0 100 8 4 4 0 000-8z"
       className={className}
     />
   ),
@@ -102,7 +102,7 @@ const Icons = {
   ),
   Clipboard: ({ className }) => (
     <Icon
-      path="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+      path="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v3.043m-7.416 0v3.043c0 .212.03.418.084.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"
       className={className}
     />
   ),
@@ -120,7 +120,51 @@ const Icons = {
   ),
 };
 
-// --- Contexto de la App ---
+// Lista de todos los activos disponibles para las recomendaciones
+const ALL_AVAILABLE_ASSETS = [
+  // Cryptos
+  "BTC-USDT",
+  "ETH-USDT",
+  "SOL-USDT",
+  "XRP-USDT",
+  "DOGE-USDT",
+  "ADA-USDT",
+  "AVAX-USDT",
+  "LTC-USDT",
+  "BCH-USDT",
+  "LINK-USDT",
+  // Stocks
+  "AAPL",
+  "MSFT",
+  "GOOGL",
+  "AMZN",
+  "NVDA",
+  "TSLA",
+  "META",
+  "JPM",
+  "JNJ",
+  // Forex
+  "EUR/USD",
+  "GBP/USD",
+  "USD/JPY",
+  "USD/CHF",
+  "AUD/USD",
+  "USD/CAD",
+  "NZD/USD",
+  "EUR/GBP",
+  "EUR/JPY",
+  "EUR/CHF",
+  "GBP/JPY",
+  "GBP/CHF",
+  "AUD/JPY",
+  "CAD/JPY",
+  // Commodities
+  "XAU/USD",
+  "XAG/USD",
+  "WTI/USD",
+  "BRENT/USD",
+];
+
 const AppContext = createContext();
 
 const AppProvider = ({ children }) => {
@@ -182,7 +226,6 @@ const AppProvider = ({ children }) => {
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
-// --- Hooks y Componentes de UI ---
 const useFlashOnUpdate = (value) => {
   const [flashClass, setFlashClass] = useState("");
   const prevValueRef = useRef();
@@ -196,7 +239,7 @@ const useFlashOnUpdate = (value) => {
         currentValue !== prevValue
       ) {
         setFlashClass(
-          currentValue > prevValue ? "text-green-400" : "text-red-400"
+          currentValue > prevValue ? "text-green-400" : "text-red-500"
         );
         const timer = setTimeout(() => setFlashClass(""), 300);
         return () => clearTimeout(timer);
@@ -217,8 +260,8 @@ const Toast = ({ message, type, onDismiss }) => (
     exit={{ opacity: 0, scale: 0.8 }}
     className={`fixed top-5 right-5 z-[9999] px-4 py-3 rounded-lg shadow-2xl text-white text-sm flex items-center border ${
       type === "success"
-        ? "bg-green-500/20 border-green-500/50"
-        : "bg-red-500/20 border-red-500/50"
+        ? "bg-green-500/90 border-green-400"
+        : "bg-red-500/90 border-red-400"
     }`}
   >
     <p>{message}</p>
@@ -234,7 +277,7 @@ const Card = React.forwardRef(({ children, className = "", ...props }, ref) => (
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5 }}
-    className={`bg-zinc-900 p-4 rounded-lg border border-zinc-800 ${className}`}
+    className={`bg-black/20 p-4 rounded-lg border border-neutral-800 backdrop-blur-sm ${className}`}
     {...props}
   >
     {children}
@@ -242,7 +285,7 @@ const Card = React.forwardRef(({ children, className = "", ...props }, ref) => (
 ));
 
 const Skeleton = ({ className }) => (
-  <div className={`animate-pulse bg-zinc-800 rounded-md ${className}`} />
+  <div className={`animate-pulse bg-neutral-800 rounded-md ${className}`} />
 );
 
 const TradingViewWidget = React.memo(({ symbol }) => {
@@ -251,20 +294,16 @@ const TradingViewWidget = React.memo(({ symbol }) => {
     if (!assetSymbol) return "KUCOIN:BTCUSDT";
     let s = assetSymbol.toUpperCase();
 
-    // Handle crypto pairs like BTC-USDT
     if (s.includes("-USDT")) return `KUCOIN:${s.replace("-", "")}`;
     if (s.endsWith("USDT")) return `KUCOIN:${s}`;
 
-    // Handle commodities
     if (s === "WTI/USD") return "TVC:USOIL";
     if (s === "BRENT/USD") return "TVC:UKOIL";
     if (s === "XAU/USD") return "OANDA:XAUUSD";
     if (s === "XAG/USD") return "OANDA:XAGUSD";
 
-    // Handle forex pairs like EUR/USD by removing the slash
     if (s.includes("/")) {
       const sanitizedSymbol = s.replace("/", "");
-      // A list of common forex pairs to ensure we format them correctly
       const forexPairs = [
         "EURUSD",
         "USDJPY",
@@ -300,7 +339,6 @@ const TradingViewWidget = React.memo(({ symbol }) => {
       }
     }
 
-    // Fallback for stocks
     return `NASDAQ:${s}`;
   };
   useEffect(() => {
@@ -322,8 +360,6 @@ const TradingViewWidget = React.memo(({ symbol }) => {
         hide_top_toolbar: false,
         allow_symbol_change: false,
         container_id: containerRef.current.id,
-        backgroundColor: "#0A0A0A",
-        gridColor: "rgba(0, 229, 255, 0.1)",
       });
     };
     if (!document.getElementById("tradingview-script")) {
@@ -362,17 +398,17 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       <button
         onClick={handlePrevious}
         disabled={currentPage === 1}
-        className="px-3 py-1 bg-zinc-700 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-600 transition-colors text-xs"
+        className="px-3 py-1 bg-neutral-700 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-600 transition-colors text-xs"
       >
         Anterior
       </button>
-      <span className="text-zinc-400 text-xs">
+      <span className="text-neutral-400 text-xs">
         Página {currentPage} de {totalPages}
       </span>
       <button
         onClick={handleNext}
         disabled={currentPage === totalPages}
-        className="px-3 py-1 bg-zinc-700 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-600 transition-colors text-xs"
+        className="px-3 py-1 bg-neutral-700 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-600 transition-colors text-xs"
       >
         Siguiente
       </button>
@@ -388,8 +424,8 @@ const PerformanceChart = ({ performanceData, isLoading }) => {
         label: "Ganancia Diaria",
         data: performanceData.map((d) => parseFloat(d.ganancia_dia || 0)),
         fill: true,
-        backgroundColor: "rgba(0, 229, 255, 0.1)",
-        borderColor: "#00E5FF",
+        backgroundColor: "rgba(22, 163, 74, 0.2)",
+        borderColor: "#22c55e",
         tension: 0.4,
         pointRadius: 0,
       },
@@ -408,7 +444,7 @@ const PerformanceChart = ({ performanceData, isLoading }) => {
         {isLoading ? (
           <Skeleton className="h-full w-full" />
         ) : !performanceData || performanceData.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-zinc-500 text-xs">
+          <div className="flex items-center justify-center h-full text-neutral-500 text-xs">
             No hay datos de rendimiento
           </div>
         ) : (
@@ -425,11 +461,13 @@ const StatisticsPanel = ({ stats, performanceData, isLoading }) => (
       <h3 className="text-white font-bold text-base mb-4">Estadísticas</h3>
       {isLoading ? (
         <div className="grid grid-cols-2 gap-4">
-          <Skeleton className="h-5" /> <Skeleton className="h-5" />
-          <Skeleton className="h-5" /> <Skeleton className="h-5" />
+          <Skeleton className="h-5" />
+          <Skeleton className="h-5" />
+          <Skeleton className="h-5" />
+          <Skeleton className="h-5" />
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 text-zinc-300 text-sm">
+        <div className="grid grid-cols-2 gap-4 text-neutral-300 text-sm">
           <div>
             Total Invertido:{" "}
             <span className="font-semibold text-white">
@@ -466,7 +504,7 @@ const AssetPrice = React.memo(({ symbol }) => {
   const normalizedSymbol = symbol.toUpperCase().replace(/[-/]/g, "");
   const price = realTimePrices[normalizedSymbol];
   const flashClass = useFlashOnUpdate(price);
-  const baseColor = price ? "text-white" : "text-zinc-500";
+  const baseColor = price ? "text-white" : "text-neutral-500";
   const finalColorClass = flashClass || baseColor;
   return (
     <div className="px-2 py-1 rounded-md">
@@ -484,8 +522,8 @@ const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
     onClick={() => onClick(symbol)}
     className={`cursor-pointer transition-all duration-200 rounded-md flex justify-between items-center p-2 group ${
       isSelected
-        ? "bg-cyan-400/10 text-cyan-300"
-        : "hover:bg-zinc-800 text-zinc-300"
+        ? "bg-cyan-500/20 text-white"
+        : "hover:bg-neutral-800 text-neutral-300"
     }`}
   >
     <span className="font-semibold">{symbol}</span>
@@ -496,10 +534,10 @@ const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
           e.stopPropagation();
           onRemove(symbol);
         }}
-        className="text-zinc-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+        className="text-neutral-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
         title={`Eliminar ${symbol}`}
       >
-        <Icons.X className="h-4 w-4" />
+        <Icons.X />
       </button>
     </div>
   </li>
@@ -508,6 +546,44 @@ const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
 const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
   const { setSelectedAsset, selectedAsset } = useContext(AppContext);
   const [newSymbol, setNewSymbol] = useState("");
+  const [recommendations, setRecommendations] = useState([]);
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  const searchContainerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target)
+      ) {
+        setShowRecommendations(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleInputChange = (e) => {
+    const value = e.target.value.toUpperCase();
+    setNewSymbol(value);
+    if (value) {
+      const filtered = ALL_AVAILABLE_ASSETS.filter((asset) =>
+        asset.toUpperCase().includes(value)
+      );
+      setRecommendations(filtered);
+      setShowRecommendations(true);
+    } else {
+      setShowRecommendations(false);
+    }
+  };
+
+  const handleRecommendationClick = (symbol) => {
+    setNewSymbol(symbol);
+    setShowRecommendations(false);
+  };
+
   const handleAssetClick = useCallback(
     (symbol) => {
       setSelectedAsset(symbol);
@@ -519,26 +595,49 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
     if (newSymbol) {
       onAddAsset(newSymbol);
       setNewSymbol("");
+      setShowRecommendations(false);
     }
   };
   return (
     <div className="mb-6">
-      <form onSubmit={handleSubmit} className="mb-4 flex gap-2">
-        <input
-          type="text"
-          value={newSymbol}
-          onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
-          placeholder="Ej: DOGE-USDT, WTI/USD"
-          className="w-full p-2 bg-zinc-800 border border-zinc-700 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
-        />
-        <button
-          type="submit"
-          className="bg-cyan-600 hover:bg-cyan-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
-        >
-          <Icons.Plus />
-        </button>
-      </form>
-      <h2 className="text-zinc-400 font-bold text-sm tracking-wider uppercase mb-3 px-2">
+      <div ref={searchContainerRef} className="relative">
+        <form onSubmit={handleSubmit} className="mb-1 flex gap-2">
+          <input
+            type="text"
+            value={newSymbol}
+            onChange={handleInputChange}
+            onFocus={() => newSymbol && setShowRecommendations(true)}
+            placeholder="Ej: EUR/USD, TSLA"
+            className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+            autoComplete="off"
+          />
+          <button
+            type="submit"
+            className="bg-red-600 hover:bg-red-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
+          >
+            <Icons.Plus />
+          </button>
+        </form>
+        {showRecommendations && recommendations.length > 0 && (
+          <motion.ul
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="absolute w-full bg-neutral-800 border border-neutral-700 rounded-md mt-1 max-h-40 overflow-y-auto z-20"
+          >
+            {recommendations.map((rec) => (
+              <li
+                key={rec}
+                onClick={() => handleRecommendationClick(rec)}
+                className="px-3 py-2 text-sm text-neutral-300 hover:bg-red-500/50 cursor-pointer"
+              >
+                {rec}
+              </li>
+            ))}
+          </motion.ul>
+        )}
+      </div>
+      <h2 className="text-neutral-400 font-bold text-sm tracking-wider uppercase mt-4 mb-3 px-2">
         Mis Activos
       </h2>
       <ul className="space-y-1 max-h-48 overflow-y-auto">
@@ -559,7 +658,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
 const MenuItem = ({ icon, text, onClick }) => (
   <button
     onClick={onClick}
-    className="flex items-center w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-700 rounded-md transition-colors"
+    className="flex items-center w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-neutral-700 rounded-md transition-colors"
   >
     {icon}
     <span className="ml-3">{text}</span>
@@ -587,7 +686,7 @@ const ProfileMenu = React.memo(
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="bg-zinc-800 cursor-pointer text-white p-2 rounded-full hover:bg-cyan-500 transition-colors"
+          className="bg-neutral-800 cursor-pointer text-white p-2 rounded-full hover:bg-red-500 transition-colors"
           title="Cuenta"
         >
           <Icons.UserCircle className="h-6 w-6" />
@@ -599,19 +698,21 @@ const ProfileMenu = React.memo(
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -10 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="origin-top-right absolute right-0 mt-2 w-64 rounded-xl shadow-2xl bg-zinc-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-50 p-2 border border-zinc-700"
+              className="origin-top-right absolute right-0 mt-2 w-64 rounded-xl shadow-2xl bg-neutral-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-50 p-2 border border-neutral-700"
             >
-              <div className="px-3 py-2 border-b border-zinc-700 mb-2">
+              <div className="px-3 py-2 border-b border-neutral-700 mb-2">
                 <p className="text-sm font-semibold text-white truncate">
                   {user?.nombre || "Usuario"}
                 </p>
-                <p className="text-xs text-zinc-400 truncate">
+                <p className="text-xs text-neutral-400 truncate">
                   {user?.email || "email@example.com"}
                 </p>
               </div>
               <div className="space-y-1">
                 <MenuItem
-                  icon={<Icons.UserCircle className="h-5 w-5 text-zinc-400" />}
+                  icon={
+                    <Icons.UserCircle className="h-5 w-5 text-neutral-400" />
+                  }
                   text="Gestionar Cuenta"
                   onClick={() => handleItemClick(onToggleSideMenu)}
                 />
@@ -619,19 +720,19 @@ const ProfileMenu = React.memo(
                   <>
                     <MenuItem
                       icon={
-                        <Icons.UserGroup className="h-5 w-5 text-zinc-400" />
+                        <Icons.UserGroup className="h-5 w-5 text-neutral-400" />
                       }
                       text="Gestionar Usuarios"
                       onClick={() => handleItemClick(onManageUsers)}
                     />
                     <MenuItem
-                      icon={<Icons.Key className="h-5 w-5 text-zinc-400" />}
+                      icon={<Icons.Key className="h-5 w-5 text-neutral-400" />}
                       text="Código de Registro"
                       onClick={() => handleItemClick(onManageRegCode)}
                     />
                   </>
                 )}
-                <div className="my-1 h-px bg-zinc-700" />
+                <div className="my-1 h-px bg-neutral-700" />
                 <MenuItem
                   icon={
                     <Icons.Logout className="h-5 w-5 cursor-pointer text-red-400" />
@@ -658,11 +759,11 @@ const Header = ({
   const { user, logout, selectedAsset } = useContext(AppContext);
   const [volume, setVolume] = useState(0.01);
   return (
-    <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-zinc-950/50 border-b border-zinc-800 z-30">
+    <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-black/20 border-b border-neutral-800">
       <div className="flex items-center gap-4">
         <button
           onClick={onToggleMainSidebar}
-          className="p-2 rounded-full hover:bg-zinc-700 lg:hidden"
+          className="p-2 rounded-full hover:bg-neutral-700 lg:hidden"
         >
           <Icons.Menu />
         </button>
@@ -679,7 +780,7 @@ const Header = ({
             onChange={(e) => setVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-2 border border-zinc-700 bg-zinc-800 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none"
+            className="w-24 p-2 border border-neutral-700 bg-neutral-800 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-neutral-500 focus:outline-none"
           />
           <button
             onClick={() => onOperation("buy", volume)}
@@ -693,7 +794,7 @@ const Header = ({
         <h2 className="text-xl sm:text-3xl font-bold text-white">
           {selectedAsset}
         </h2>
-        <p className="text-xs text-zinc-400 hidden sm:block">
+        <p className="text-xs text-neutral-400 hidden sm:block">
           Activo para operar
         </p>
       </div>
@@ -719,7 +820,7 @@ const FlashingMetric = ({ value, prefix = "", suffix = "" }) => {
       className={`font-bold px-2 py-1 rounded-md transition-colors duration-300 ${finalColorClass}`}
     >
       {prefix}
-      {!isNaN(value) ? value : "0.00"}
+      {!isNaN(value) ? value.toFixed(2) : "0.00"}
       {suffix}
     </span>
   );
@@ -732,23 +833,23 @@ const FinancialMetrics = ({ metrics, isLoading }) => (
     ) : (
       <>
         <div className="text-center">
-          <p className="text-zinc-400">Balance</p>
+          <p className="text-neutral-400">Balance</p>
           <span className="font-bold text-white">${metrics.balance}</span>
         </div>
         <div className="text-center">
-          <p className="text-zinc-400">Equidad</p>
+          <p className="text-neutral-400">Equidad</p>
           <FlashingMetric value={parseFloat(metrics.equity)} prefix="$" />
         </div>
         <div className="text-center">
-          <p className="text-zinc-400">M. Usado</p>
+          <p className="text-neutral-400">M. Usado</p>
           <FlashingMetric value={parseFloat(metrics.usedMargin)} prefix="$" />
         </div>
         <div className="text-center">
-          <p className="text-zinc-400">M. Libre</p>
+          <p className="text-neutral-400">M. Libre</p>
           <FlashingMetric value={parseFloat(metrics.freeMargin)} prefix="$" />
         </div>
         <div className="text-center col-span-2 md:col-span-1">
-          <p className="text-zinc-400">Nivel Margen</p>
+          <p className="text-neutral-400">Nivel Margen</p>
           <FlashingMetric value={parseFloat(metrics.marginLevel)} suffix="%" />
         </div>
       </>
@@ -837,29 +938,30 @@ const OperationsHistory = ({
           {op.tipo_operacion}
         </span>
       </div>
-      <div className="grid grid-cols-2 gap-2 text-zinc-300 mb-4">
+      <div className="grid grid-cols-2 gap-2 text-neutral-300 mb-4">
         <div>
-          <span className="font-semibold text-zinc-500">Vol:</span> {op.volumen}
+          <span className="font-semibold text-neutral-500">Vol:</span>{" "}
+          {op.volumen}
         </div>
         <div>
-          <span className="font-semibold text-zinc-500">Entrada:</span>{" "}
+          <span className="font-semibold text-neutral-500">Entrada:</span>{" "}
           {parseFloat(op.precio_entrada).toFixed(4)}
         </div>
         <div>
-          <span className="font-semibold text-zinc-500">TP:</span>{" "}
+          <span className="font-semibold text-neutral-500">TP:</span>{" "}
           {op.take_profit ? parseFloat(op.take_profit).toFixed(2) : "-"}
         </div>
         <div>
-          <span className="font-semibold text-zinc-500">SL:</span>{" "}
+          <span className="font-semibold text-neutral-500">SL:</span>{" "}
           {op.stop_loss ? parseFloat(op.stop_loss).toFixed(2) : "-"}
         </div>
       </div>
-      <div className="flex justify-between items-center pt-2 border-t border-zinc-700">
-        <div className="text-zinc-400">
+      <div className="flex justify-between items-center pt-2 border-t border-neutral-700">
+        <div className="text-neutral-400">
           G/P: <LiveProfitCell operation={op} />
         </div>
         {op.cerrada ? (
-          <span className="bg-zinc-700 px-2 py-1 rounded-md text-xs">
+          <span className="bg-neutral-700 px-2 py-1 rounded-md text-xs">
             Cerrado
           </span>
         ) : (
@@ -876,19 +978,19 @@ const OperationsHistory = ({
 
   return (
     <Card className="flex-grow flex flex-col overflow-hidden">
-      <div className="p-3 bg-zinc-900/30 flex justify-between items-center flex-shrink-0">
+      <div className="p-3 bg-black/20 flex justify-between items-center flex-shrink-0">
         <h3 className="text-base font-bold text-white">
           Historial de Operaciones
         </h3>
         <div className="flex items-center">
-          <label htmlFor="filter" className="text-sm text-zinc-400 mr-2">
+          <label htmlFor="filter" className="text-sm text-neutral-400 mr-2">
             Filtrar:
           </label>
           <select
             id="filter"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="bg-zinc-800 text-white text-sm rounded-md p-1 border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
+            className="bg-neutral-800 text-white text-sm rounded-md p-1 border border-neutral-700 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
           >
             <option value="todas">Todas</option>
             <option value="abiertas">Abiertas</option>
@@ -897,8 +999,8 @@ const OperationsHistory = ({
         </div>
       </div>
       <div className="flex-grow overflow-y-auto">
-        <table className="hidden sm:table w-full text-sm text-left text-zinc-300">
-          <thead className="bg-zinc-800/50 text-xs uppercase sticky top-0 z-10 backdrop-blur-sm">
+        <table className="hidden sm:table w-full text-sm text-left text-neutral-300">
+          <thead className="bg-neutral-800/50 text-xs uppercase sticky top-0 z-10 backdrop-blur-sm">
             <tr>
               {columns.map((h) => (
                 <th key={h} className="px-3 py-2 font-medium whitespace-nowrap">
@@ -907,7 +1009,7 @@ const OperationsHistory = ({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800">
+          <tbody className="divide-y divide-neutral-800">
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
@@ -921,7 +1023,7 @@ const OperationsHistory = ({
               : operations.map((op) => (
                   <tr
                     key={op.id}
-                    className="hover:bg-zinc-800/50 cursor-pointer"
+                    className="hover:bg-neutral-800/50 cursor-pointer"
                     onClick={() => onRowClick(op)}
                   >
                     <td className="px-3 py-2 whitespace-nowrap">
@@ -962,7 +1064,7 @@ const OperationsHistory = ({
                     </td>
                     <td className="px-3 py-2">
                       {op.cerrada ? (
-                        <span className="bg-zinc-700 px-2 py-1 rounded-md text-xs">
+                        <span className="bg-neutral-700 px-2 py-1 rounded-md text-xs">
                           Cerrado
                         </span>
                       ) : (
@@ -986,7 +1088,7 @@ const OperationsHistory = ({
             : operations.map(renderMobileCard)}
         </div>
       </div>
-      <div className="p-2 border-t border-zinc-800">
+      <div className="p-2 border-t border-neutral-800">
         <Pagination
           currentPage={pagination.currentPage}
           totalPages={pagination.totalPages}
@@ -1017,14 +1119,14 @@ const Modal = ({
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className={`bg-zinc-900 rounded-lg shadow-xl w-full ${maxWidth} text-white border border-zinc-700 flex flex-col max-h-[90vh]`}
+          className={`bg-neutral-900 rounded-lg shadow-xl w-full ${maxWidth} text-white border border-neutral-700 flex flex-col max-h-[90vh]`}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex-shrink-0 flex justify-between items-center p-4 sm:p-6 border-b border-zinc-700">
+          <div className="flex-shrink-0 flex justify-between items-center p-4 sm:p-6 border-b border-neutral-700">
             <h2 className="text-xl font-bold">{title}</h2>
             <button
               onClick={onClose}
-              className="text-zinc-400 hover:text-white cursor-pointer"
+              className="text-neutral-400 hover:text-white cursor-pointer"
             >
               <Icons.X />
             </button>
@@ -1072,14 +1174,17 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
     if (!value || !livePrice || !volume) return null;
     const targetPrice = parseFloat(value);
     if (isNaN(targetPrice)) return null;
-    if (targetType === "tp")
+
+    if (targetType === "tp") {
       return type === "buy"
         ? (targetPrice - livePrice) * volume
         : (livePrice - targetPrice) * volume;
-    if (targetType === "sl")
+    }
+    if (targetType === "sl") {
       return type === "buy"
         ? (targetPrice - livePrice) * volume
         : (livePrice - targetPrice) * volume;
+    }
     return null;
   };
 
@@ -1104,21 +1209,22 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
       maxWidth="max-w-md"
     >
       <div className="space-y-3 mb-4">
-        <p className="text-zinc-300 flex justify-between">
+        <p className="text-neutral-300 flex justify-between">
           <span>Precio Actual:</span>
           <ModalLivePrice symbol={asset} />
         </p>
-        <p className="text-zinc-300 flex justify-between">
+        <p className="text-neutral-300 flex justify-between">
           <span>Volumen:</span>
           <span className="font-mono text-white">{volume}</span>
         </p>
-        <p className="text-zinc-300 flex justify-between">
+        <p className="text-neutral-300 flex justify-between">
           <span>Margen Requerido:</span>
           <span className="font-mono text-white">${requiredMargin}</span>
         </p>
       </div>
+
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-2 text-zinc-300">
+        <label className="block text-sm font-medium mb-2 text-neutral-300">
           Take Profit (opcional):
         </label>
         <input
@@ -1126,7 +1232,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           value={tp}
           onChange={(e) => setTp(e.target.value)}
           placeholder="Precio de cierre para tomar ganancias"
-          className="w-full p-2 bg-zinc-800 border border-zinc-700 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+          className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
         />
         {potentialTpProfit !== null && (
           <p className="text-xs mt-1 text-green-400">
@@ -1134,8 +1240,9 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           </p>
         )}
       </div>
+
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-2 text-zinc-300">
+        <label className="block text-sm font-medium mb-2 text-neutral-300">
           Stop Loss (opcional):
         </label>
         <input
@@ -1143,7 +1250,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           value={sl}
           onChange={(e) => setSl(e.target.value)}
           placeholder="Precio de cierre para limitar pérdidas"
-          className="w-full p-2 bg-zinc-800 border border-zinc-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+          className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
         />
         {potentialSlProfit !== null && (
           <p className="text-xs mt-1 text-red-400">
@@ -1151,6 +1258,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           </p>
         )}
       </div>
+
       <div className="flex justify-end mt-4">
         <button
           onClick={handleConfirm}
@@ -1178,7 +1286,7 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
     maxWidth="max-w-md"
   >
     {operation && (
-      <div className="space-y-3 text-sm text-zinc-300">
+      <div className="space-y-3 text-sm text-neutral-300">
         <div className="flex justify-between">
           <span>Activo:</span>
           <span className="font-semibold text-white">{operation.activo}</span>
@@ -1216,8 +1324,8 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
           <span
             className={`px-2 py-0.5 rounded-full text-xs ${
               operation.cerrada
-                ? "bg-zinc-600 text-white"
-                : "bg-cyan-500 text-white"
+                ? "bg-neutral-600 text-white"
+                : "bg-blue-500 text-white"
             }`}
           >
             {operation.cerrada ? "Cerrada" : "Abierta"}
@@ -1294,7 +1402,7 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
     >
       <div className="overflow-auto">
         <table className="w-full text-sm text-left border-collapse">
-          <thead className="bg-zinc-700 text-zinc-300 sticky top-0">
+          <thead className="bg-neutral-700 text-neutral-300 sticky top-0">
             <tr>
               {[
                 "ID",
@@ -1312,9 +1420,9 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
               ))}
             </tr>
           </thead>
-          <tbody className="bg-zinc-800">
+          <tbody className="bg-neutral-800">
             {operations.map((op) => (
-              <tr key={op.id} className="border-b border-zinc-700">
+              <tr key={op.id} className="border-b border-neutral-700">
                 <td className="p-2">{op.id}</td>
                 <td className="p-2">{op.activo}</td>
                 <td className="p-2">{op.tipo_operacion}</td>
@@ -1325,7 +1433,7 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
                     step="any"
                     defaultValue={op.precio_entrada}
                     onChange={(e) => handlePriceChange(op.id, e.target.value)}
-                    className="w-full p-1 bg-zinc-700 rounded border border-zinc-600"
+                    className="w-full p-1 bg-neutral-700 rounded border border-neutral-600"
                   />
                 </td>
                 <td className="p-2">{new Date(op.fecha).toLocaleString()}</td>
@@ -1333,7 +1441,7 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
                 <td className="p-2">
                   <button
                     onClick={() => handleSavePrice(op.id)}
-                    className="bg-cyan-600 text-white px-3 py-1 text-xs rounded hover:bg-cyan-500 cursor-pointer"
+                    className="bg-red-600 text-white px-3 py-1 text-xs rounded hover:bg-red-500 cursor-pointer"
                   >
                     Guardar
                   </button>
@@ -1363,13 +1471,13 @@ const UserCard = React.memo(
         <div className="flex justify-between items-start mb-2">
           <div>
             <p className="font-bold text-white">{user.nombre}</p>
-            <p className="text-zinc-400">{user.email}</p>
+            <p className="text-neutral-400">{user.email}</p>
           </div>
           <span
             className={`px-2 py-0.5 rounded-full text-xs ${
               user.rol === "admin"
-                ? "bg-cyan-500/20 text-cyan-400"
-                : "bg-zinc-500/20 text-zinc-400"
+                ? "bg-red-500/20 text-red-400"
+                : "bg-blue-500/20 text-blue-400"
             }`}
           >
             {user.rol}
@@ -1377,48 +1485,48 @@ const UserCard = React.memo(
         </div>
         <div className="space-y-2 my-4">
           <div className="flex items-center">
-            <label className="w-24 text-zinc-400">Balance:</label>
+            <label className="w-24 text-neutral-400">Balance:</label>
             <input
               type="number"
               name="balance"
               value={user.balance}
               onChange={handleInputChange}
-              className="flex-1 p-1 bg-zinc-700 rounded border border-zinc-600"
+              className="flex-1 p-1 bg-neutral-700 rounded border border-neutral-600"
             />
           </div>
           <div className="flex items-center">
-            <label className="w-24 text-zinc-400">ID:</label>
+            <label className="w-24 text-neutral-400">ID:</label>
             <input
               type="text"
               name="identificacion"
               value={user.identificacion}
               onChange={handleInputChange}
-              className="flex-1 p-1 bg-zinc-700 rounded border border-zinc-600"
+              className="flex-1 p-1 bg-neutral-700 rounded border border-neutral-600"
             />
           </div>
           <div className="flex items-center">
-            <label className="w-24 text-zinc-400">Teléfono:</label>
+            <label className="w-24 text-neutral-400">Teléfono:</label>
             <input
               type="text"
               name="telefono"
               value={user.telefono}
               onChange={handleInputChange}
-              className="flex-1 p-1 bg-zinc-700 rounded border border-zinc-600"
+              className="flex-1 p-1 bg-neutral-700 rounded border border-neutral-600"
             />
           </div>
           <div className="flex items-center">
-            <label className="w-24 text-zinc-400">Password:</label>
+            <label className="w-24 text-neutral-400">Password:</label>
             <input
               type="password"
               name="password"
               value={user.password || ""}
               placeholder="No cambiar"
               onChange={handleInputChange}
-              className="flex-1 p-1 bg-zinc-700 rounded border border-zinc-600"
+              className="flex-1 p-1 bg-neutral-700 rounded border border-neutral-600"
             />
           </div>
         </div>
-        <div className="flex justify-end gap-2 pt-2 border-t border-zinc-700">
+        <div className="flex justify-end gap-2 pt-2 border-t border-neutral-700">
           <button
             onClick={() => onSave(user)}
             className="bg-green-600 text-white px-3 py-1 text-xs rounded hover:bg-green-500 cursor-pointer"
@@ -1437,7 +1545,7 @@ const UserCard = React.memo(
             title="Eliminar Usuario"
             className="bg-red-600 text-white p-1 text-xs rounded hover:bg-red-500 cursor-pointer"
           >
-            <Icons.X className="h-4 w-4" />
+            <Icons.X />
           </button>
         </div>
       </Card>
@@ -1452,7 +1560,7 @@ const UserTableRow = React.memo(
       onDataChange(user.id, name, value);
     };
     return (
-      <tr className="border-b border-zinc-700">
+      <tr className="border-b border-neutral-700">
         <td className="p-2 whitespace-nowrap">{user.id}</td>
         <td className="p-2">
           <input
@@ -1460,7 +1568,7 @@ const UserTableRow = React.memo(
             name="nombre"
             value={user.nombre}
             onChange={handleInputChange}
-            className="w-full p-1 bg-zinc-700 rounded border border-zinc-600"
+            className="w-full p-1 bg-neutral-700 rounded border border-neutral-600"
           />
         </td>
         <td className="p-2">
@@ -1469,7 +1577,7 @@ const UserTableRow = React.memo(
             name="email"
             value={user.email}
             onChange={handleInputChange}
-            className="w-full p-1 bg-zinc-700 rounded border border-zinc-600"
+            className="w-full p-1 bg-neutral-700 rounded border border-neutral-600"
           />
         </td>
         <td className="p-2">
@@ -1479,7 +1587,7 @@ const UserTableRow = React.memo(
             step="any"
             value={user.balance}
             onChange={handleInputChange}
-            className="w-full p-1 bg-zinc-700 rounded border border-zinc-600"
+            className="w-full p-1 bg-neutral-700 rounded border border-neutral-600"
           />
         </td>
         <td className="p-2">
@@ -1487,7 +1595,7 @@ const UserTableRow = React.memo(
             name="rol"
             value={user.rol}
             onChange={handleInputChange}
-            className="w-full p-1 bg-zinc-700 rounded border border-zinc-600 cursor-pointer"
+            className="w-full p-1 bg-neutral-700 rounded border border-neutral-600 cursor-pointer"
           >
             <option value="usuario">Usuario</option>
             <option value="admin">Admin</option>
@@ -1499,7 +1607,7 @@ const UserTableRow = React.memo(
             name="identificacion"
             value={user.identificacion}
             onChange={handleInputChange}
-            className="w-full p-1 bg-zinc-700 rounded border border-zinc-600"
+            className="w-full p-1 bg-neutral-700 rounded border border-neutral-600"
           />
         </td>
         <td className="p-2">
@@ -1508,7 +1616,7 @@ const UserTableRow = React.memo(
             name="telefono"
             value={user.telefono}
             onChange={handleInputChange}
-            className="w-full p-1 bg-zinc-700 rounded border border-zinc-600"
+            className="w-full p-1 bg-neutral-700 rounded border border-neutral-600"
           />
         </td>
         <td className="p-2">
@@ -1518,7 +1626,7 @@ const UserTableRow = React.memo(
             placeholder="No cambiar"
             value={user.password || ""}
             onChange={handleInputChange}
-            className="w-full p-1 bg-zinc-700 rounded border border-zinc-600"
+            className="w-full p-1 bg-neutral-700 rounded border border-neutral-600"
           />
         </td>
         <td className="p-2 flex gap-2">
@@ -1540,7 +1648,7 @@ const UserTableRow = React.memo(
             title="Eliminar Usuario"
             className="bg-red-600 text-white p-1 text-xs rounded hover:bg-red-500 cursor-pointer"
           >
-            <Icons.X className="h-4 w-4" />
+            <Icons.X />
           </button>
         </td>
       </tr>
@@ -1611,7 +1719,6 @@ const ManageUsersModal = ({
     },
     [fetchUsers, pagination.currentPage, setAlert]
   );
-
   return (
     <Modal
       isOpen={isOpen}
@@ -1633,7 +1740,7 @@ const ManageUsersModal = ({
       </div>
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-sm text-left border-collapse">
-          <thead className="bg-zinc-700 text-zinc-300 sticky top-0">
+          <thead className="bg-neutral-700 text-neutral-300 sticky top-0">
             <tr>
               {[
                 "ID",
@@ -1652,7 +1759,7 @@ const ManageUsersModal = ({
               ))}
             </tr>
           </thead>
-          <tbody className="bg-zinc-800">
+          <tbody className="bg-neutral-800">
             {users.map((user) => (
               <UserTableRow
                 key={user.id}
@@ -1711,28 +1818,28 @@ const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
       maxWidth="max-w-md"
     >
       <div>
-        <label className="block text-sm font-medium mb-2 text-zinc-300">
+        <label className="block text-sm font-medium mb-2 text-neutral-300">
           Código Actual:
         </label>
         <input
           type="text"
           readOnly
           value={code}
-          className="w-full p-2 bg-zinc-800 border border-zinc-700 rounded mb-4 focus:outline-none"
+          className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded mb-4 focus:outline-none"
         />
-        <label className="block text-sm font-medium mb-2 text-zinc-300">
+        <label className="block text-sm font-medium mb-2 text-neutral-300">
           Nuevo Código:
         </label>
         <input
           type="text"
           value={newCode}
           onChange={(e) => setNewCode(e.target.value)}
-          className="w-full p-2 bg-zinc-800 border border-zinc-700 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-red-500"
         />
         <div className="flex justify-end mt-4">
           <button
             onClick={handleSave}
-            className="px-5 py-2 rounded-md text-white font-bold transition-colors bg-cyan-600 hover:bg-cyan-500 cursor-pointer"
+            className="px-5 py-2 rounded-md text-white font-bold transition-colors bg-red-600 hover:bg-red-500 cursor-pointer"
           >
             Guardar Código
           </button>
@@ -1744,11 +1851,11 @@ const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => (
   <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="max-w-sm">
-    <div className="text-zinc-300 mb-6">{children}</div>
+    <div className="text-neutral-300 mb-6">{children}</div>
     <div className="flex justify-end gap-4">
       <button
         onClick={onClose}
-        className="px-4 py-2 rounded-md bg-zinc-600 hover:bg-zinc-500 text-white font-bold transition-colors"
+        className="px-4 py-2 rounded-md bg-neutral-600 hover:bg-neutral-500 text-white font-bold transition-colors"
       >
         Cancelar
       </button>
@@ -1785,38 +1892,38 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
     <div className="p-4">
       <button
         onClick={onBack}
-        className="flex items-center text-cyan-400 hover:text-cyan-300 mb-4 cursor-pointer"
+        className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
       >
         <Icons.ChevronLeft /> Volver al Menú
       </button>
       <h2 className="text-xl font-bold mb-4">Mis datos</h2>
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1 text-zinc-400">
+          <label className="block text-sm font-medium mb-1 text-neutral-400">
             Nombre
           </label>
           <input
             type="text"
             readOnly
             value={user?.nombre || ""}
-            className="w-full p-2 bg-zinc-800 border border-zinc-700 rounded"
+            className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1 text-zinc-400">
+          <label className="block text-sm font-medium mb-1 text-neutral-400">
             Email
           </label>
           <input
             type="email"
             readOnly
             value={user?.email || ""}
-            className="w-full p-2 bg-zinc-800 border border-zinc-700 rounded"
+            className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded"
           />
         </div>
         <div>
           <label
             htmlFor="identificacion"
-            className="block text-sm font-medium mb-1 text-zinc-400"
+            className="block text-sm font-medium mb-1 text-neutral-400"
           >
             Identificación
           </label>
@@ -1825,13 +1932,13 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
             type="text"
             value={identificacion}
             onChange={(e) => setIdentificacion(e.target.value)}
-            className="w-full p-2 bg-zinc-800 border border-zinc-700 rounded"
+            className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded"
           />
         </div>
         <div>
           <label
             htmlFor="telefono"
-            className="block text-sm font-medium mb-1 text-zinc-400"
+            className="block text-sm font-medium mb-1 text-neutral-400"
           >
             Teléfono
           </label>
@@ -1840,13 +1947,13 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
             type="text"
             value={telefono}
             onChange={(e) => setTelefono(e.target.value)}
-            className="w-full p-2 bg-zinc-800 border border-zinc-700 rounded"
+            className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded"
           />
         </div>
         <div className="flex justify-end">
           <button
             onClick={handleSave}
-            className="px-5 py-2 rounded-md text-white font-bold bg-cyan-600 hover:bg-cyan-500 cursor-pointer transition-colors"
+            className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 cursor-pointer transition-colors"
           >
             Guardar Cambios
           </button>
@@ -1859,7 +1966,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
 const PaymentMethodButton = ({ icon, text, onClick }) => (
   <button
     onClick={onClick}
-    className="w-full text-left p-4 flex items-center gap-4 bg-zinc-800/50 hover:bg-zinc-700/50 rounded-lg transition-colors"
+    className="w-full text-left p-4 flex items-center gap-4 bg-neutral-800/50 hover:bg-neutral-700/50 rounded-lg transition-colors"
   >
     {icon}
     <span className="font-semibold text-lg">{text}</span>
@@ -1870,7 +1977,7 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-cyan-400 hover:text-cyan-300 mb-6 cursor-pointer"
+      className="flex items-center text-red-400 hover:text-red-300 mb-6 cursor-pointer"
     >
       <Icons.ChevronLeft /> Volver al Menú Principal
     </button>
@@ -1896,7 +2003,7 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-cyan-400 hover:text-cyan-300 mb-6 cursor-pointer"
+      className="flex items-center text-red-400 hover:text-red-300 mb-6 cursor-pointer"
     >
       <Icons.ChevronLeft /> Volver al Menú Principal
     </button>
@@ -1921,7 +2028,7 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
 const MenuButton = React.memo(({ icon, text, onClick }) => (
   <button
     onClick={onClick}
-    className="w-full text-left p-2 rounded hover:bg-zinc-800 transition-colors flex items-center text-zinc-300 cursor-pointer"
+    className="w-full text-left p-2 rounded hover:bg-neutral-800 transition-colors flex items-center text-neutral-300 cursor-pointer"
   >
     {icon}
     <span className="ml-3">{text}</span>
@@ -1934,9 +2041,11 @@ const SideMenu = React.memo(
     useEffect(() => {
       if (isOpen) setView("main");
     }, [isOpen]);
+
     const handleSelectMethod = (method, type) => {
       onSelectPaymentMethod(method, type);
     };
+
     return (
       <AnimatePresence>
         {isOpen && (
@@ -1953,9 +2062,9 @@ const SideMenu = React.memo(
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "tween", ease: "circOut", duration: 0.4 }}
-              className="fixed top-0 left-0 h-full w-80 bg-zinc-900 shadow-2xl z-50 border-r border-zinc-700 flex flex-col"
+              className="fixed top-0 left-0 h-full w-80 bg-neutral-900 shadow-2xl z-50 border-r border-neutral-700 flex flex-col"
             >
-              <div className="p-4 border-b border-zinc-700 flex-shrink-0">
+              <div className="p-4 border-b border-neutral-700 flex-shrink-0">
                 <img
                   className="mb-2"
                   src="/bulltrodatw.png"
@@ -1980,10 +2089,10 @@ const SideMenu = React.memo(
                       text="Retirar"
                       onClick={() => setView("withdraw")}
                     />
-                    <div className="my-2 h-px bg-zinc-700" />
+                    <div className="my-2 h-px bg-neutral-700" />
                     <MenuButton
                       icon={
-                        <Icons.UserCircle className="h-5 w-5 text-zinc-400" />
+                        <Icons.UserCircle className="h-5 w-5 text-neutral-400" />
                       }
                       text="Completar Perfil"
                       onClick={() => setView("profile")}
@@ -2024,14 +2133,17 @@ const SideMenu = React.memo(
 const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
   const [network, setNetwork] = useState("TRC20");
   const depositAddress = "TQmZ1fA2gB4iC3dE5fG6h7J8k9L0mN1oP2q";
+
   const handleCopy = () => {
     navigator.clipboard.writeText(depositAddress);
     onSubmitted();
   };
+
   const handleWithdrawal = (e) => {
     e.preventDefault();
     onSubmitted();
   };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -2043,23 +2155,23 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
     >
       {type === "deposit" ? (
         <div className="text-center">
-          <p className="text-zinc-400 mb-4">
+          <p className="text-neutral-400 mb-4">
             Envía USDT a la siguiente dirección usando la red TRON (TRC20).
           </p>
-          <div className="bg-zinc-800 p-4 rounded-lg my-4">
+          <div className="bg-neutral-800 p-4 rounded-lg my-4">
             <img
               src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${depositAddress}`}
               alt="QR Code"
               className="mx-auto border-4 border-white rounded-lg"
             />
           </div>
-          <div className="bg-zinc-900/50 p-3 rounded-lg flex items-center justify-between gap-4">
-            <span className="font-mono text-sm break-all text-zinc-300">
+          <div className="bg-neutral-900/50 p-3 rounded-lg flex items-center justify-between gap-4">
+            <span className="font-mono text-sm break-all text-neutral-300">
               {depositAddress}
             </span>
             <button
               onClick={handleCopy}
-              className="p-2 rounded-md hover:bg-zinc-700 transition-colors flex-shrink-0"
+              className="p-2 rounded-md hover:bg-neutral-700 transition-colors flex-shrink-0"
             >
               <Icons.Clipboard className="h-5 w-5" />
             </button>
@@ -2072,24 +2184,24 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
       ) : (
         <form onSubmit={handleWithdrawal} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-neutral-300 mb-1">
               Tu Dirección de Billetera (USDT)
             </label>
             <input
               required
               type="text"
               placeholder="Introduce tu dirección de billetera"
-              className="w-full p-2 bg-zinc-800 border border-zinc-700 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-neutral-300 mb-1">
               Red
             </label>
             <select
               value={network}
               onChange={(e) => setNetwork(e.target.value)}
-              className="w-full p-2 bg-zinc-800 border border-zinc-700 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               <option value="TRC20">TRON (TRC20)</option>
               <option value="ERC20">Ethereum (ERC20)</option>
@@ -2097,7 +2209,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">
+            <label className="block text-sm font-medium text-neutral-300 mb-1">
               Monto a Retirar
             </label>
             <input
@@ -2105,13 +2217,13 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
               type="number"
               step="0.01"
               placeholder="0.00"
-              className="w-full p-2 bg-zinc-800 border border-zinc-700 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full p-2 bg-neutral-800 border border-neutral-700 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
           <div className="flex justify-end pt-4">
             <button
               type="submit"
-              className="px-5 py-2 rounded-md text-white font-bold bg-cyan-600 hover:bg-cyan-500 transition-colors"
+              className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 transition-colors"
             >
               Solicitar Retiro
             </button>
@@ -2129,12 +2241,12 @@ const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => (
     title={`${type === "deposit" ? "Depositar" : "Retirar"} por Transferencia`}
     maxWidth="max-w-lg"
   >
-    <div className="space-y-4 text-zinc-300">
+    <div className="space-y-4 text-neutral-300">
       <p>
         Para continuar, por favor contacta a soporte con los siguientes
         detalles:
       </p>
-      <ul className="list-disc list-inside bg-zinc-800/50 p-4 rounded-md">
+      <ul className="list-disc list-inside bg-neutral-800/50 p-4 rounded-md">
         <li>
           Tipo de operación:{" "}
           <span className="font-semibold text-white">
@@ -2156,7 +2268,6 @@ const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => (
   </Modal>
 );
 
-// --- Página del Dashboard ---
 const DashboardPage = () => {
   const {
     user,
@@ -2185,7 +2296,6 @@ const DashboardPage = () => {
     ],
     []
   );
-
   const [userAssets, setUserAssets] = useState(() => {
     try {
       const savedAssets = localStorage.getItem("userTradingAssets");
@@ -2199,7 +2309,6 @@ const DashboardPage = () => {
       return initialAssets;
     }
   });
-
   const [operations, setOperations] = useState([]);
   const [stats, setStats] = useState({});
   const [balance, setBalance] = useState(0);
@@ -2268,7 +2377,6 @@ const DashboardPage = () => {
       if (!user) return;
       setIsLoadingData(true);
       try {
-        // Sequential fetching to improve stability on mobile devices
         const historialRes = await axios.get(
           `/historial?page=${page}&limit=5&filter=${filter}`
         );
@@ -2476,6 +2584,7 @@ const DashboardPage = () => {
       if (upperSymbol.endsWith("USDT") && !upperSymbol.includes("-")) {
         upperSymbol = `${upperSymbol.slice(0, -4)}-USDT`;
       }
+
       if (upperSymbol && !userAssets.includes(upperSymbol)) {
         setUserAssets((prevAssets) => [...prevAssets, upperSymbol]);
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -2585,10 +2694,11 @@ const DashboardPage = () => {
     marginLevel: metrics.marginLevel.toFixed(2),
   };
 
-  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
+  const platformLogo =
+    import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-100 font-sans overflow-hidden">
+    <div className="flex h-screen bg-black text-white font-sans overflow-hidden">
       <AnimatePresence>
         {alert.message && (
           <Toast
@@ -2604,6 +2714,7 @@ const DashboardPage = () => {
         setAlert={setAlert}
         onSelectPaymentMethod={handleOpenPaymentModal}
       />
+
       {paymentModalConfig.method === "crypto" && (
         <CryptoPaymentModal
           isOpen={paymentModalConfig.isOpen}
@@ -2622,14 +2733,72 @@ const DashboardPage = () => {
       )}
       <ConfirmationModal
         isOpen={confirmationModal.isOpen}
-        onClose={() =>
-          setConfirmationModal((prev) => ({ ...prev, isOpen: false }))
-        }
+        onClose={confirmationModal.onConfirm}
         onConfirm={confirmationModal.onConfirm}
         title={confirmationModal.title}
       >
         {confirmationModal.children}
       </ConfirmationModal>
+
+      <AnimatePresence>
+        {isSidebarVisible && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="fixed inset-0 bg-black/60 z-30 lg:hidden"
+              onClick={() => setIsSidebarVisible(false)}
+            />
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="fixed top-0 left-0 h-full w-72 bg-neutral-900 p-4 overflow-y-auto flex-shrink-0 border-r border-neutral-800 flex flex-col z-40 lg:hidden"
+            >
+              <div className="flex-grow">
+                <img
+                  className="mb-4"
+                  src={platformLogo}
+                  width="220"
+                  alt="Logo"
+                />
+                <AssetLists
+                  assets={userAssets}
+                  onAddAsset={handleAddAsset}
+                  onRemoveAsset={handleRemoveAsset}
+                />
+              </div>
+              <div className="flex-shrink-0">
+                <StatisticsPanel
+                  stats={stats}
+                  performanceData={performanceData}
+                  isLoading={isLoadingData}
+                />
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+      <aside className="hidden lg:flex lg:flex-col w-72 bg-black/30 p-4 overflow-y-auto flex-shrink-0 border-r border-neutral-800">
+        <div className="flex-grow">
+          <img className="mb-4" src={platformLogo} width="220" alt="Logo" />
+          <AssetLists
+            assets={userAssets}
+            onAddAsset={handleAddAsset}
+            onRemoveAsset={handleRemoveAsset}
+          />
+        </div>
+        <div className="flex-shrink-0">
+          <StatisticsPanel
+            stats={stats}
+            performanceData={performanceData}
+            isLoading={isLoadingData}
+          />
+        </div>
+      </aside>
       <NewOperationModal
         isOpen={isNewOpModalOpen}
         onClose={() => setIsNewOpModalOpen(false)}
@@ -2661,68 +2830,7 @@ const DashboardPage = () => {
         setAlert={setAlert}
       />
 
-      <AnimatePresence>
-        {isSidebarVisible && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="fixed inset-0 bg-black/60 z-30 lg:hidden"
-              onClick={() => setIsSidebarVisible(false)}
-            />
-            <motion.aside
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="fixed top-0 left-0 h-full w-72 bg-zinc-950 p-4 overflow-y-auto flex-shrink-0 border-r border-zinc-800 flex flex-col z-40"
-            >
-              <div className="flex-grow">
-                <img
-                  className="mb-4"
-                  src={platformLogo}
-                  width="220"
-                  alt="Logo"
-                />
-                <AssetLists
-                  assets={userAssets}
-                  onAddAsset={handleAddAsset}
-                  onRemoveAsset={handleRemoveAsset}
-                />
-              </div>
-              <div className="flex-shrink-0">
-                <StatisticsPanel
-                  stats={stats}
-                  performanceData={performanceData}
-                  isLoading={isLoadingData}
-                />
-              </div>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
-
-      <aside className="hidden lg:flex lg:flex-col w-72 bg-zinc-950 p-4 overflow-y-auto flex-shrink-0 border-r border-zinc-800">
-        <div className="flex-grow">
-          <img className="mb-4" src={platformLogo} width="220" alt="Logo" />
-          <AssetLists
-            assets={userAssets}
-            onAddAsset={handleAddAsset}
-            onRemoveAsset={handleRemoveAsset}
-          />
-        </div>
-        <div className="flex-shrink-0">
-          <StatisticsPanel
-            stats={stats}
-            performanceData={performanceData}
-            isLoading={isLoadingData}
-          />
-        </div>
-      </aside>
-
-      <main className="flex-1 flex flex-col bg-zinc-950/80 overflow-hidden">
+      <main className="flex-1 flex flex-col bg-black/50 overflow-hidden">
         <Header
           onOperation={handleOpenNewOpModal}
           onManageUsers={() => setIsUsersModalOpen(true)}
@@ -2730,7 +2838,7 @@ const DashboardPage = () => {
           onToggleSideMenu={() => setIsSideMenuOpen(true)}
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
         />
-        <div className="flex-1 flex flex-col p-2 sm:p-4 gap-4 overflow-y-auto">
+        <div className="flex-1 flex flex-col p-2 sm:p-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
           <div className="flex-grow min-h-[300px] sm:min-h-[400px] bg-black rounded-lg shadow-2xl shadow-black/30">
             <TradingViewWidget symbol={selectedAsset} />
           </div>
@@ -2751,7 +2859,7 @@ const DashboardPage = () => {
             />
           </div>
         </div>
-        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-zinc-900/80 backdrop-blur-sm p-3 border-t border-zinc-800 flex justify-around items-center gap-2">
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm p-3 border-t border-neutral-800 flex justify-around items-center gap-2">
           <button
             onClick={() => handleOpenNewOpModal("sell", mobileVolume)}
             className="flex-1 bg-red-600 hover:bg-red-500 transition-all text-white px-4 py-3 text-sm font-bold rounded-md"
@@ -2764,7 +2872,7 @@ const DashboardPage = () => {
             onChange={(e) => setMobileVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-3 border border-zinc-700 bg-zinc-800 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none"
+            className="w-24 p-3 border border-neutral-700 bg-neutral-800 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-neutral-500 focus:outline-none"
           />
           <button
             onClick={() => handleOpenNewOpModal("buy", mobileVolume)}
@@ -2784,11 +2892,12 @@ const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [nombre, setNombre] = useState("");
-  const [telefono, setTelefono] = useState("");
-  const [countryCode, setCountryCode] = useState("+57");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
+  // --- NUEVOS ESTADOS PARA EL TELÉFONO ---
+  const [telefono, setTelefono] = useState("");
+  const [countryCode, setCountryCode] = useState("+57"); // Indicativo por defecto
+
+  // Lista de indicativos de países
   const countryCodes = [
     { name: "Colombia", code: "+57" },
     { name: "United States", code: "+1" },
@@ -2799,12 +2908,19 @@ const LoginPage = () => {
     { name: "Chile", code: "+56" },
   ];
 
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    const platform_id = import.meta.env.VITE_PLATFORM_ID || "luxtrading";
+
+    const platform_id = import.meta.env.VITE_PLATFORM_ID || "default_platform";
     const url = isLogin ? "/login" : "/register";
+
+    // --- PAYLOAD ACTUALIZADO ---
+    // Ahora envía el teléfono completo en lugar del código de registro
     const payload = isLogin
       ? { email, password, platform_id }
       : {
@@ -2814,6 +2930,7 @@ const LoginPage = () => {
           telefono: `${countryCode}${telefono}`,
           platform_id,
         };
+
     try {
       const { data } = await axios.post(url, payload);
       if (isLogin) {
@@ -2836,17 +2953,18 @@ const LoginPage = () => {
     }
   };
 
-  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
+  const platformLogo =
+    import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-      <div className="bg-zinc-900 p-8 rounded-xl shadow-2xl w-full max-w-md border border-zinc-800/50 shadow-cyan-500/10">
+    <div className="min-h-screen bg-neutral-900 flex items-center justify-center p-4">
+      <div className="bg-neutral-800 p-8 rounded-xl shadow-2xl w-full max-w-md border border-neutral-700">
         <img
           className="mb-3 mx-auto"
           src={platformLogo}
           alt="Logo de la Plataforma"
         />
-        <p className="text-center text-zinc-400 mb-6">
+        <p className="text-center text-neutral-400 mb-6">
           {isLogin ? "Inicia sesión para continuar" : "Crea tu cuenta"}
         </p>
         {error && (
@@ -2863,7 +2981,7 @@ const LoginPage = () => {
           {!isLogin && (
             <>
               <div className="mb-4">
-                <label className="block text-zinc-300 mb-2" htmlFor="nombre">
+                <label className="block text-neutral-300 mb-2" htmlFor="nombre">
                   Nombre Completo
                 </label>
                 <input
@@ -2872,18 +2990,23 @@ const LoginPage = () => {
                   required
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
-                  className="w-full p-2 bg-zinc-800 text-white rounded-md border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  className="w-full p-2 bg-neutral-700 text-white rounded-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
+
+              {/* --- NUEVO CAMPO DE TELÉFONO --- */}
               <div className="mb-4">
-                <label className="block text-zinc-300 mb-2" htmlFor="telefono">
+                <label
+                  className="block text-neutral-300 mb-2"
+                  htmlFor="telefono"
+                >
                   Número de Teléfono
                 </label>
                 <div className="flex">
                   <select
                     value={countryCode}
                     onChange={(e) => setCountryCode(e.target.value)}
-                    className="p-2 bg-zinc-800 text-white rounded-l-md border-r-0 border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
+                    className="p-2 bg-neutral-700 text-white rounded-l-md border-r-0 border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
                   >
                     {countryCodes.map((country) => (
                       <option key={country.code} value={country.code}>
@@ -2897,14 +3020,14 @@ const LoginPage = () => {
                     required
                     value={telefono}
                     onChange={(e) => setTelefono(e.target.value)}
-                    className="w-full p-2 bg-zinc-800 text-white rounded-r-md border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className="w-full p-2 bg-neutral-700 text-white rounded-r-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
               </div>
             </>
           )}
           <div className="mb-4">
-            <label className="block text-zinc-300 mb-2" htmlFor="email">
+            <label className="block text-neutral-300 mb-2" htmlFor="email">
               Email
             </label>
             <input
@@ -2913,11 +3036,11 @@ const LoginPage = () => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-2 bg-zinc-800 text-white rounded-md border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full p-2 bg-neutral-700 text-white rounded-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
           <div className="mb-6">
-            <label className="block text-zinc-300 mb-2" htmlFor="password">
+            <label className="block text-neutral-300 mb-2" htmlFor="password">
               Contraseña
             </label>
             <input
@@ -2926,17 +3049,17 @@ const LoginPage = () => {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-2 bg-zinc-800 text-white rounded-md border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full p-2 bg-neutral-700 text-white rounded-md border border-neutral-600 focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
           <button
             type="submit"
-            className="w-full bg-cyan-600 text-white p-3 rounded-md hover:bg-cyan-500 font-bold transition-colors shadow-lg shadow-cyan-500/20 cursor-pointer"
+            className="w-full bg-red-600 text-white p-3 rounded-md hover:bg-red-500 font-bold transition-colors shadow-lg cursor-pointer"
           >
             {isLogin ? "Entrar" : "Crear Cuenta"}
           </button>
         </form>
-        <p className="text-center text-zinc-400 mt-6 text-sm">
+        <p className="text-center text-neutral-400 mt-6 text-sm">
           {isLogin ? "¿No tienes cuenta?" : "¿Ya tienes cuenta?"}{" "}
           <button
             onClick={() => {
@@ -2944,7 +3067,7 @@ const LoginPage = () => {
               setError("");
               setSuccess("");
             }}
-            className="text-cyan-400 hover:underline ml-1 font-semibold cursor-pointer"
+            className="text-red-400 hover:underline ml-1 font-semibold cursor-pointer"
           >
             {isLogin ? "Regístrate" : "Inicia sesión"}
           </button>
@@ -2956,11 +3079,13 @@ const LoginPage = () => {
 
 const App = () => {
   const { isAppLoading, isAuthenticated } = useContext(AppContext);
-  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
+
+  const platformLogo =
+    import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
 
   if (isAppLoading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-white text-xl font-bold animate-pulse">
           <img src={platformLogo} width="220" alt="Cargando..." />
         </div>
