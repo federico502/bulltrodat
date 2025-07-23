@@ -56,10 +56,10 @@ const Icon = ({ path, className = "h-5 w-5" }) => (
 
 const Icons = {
   Menu: () => <Icon path="M4 6h16M4 12h16M4 18h16" className="h-6 w-6" />,
-  Plus: () => <Icon path="M12 4v16m8-8H4" />,
+  Plus: () => <Icon path="M12 4v16m8-8H4" className="h-4 w-4" />,
   UserGroup: ({ className }) => (
     <Icon
-      path="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.653-.124-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.653.124-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+      path="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"
       className={className}
     />
   ),
@@ -77,7 +77,7 @@ const Icons = {
   ),
   Key: ({ className }) => (
     <Icon
-      path="M15 7a4 4 0 11-8 0 4 4 0 018 0zM9 9a2 2 0 11-4 0 2 2 0 014 0zM9 15a4 4 0 100-8 4 4 0 000 8zM9 15c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
+      path="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a4 4 0 100 8 4 4 0 000-8z"
       className={className}
     />
   ),
@@ -102,7 +102,7 @@ const Icons = {
   ),
   Clipboard: ({ className }) => (
     <Icon
-      path="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+      path="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v3.043m-7.416 0v3.043c0 .212.03.418.084.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"
       className={className}
     />
   ),
@@ -537,7 +537,7 @@ const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
         className="text-neutral-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
         title={`Eliminar ${symbol}`}
       >
-        <XIcon />
+        <Icons.X />
       </button>
     </div>
   </li>
@@ -616,7 +616,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
             type="submit"
             className="bg-red-600 hover:bg-red-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
           >
-            <PlusIcon />
+            <Icons.Plus />
           </button>
         </form>
         {showRecommendations && recommendations.length > 0 && (
@@ -690,7 +690,7 @@ const ProfileMenu = React.memo(
           className="bg-neutral-800 cursor-pointer text-white p-2 rounded-full hover:bg-red-500 transition-colors"
           title="Cuenta"
         >
-          <UserCircleIcon className="h-6 w-6" />
+          <Icons.UserCircle className="h-6 w-6" />
         </button>
         <AnimatePresence>
           {isOpen && (
@@ -711,7 +711,9 @@ const ProfileMenu = React.memo(
               </div>
               <div className="space-y-1">
                 <MenuItem
-                  icon={<UserCircleIcon className="h-5 w-5 text-neutral-400" />}
+                  icon={
+                    <Icons.UserCircle className="h-5 w-5 text-neutral-400" />
+                  }
                   text="Gestionar Cuenta"
                   onClick={() => handleItemClick(onToggleSideMenu)}
                 />
@@ -719,13 +721,13 @@ const ProfileMenu = React.memo(
                   <>
                     <MenuItem
                       icon={
-                        <UserGroupIcon className="h-5 w-5 text-neutral-400" />
+                        <Icons.UserGroup className="h-5 w-5 text-neutral-400" />
                       }
                       text="Gestionar Usuarios"
                       onClick={() => handleItemClick(onManageUsers)}
                     />
                     <MenuItem
-                      icon={<KeyIcon className="h-5 w-5 text-neutral-400" />}
+                      icon={<Icons.Key className="h-5 w-5 text-neutral-400" />}
                       text="Código de Registro"
                       onClick={() => handleItemClick(onManageRegCode)}
                     />
@@ -734,7 +736,7 @@ const ProfileMenu = React.memo(
                 <div className="my-1 h-px bg-neutral-700" />
                 <MenuItem
                   icon={
-                    <LogoutIcon className="h-5 w-5 cursor-pointer text-red-400" />
+                    <Icons.Logout className="h-5 w-5 cursor-pointer text-red-400" />
                   }
                   text="Cerrar Sesión"
                   onClick={() => handleItemClick(logout)}
@@ -764,7 +766,7 @@ const Header = ({
           onClick={onToggleMainSidebar}
           className="p-2 rounded-full hover:bg-neutral-700 lg:hidden"
         >
-          <MenuIcon />
+          <Icons.Menu />
         </button>
         <div className="hidden sm:flex items-center space-x-2">
           <button
@@ -1127,7 +1129,7 @@ const Modal = ({
               onClick={onClose}
               className="text-neutral-400 hover:text-white cursor-pointer"
             >
-              <XIcon />
+              <Icons.X />
             </button>
           </div>
           <div className="overflow-y-auto p-4 sm:p-6">{children}</div>
@@ -1537,14 +1539,14 @@ const UserCard = React.memo(
             title="Ver Operaciones"
             className="bg-yellow-600 text-white p-1 text-xs rounded hover:bg-yellow-500 cursor-pointer"
           >
-            <ViewListIcon />
+            <Icons.ViewList />
           </button>
           <button
             onClick={() => onDeleteUser(user)}
             title="Eliminar Usuario"
             className="bg-red-600 text-white p-1 text-xs rounded hover:bg-red-500 cursor-pointer"
           >
-            <XIcon />
+            <Icons.X />
           </button>
         </div>
       </Card>
@@ -1640,14 +1642,14 @@ const UserTableRow = React.memo(
             title="Ver Operaciones"
             className="bg-yellow-600 text-white p-1 text-xs rounded hover:bg-yellow-500 cursor-pointer"
           >
-            <ViewListIcon />
+            <Icons.ViewList />
           </button>
           <button
             onClick={() => onDeleteUser(user)}
             title="Eliminar Usuario"
             className="bg-red-600 text-white p-1 text-xs rounded hover:bg-red-500 cursor-pointer"
           >
-            <XIcon />
+            <Icons.X />
           </button>
         </td>
       </tr>
@@ -1893,7 +1895,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
         onClick={onBack}
         className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
       >
-        <ChevronLeftIcon /> Volver al Menú
+        <Icons.ChevronLeft /> Volver al Menú
       </button>
       <h2 className="text-xl font-bold mb-4">Mis datos</h2>
       <div className="space-y-4">
@@ -1978,19 +1980,19 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
       onClick={onBack}
       className="flex items-center text-red-400 hover:text-red-300 mb-6 cursor-pointer"
     >
-      <ChevronLeftIcon /> Volver al Menú Principal
+      <Icons.ChevronLeft /> Volver al Menú Principal
     </button>
     <h2 className="text-2xl font-bold mb-6 text-white">
       Seleccione un Método de Depósito
     </h2>
     <div className="space-y-4">
       <PaymentMethodButton
-        icon={<CreditCardIcon className="h-8 w-8 text-cyan-400" />}
+        icon={<Icons.CreditCard className="h-8 w-8 text-cyan-400" />}
         text="Criptomonedas"
         onClick={() => onSelectMethod("crypto", "deposit")}
       />
       <PaymentMethodButton
-        icon={<BanknotesIcon className="h-8 w-8 text-green-400" />}
+        icon={<Icons.Banknotes className="h-8 w-8 text-green-400" />}
         text="Transferencia Bancaria"
         onClick={() => onSelectMethod("bank", "deposit")}
       />
@@ -2004,19 +2006,19 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
       onClick={onBack}
       className="flex items-center text-red-400 hover:text-red-300 mb-6 cursor-pointer"
     >
-      <ChevronLeftIcon /> Volver al Menú Principal
+      <Icons.ChevronLeft /> Volver al Menú Principal
     </button>
     <h2 className="text-2xl font-bold mb-6 text-white">
       Seleccione un Método de Retiro
     </h2>
     <div className="space-y-4">
       <PaymentMethodButton
-        icon={<CreditCardIcon className="h-8 w-8 text-cyan-400" />}
+        icon={<Icons.CreditCard className="h-8 w-8 text-cyan-400" />}
         text="Criptomonedas"
         onClick={() => onSelectMethod("crypto", "withdraw")}
       />
       <PaymentMethodButton
-        icon={<BanknotesIcon className="h-8 w-8 text-green-400" />}
+        icon={<Icons.Banknotes className="h-8 w-8 text-green-400" />}
         text="Transferencia Bancaria"
         onClick={() => onSelectMethod("bank", "withdraw")}
       />
@@ -2076,14 +2078,14 @@ const SideMenu = React.memo(
                   <div className="p-4 space-y-2">
                     <MenuButton
                       icon={
-                        <ArrowDownTrayIcon className="h-5 w-5 text-green-400" />
+                        <Icons.ArrowDownTray className="h-5 w-5 text-green-400" />
                       }
                       text="Depositar"
                       onClick={() => setView("deposit")}
                     />
                     <MenuButton
                       icon={
-                        <ArrowUpTrayIcon className="h-5 w-5 text-red-400" />
+                        <Icons.ArrowUpTray className="h-5 w-5 text-red-400" />
                       }
                       text="Retirar"
                       onClick={() => setView("withdraw")}
@@ -2091,7 +2093,7 @@ const SideMenu = React.memo(
                     <div className="my-2 h-px bg-neutral-700" />
                     <MenuButton
                       icon={
-                        <UserCircleIcon className="h-5 w-5 text-neutral-400" />
+                        <Icons.UserCircle className="h-5 w-5 text-neutral-400" />
                       }
                       text="Completar Perfil"
                       onClick={() => setView("profile")}
@@ -2172,7 +2174,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
               onClick={handleCopy}
               className="p-2 rounded-md hover:bg-neutral-700 transition-colors flex-shrink-0"
             >
-              <ClipboardIcon className="h-5 w-5" />
+              <Icons.Clipboard className="h-5 w-5" />
             </button>
           </div>
           <p className="text-xs text-yellow-400 mt-4">
