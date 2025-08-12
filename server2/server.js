@@ -22,11 +22,12 @@ const {
   SESSION_SECRET,
   TWELVE_DATA_API_KEY,
   ALPHA_VANTAGE_API_KEY,
-  REGISTRATION_CODE = "ADMIN2024",
-  FRONTEND_URLS, // CAMBIO: Ahora esperamos una lista de URLs separadas por comas
+  FRONTEND_URLS,
   NODE_ENV,
   PORT = 3000,
 } = process.env;
+
+let REGISTRATION_CODE = process.env.REGISTRATION_CODE || "ADMIN2024";
 
 // Validar que las variables críticas existan
 if (!DATABASE_URL || !SESSION_SECRET || !FRONTEND_URLS) {
@@ -47,18 +48,19 @@ const pool = new Pool({
 });
 
 // --- Configuración de Middlewares ---
+// Confiar en el proxy si estamos en producción (Heroku, Render, etc.)
 if (NODE_ENV === "production") {
   app.set("trust proxy", 1);
 }
 
-// CAMBIO: Leer múltiples URLs para CORS
 const allowedOrigins = FRONTEND_URLS.split(",").map((url) => url.trim());
 app.use(
   cors({
     origin: function (origin, callback) {
       if (
+        !origin || // Permitir solicitudes sin origen (ej. Postman, apps móviles)
         allowedOrigins.indexOf(origin) !== -1 ||
-        (!origin && NODE_ENV !== "production")
+        (NODE_ENV !== "production" && !origin)
       ) {
         callback(null, true);
       } else {
@@ -95,16 +97,21 @@ const sessionMiddleware = session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
+  // --- CAMBIO CLAVE ---
+  // Añadimos 'proxy: true' para que express-session confíe en el reverse proxy
+  // al determinar si la conexión es segura (HTTPS). Esto es crucial para que las
+  // cookies seguras funcionen correctamente en producción.
+  proxy: true,
   cookie: {
     secure: NODE_ENV === "production",
     httpOnly: true,
-    maxAge: 1000 * 60 * 60 * 24 * 7,
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 días
     sameSite: NODE_ENV === "production" ? "none" : "lax",
   },
 });
 app.use(sessionMiddleware);
 
-// --- Lógica de WebSockets ---
+// --- Lógica de WebSockets (sin cambios) ---
 global.preciosEnTiempoReal = {};
 const usuariosSockets = {};
 
@@ -245,39 +252,30 @@ function broadcast(data) {
 }
 const getSymbolType = (symbol) => {
   const s = symbol.toUpperCase();
-  if (s.includes("-USDT") || s.endsWith("USDT")) {
-    return "crypto";
-  }
-  if (s.includes("/")) {
-    return "forex/commodity";
-  }
+  if (s.includes("-USDT") || s.endsWith("USDT")) return "crypto";
+  if (s.includes("/")) return "forex/commodity";
   if (s.length === 6) {
     const base = s.substring(0, 3);
     const quote = s.substring(3, 6);
-    if (knownCurrencies.has(base) && knownCurrencies.has(quote)) {
+    if (knownCurrencies.has(base) && knownCurrencies.has(quote))
       return "forex/commodity";
-    }
   }
   return "stock";
 };
 const getKuCoinSymbolFormat = (symbol) => {
   const s = symbol.toUpperCase();
-  if (s.endsWith("USDT") && !s.includes("-")) {
-    return `${s.slice(0, -4)}-USDT`;
-  }
+  if (s.endsWith("USDT") && !s.includes("-")) return `${s.slice(0, -4)}-USDT`;
   return s;
 };
 const getTwelveDataSymbolFormat = (symbol) => {
   const s = symbol.toUpperCase();
-  if (getSymbolType(s) === "forex/commodity" && !s.includes("/")) {
+  if (getSymbolType(s) === "forex/commodity" && !s.includes("/"))
     return `${s.slice(0, 3)}/${s.slice(3)}`;
-  }
   return s;
 };
 function subscribeToKuCoin(symbols) {
   if (kuCoinWs && kuCoinWs.readyState === WebSocket.OPEN) {
     const topic = `/market/ticker:${symbols.join(",")}`;
-    console.log(`🔷 Subscribing to KuCoin topic: ${topic}`);
     kuCoinWs.send(
       JSON.stringify({
         id: Date.now(),
@@ -292,11 +290,6 @@ function subscribeToKuCoin(symbols) {
 function subscribeToTwelveData(symbols) {
   if (twelveDataWs && twelveDataWs.readyState === WebSocket.OPEN) {
     const formattedSymbols = symbols.map(getTwelveDataSymbolFormat);
-    console.log(
-      `🔷 Subscribing to ${
-        formattedSymbols.length
-      } symbols on Twelve Data: ${formattedSymbols.join(", ")}`
-    );
     twelveDataWs.send(
       JSON.stringify({
         action: "subscribe",
@@ -307,7 +300,6 @@ function subscribeToTwelveData(symbols) {
 }
 async function iniciarWebSocketKuCoin() {
   try {
-    console.log("Solicitando token para WebSocket de KuCoin...");
     const tokenResponse = await fetch(
       "https://api.kucoin.com/api/v1/bullet-public",
       { method: "POST" }
@@ -320,13 +312,10 @@ async function iniciarWebSocketKuCoin() {
     const { token, instanceServers } = tokenData.data;
     if (!token || !instanceServers || instanceServers.length === 0)
       throw new Error("Invalid token or server data from KuCoin");
-
     const endpoint = instanceServers[0].endpoint;
     const wsUrl = `${endpoint}?token=${token}`;
-    console.log("✅ Conectando al WebSocket de KuCoin...");
     kuCoinWs = new WebSocket(wsUrl);
     kuCoinWs.on("open", () => {
-      console.log("✅ WebSocket conectado a KuCoin");
       if (activeKuCoinSubscriptions.size > 0)
         subscribeToKuCoin(Array.from(activeKuCoinSubscriptions));
       setInterval(() => {
@@ -348,31 +337,20 @@ async function iniciarWebSocketKuCoin() {
         console.error("❌ Error procesando mensaje de KuCoin:", err);
       }
     });
-    kuCoinWs.on("close", () => {
-      console.warn("🔁 KuCoin WebSocket cerrado, reconectando...");
-      setTimeout(iniciarWebSocketKuCoin, 5000);
-    });
-    kuCoinWs.on("error", (err) => {
-      console.error("❌ Error WebSocket KuCoin:", err.message);
-      kuCoinWs.close();
-    });
+    kuCoinWs.on("close", () => setTimeout(iniciarWebSocketKuCoin, 5000));
+    kuCoinWs.on("error", (err) => kuCoinWs.close());
   } catch (error) {
-    console.error("❌ Fallo al iniciar la conexión con KuCoin:", error);
     setTimeout(iniciarWebSocketKuCoin, 10000);
   }
 }
 function iniciarWebSocketTwelveData() {
-  if (!TWELVE_DATA_API_KEY) {
-    console.error("🚫 Twelve Data WebSocket not started: API Key is missing.");
-    return;
-  }
+  if (!TWELVE_DATA_API_KEY) return;
   let twelveDataRetryTimeout = 5000;
   const MAX_RETRY_TIMEOUT = 60000;
   twelveDataWs = new WebSocket(
     `wss://ws.twelvedata.com/v1/quotes/price?apikey=${TWELVE_DATA_API_KEY}`
   );
   twelveDataWs.on("open", () => {
-    console.log("✅ WebSocket connected to Twelve Data");
     twelveDataRetryTimeout = 5000;
     if (activeTwelveDataSubscriptions.size > 0) {
       subscribeToTwelveData(Array.from(activeTwelveDataSubscriptions));
@@ -395,21 +373,13 @@ function iniciarWebSocketTwelveData() {
     }
   });
   twelveDataWs.on("close", () => {
-    console.warn(
-      `🔁 Twelve Data WebSocket closed. Retrying in ${
-        twelveDataRetryTimeout / 1000
-      }s...`
-    );
     setTimeout(iniciarWebSocketTwelveData, twelveDataRetryTimeout);
     twelveDataRetryTimeout = Math.min(
       twelveDataRetryTimeout * 2,
       MAX_RETRY_TIMEOUT
     );
   });
-  twelveDataWs.on("error", (err) => {
-    console.error("❌ Twelve Data WebSocket error:", err.message);
-    twelveDataWs.close();
-  });
+  twelveDataWs.on("error", (err) => twelveDataWs.close());
 }
 async function getLatestPrice(symbol) {
   return (
@@ -442,7 +412,6 @@ async function getFreshPriceFromApi(symbol) {
       }
     }
   } catch (error) {
-    console.error(`Error fetching price for ${symbol}:`, error);
     return null;
   }
   return null;
@@ -486,7 +455,6 @@ async function cerrarOperacionesAutomáticamente(operationId = null) {
             [ganancia, op.usuario_id]
           );
           await client.query("COMMIT");
-          console.log(`✔️ Operación #${op.id} cerrada automáticamente.`);
         } catch (e) {
           await client.query("ROLLBACK");
           throw e;
@@ -501,28 +469,56 @@ async function cerrarOperacionesAutomáticamente(operationId = null) {
 }
 
 // --- RUTAS DE LA API ---
-app.get("/", (req, res) => res.send("Backend de Bulltrodat está funcionando."));
+app.get("/", (req, res) => res.send("Backend de Trading está funcionando."));
 
+// ==========================================================
+// RUTA DE REGISTRO ACTUALIZADA PARA 3 PLATAFORMAS
+// ==========================================================
 app.post("/register", async (req, res) => {
-  const { nombre, email, password, codigo, platform_id } = req.body;
-  if (!platform_id)
+  const { nombre, email, password, codigo, telefono, platform_id } = req.body;
+
+  if (!platform_id) {
     return res
       .status(400)
       .json({ error: "Falta el identificador de la plataforma." });
-  if (codigo !== REGISTRATION_CODE)
-    return res.status(403).json({ error: "Código de registro inválido." });
+  }
+
+  // Validación específica para cada plataforma
+  if (platform_id === "bulltrodat") {
+    if (codigo !== REGISTRATION_CODE) {
+      return res.status(403).json({ error: "Código de registro inválido." });
+    }
+  } else if (platform_id === "bulltrading") {
+    if (!telefono) {
+      return res
+        .status(400)
+        .json({ error: "El número de teléfono es obligatorio." });
+    }
+  } else if (platform_id === "luxtrading") {
+    // Para LuxTrading no se requiere ni código ni teléfono.
+    // No hay validación extra necesaria aquí, solo que el platform_id sea correcto.
+  } else {
+    return res.status(400).json({ error: "Plataforma no reconocida." });
+  }
+
   try {
     const hash = await bcrypt.hash(password, 10);
+    // Insertar el usuario con el teléfono (será null si no se proporciona)
     await pool.query(
-      "INSERT INTO usuarios (nombre, email, password, rol, balance, balance_real, platform_id) VALUES ($1, $2, $3, 'usuario', 10000, 0, $4)",
-      [nombre, email, hash, platform_id]
+      "INSERT INTO usuarios (nombre, email, password, rol, balance, balance_real, platform_id, telefono) VALUES ($1, $2, $3, 'usuario', 0, 0, $4, $5)",
+      [nombre, email, hash, platform_id, telefono || null]
     );
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Error al registrar usuario" });
+    console.error("Error en /register: ", err);
+    res.status(500).json({
+      error: "Error al registrar usuario. El email podría ya estar en uso.",
+    });
   }
 });
+
+// El resto de las rutas no necesitan cambios, ya que filtran por session.userId o platform_id
+// de forma dinámica.
 
 app.post("/login", async (req, res) => {
   const { email, password, platform_id } = req.body;
@@ -545,7 +541,6 @@ app.post("/login", async (req, res) => {
       res.status(401).json({ error: "Credenciales inválidas" });
     }
   } catch (err) {
-    console.error("Error en /login:", err);
     res.status(500).json({ error: "Error al iniciar sesión" });
   }
 });
@@ -562,7 +557,6 @@ app.get("/me", async (req, res) => {
       return res.status(404).json({ error: "Usuario no encontrado" });
     res.json(result.rows[0]);
   } catch (err) {
-    console.error("Error en /me:", err);
     res.status(500).json({ error: "Error al obtener datos del usuario" });
   }
 });
@@ -578,7 +572,6 @@ app.put("/me/profile", async (req, res) => {
     );
     res.json({ success: true, user: result.rows[0] });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: "Error al actualizar el perfil" });
   }
 });
@@ -603,21 +596,22 @@ app.post("/operar", async (req, res) => {
   } = req.body;
   const usuario_id = req.session.userId;
   if (!usuario_id) return res.status(401).json({ error: "No autenticado" });
+  const client = await pool.connect();
   try {
-    await pool.query("BEGIN");
-    const userRes = await pool.query(
+    await client.query("BEGIN");
+    const userRes = await client.query(
       "SELECT balance FROM usuarios WHERE id = $1 FOR UPDATE",
       [usuario_id]
     );
     const balanceActual = parseFloat(userRes.rows[0].balance);
     const costo = precio_entrada * volumen;
     if (balanceActual < costo) {
-      await pool.query("ROLLBACK");
+      await client.query("ROLLBACK");
       return res
         .status(400)
         .json({ success: false, error: "Fondos insuficientes" });
     }
-    await pool.query(
+    await client.query(
       "INSERT INTO operaciones (usuario_id, activo, tipo_operacion, volumen, precio_entrada, capital_invertido, take_profit, stop_loss) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
       [
         usuario_id,
@@ -630,12 +624,13 @@ app.post("/operar", async (req, res) => {
         stop_loss,
       ]
     );
-    await pool.query("COMMIT");
+    await client.query("COMMIT");
     res.json({ success: true });
   } catch (err) {
-    await pool.query("ROLLBACK");
-    console.error(err);
+    await client.query("ROLLBACK");
     res.status(500).json({ error: "Error al operar" });
+  } finally {
+    client.release();
   }
 });
 
@@ -766,28 +761,46 @@ app.get("/rendimiento", async (req, res) => {
 });
 
 app.get("/usuarios", async (req, res) => {
-  if (!req.session.userId)
+  if (!req.session.userId) {
     return res.status(401).json({ error: "No autenticado" });
+  }
+
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const offset = (page - 1) * limit;
+
   try {
     const adminResult = await pool.query(
-      "SELECT rol FROM usuarios WHERE id = $1",
+      "SELECT rol, platform_id FROM usuarios WHERE id = $1",
       [req.session.userId]
     );
-    if (adminResult.rows[0].rol !== "admin")
+
+    if (adminResult.rows.length === 0 || adminResult.rows[0].rol !== "admin") {
       return res.status(403).json({ error: "Acceso denegado" });
-    const totalResult = await pool.query("SELECT COUNT(*) FROM usuarios");
+    }
+
+    const adminPlatformId = adminResult.rows[0].platform_id;
+    if (!adminPlatformId) {
+      return res
+        .status(500)
+        .json({ error: "El administrador no tiene una plataforma asignada." });
+    }
+
+    const totalResult = await pool.query(
+      "SELECT COUNT(*) FROM usuarios WHERE platform_id = $1",
+      [adminPlatformId]
+    );
     const totalUsers = parseInt(totalResult.rows[0].count);
     const totalPages = Math.ceil(totalUsers / limit);
+
     const usuariosResult = await pool.query(
-      "SELECT id, nombre, email, balance, rol, identificacion, telefono, platform_id FROM usuarios ORDER BY id ASC LIMIT $1 OFFSET $2",
-      [limit, offset]
+      "SELECT id, nombre, email, balance, rol, identificacion, telefono, platform_id FROM usuarios WHERE platform_id = $1 ORDER BY id ASC LIMIT $2 OFFSET $3",
+      [adminPlatformId, limit, offset]
     );
+
     res.json({ users: usuariosResult.rows, totalPages, currentPage: page });
   } catch (err) {
-    console.error(err);
+    console.error("Error en /usuarios:", err);
     res.status(500).json({ error: "Error al obtener usuarios" });
   }
 });
@@ -956,7 +969,9 @@ app.post("/admin/registration-code", async (req, res) => {
     const { newCode } = req.body;
     if (!newCode || typeof newCode !== "string")
       return res.status(400).json({ error: "Código inválido" });
+
     REGISTRATION_CODE = newCode;
+
     console.log(`✅ Código de registro cambiado a: ${REGISTRATION_CODE}`);
     res.json({ success: true, newCode: REGISTRATION_CODE });
   } catch (err) {
