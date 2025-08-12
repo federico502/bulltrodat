@@ -996,11 +996,34 @@ const startServer = async () => {
     });
 
     server.on("upgrade", (request, socket, head) => {
+      // --- CAMBIO CLAVE: Verificación explícita del origen para WebSockets ---
+      const origin = request.headers.origin;
+      console.log(
+        `[WebSocket Upgrade] Intento de conexión desde el origen: ${origin}`
+      );
+
+      if (!origin || allowedOrigins.indexOf(origin) === -1) {
+        console.error(
+          `[WebSocket Upgrade] Bloqueado: El origen '${origin}' no está en la lista de permitidos.`
+        );
+        socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+        socket.destroy();
+        return;
+      }
+
       sessionMiddleware(request, {}, () => {
-        if (!request.session.userId) {
+        if (!request.session || !request.session.userId) {
+          console.error(
+            `[WebSocket Upgrade] Bloqueado: No se encontró una sesión activa para el origen '${origin}'.`
+          );
+          socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
           socket.destroy();
           return;
         }
+
+        console.log(
+          `[WebSocket Upgrade] Éxito: Sesión validada para el usuario ${request.session.userId}. Actualizando conexión.`
+        );
         wss.handleUpgrade(request, socket, head, (ws) => {
           wss.emit("connection", ws, request);
         });
