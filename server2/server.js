@@ -97,10 +97,6 @@ const sessionMiddleware = session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  // --- CAMBIO CLAVE ---
-  // Añadimos 'proxy: true' para que express-session confíe en el reverse proxy
-  // al determinar si la conexión es segura (HTTPS). Esto es crucial para que las
-  // cookies seguras funcionen correctamente en producción.
   proxy: true,
   cookie: {
     secure: NODE_ENV === "production",
@@ -111,7 +107,7 @@ const sessionMiddleware = session({
 });
 app.use(sessionMiddleware);
 
-// --- Lógica de WebSockets (sin cambios) ---
+// --- Lógica de WebSockets (sin cambios en la lógica interna) ---
 global.preciosEnTiempoReal = {};
 const usuariosSockets = {};
 
