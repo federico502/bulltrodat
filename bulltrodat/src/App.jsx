@@ -120,49 +120,49 @@ const Icons = {
   ),
 };
 
-// Lista de todos los activos disponibles para las recomendaciones
-const ALL_AVAILABLE_ASSETS = [
+// Catálogo de activos para búsqueda y recomendaciones
+const ASSET_CATALOG = [
   // Cryptos
-  "BTC-USDT",
-  "ETH-USDT",
-  "SOL-USDT",
-  "XRP-USDT",
-  "DOGE-USDT",
-  "ADA-USDT",
-  "AVAX-USDT",
-  "LTC-USDT",
-  "BCH-USDT",
-  "LINK-USDT",
+  { symbol: "BTC-USDT", name: "Bitcoin" },
+  { symbol: "ETH-USDT", name: "Ethereum" },
+  { symbol: "SOL-USDT", name: "Solana" },
+  { symbol: "XRP-USDT", name: "Ripple" },
+  { symbol: "DOGE-USDT", name: "Dogecoin" },
+  { symbol: "ADA-USDT", name: "Cardano" },
+  { symbol: "AVAX-USDT", name: "Avalanche" },
+  { symbol: "LTC-USDT", name: "Litecoin" },
+  { symbol: "BCH-USDT", name: "Bitcoin Cash" },
+  { symbol: "LINK-USDT", name: "Chainlink" },
   // Stocks
-  "AAPL",
-  "MSFT",
-  "GOOGL",
-  "AMZN",
-  "NVDA",
-  "TSLA",
-  "META",
-  "JPM",
-  "JNJ",
+  { symbol: "AAPL", name: "Apple" },
+  { symbol: "MSFT", name: "Microsoft" },
+  { symbol: "GOOGL", name: "Alphabet (Google)" },
+  { symbol: "AMZN", name: "Amazon" },
+  { symbol: "NVDA", name: "NVIDIA" },
+  { symbol: "TSLA", name: "Tesla" },
+  { symbol: "META", name: "Meta Platforms (Facebook)" },
+  { symbol: "JPM", name: "JPMorgan Chase" },
+  { symbol: "JNJ", name: "Johnson & Johnson" },
   // Forex
-  "EUR/USD",
-  "GBP/USD",
-  "USD/JPY",
-  "USD/CHF",
-  "AUD/USD",
-  "USD/CAD",
-  "NZD/USD",
-  "EUR/GBP",
-  "EUR/JPY",
-  "EUR/CHF",
-  "GBP/JPY",
-  "GBP/CHF",
-  "AUD/JPY",
-  "CAD/JPY",
+  { symbol: "EUR/USD", name: "Euro / US Dollar" },
+  { symbol: "GBP/USD", name: "British Pound / US Dollar" },
+  { symbol: "USD/JPY", name: "US Dollar / Japanese Yen" },
+  { symbol: "USD/CHF", name: "US Dollar / Swiss Franc" },
+  { symbol: "AUD/USD", name: "Australian Dollar / US Dollar" },
+  { symbol: "USD/CAD", name: "US Dollar / Canadian Dollar" },
+  { symbol: "NZD/USD", name: "New Zealand Dollar / US Dollar" },
+  { symbol: "EUR/GBP", name: "Euro / British Pound" },
+  { symbol: "EUR/JPY", name: "Euro / Japanese Yen" },
+  { symbol: "EUR/CHF", name: "Euro / Swiss Franc" },
+  { symbol: "GBP/JPY", name: "British Pound / Japanese Yen" },
+  { symbol: "GBP/CHF", name: "British Pound / Swiss Franc" },
+  { symbol: "AUD/JPY", name: "Australian Dollar / Japanese Yen" },
+  { symbol: "CAD/JPY", name: "Canadian Dollar / Japanese Yen" },
   // Commodities
-  "XAU/USD",
-  "XAG/USD",
-  "WTI/USD",
-  "BRENT/USD",
+  { symbol: "XAU/USD", name: "Gold (Oro)" },
+  { symbol: "XAG/USD", name: "Silver (Plata)" },
+  { symbol: "WTI/USD", name: "Crude Oil (Petróleo WTI)" },
+  { symbol: "BRENT/USD", name: "Brent Crude Oil (Petróleo Brent)" },
 ];
 
 // --- Contexto de la App ---
@@ -601,8 +601,10 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
     const value = e.target.value.toUpperCase();
     setNewSymbol(value);
     if (value) {
-      const filtered = ALL_AVAILABLE_ASSETS.filter((asset) =>
-        asset.toUpperCase().includes(value)
+      const filtered = ASSET_CATALOG.filter(
+        (asset) =>
+          asset.symbol.toUpperCase().includes(value) ||
+          asset.name.toUpperCase().includes(value)
       );
       setRecommendations(filtered);
       setShowRecommendations(true);
@@ -641,7 +643,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
             value={newSymbol}
             onChange={handleInputChange}
             onFocus={() => newSymbol && setShowRecommendations(true)}
-            placeholder="Ej: EUR/USD, TSLA"
+            placeholder="Ej: Amazon, AMZN"
             className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
             autoComplete="off"
           />
@@ -661,11 +663,12 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
           >
             {recommendations.map((rec) => (
               <li
-                key={rec}
-                onClick={() => handleRecommendationClick(rec)}
-                className="px-3 py-2 text-sm text-neutral-300 hover:bg-red-500/50 cursor-pointer"
+                key={rec.symbol}
+                onClick={() => handleRecommendationClick(rec.symbol)}
+                className="px-3 py-2 text-sm text-neutral-300 hover:bg-red-500/50 cursor-pointer flex justify-between items-center"
               >
-                {rec}
+                <span>{rec.name}</span>
+                <span className="font-mono text-neutral-500">{rec.symbol}</span>
               </li>
             ))}
           </motion.ul>
