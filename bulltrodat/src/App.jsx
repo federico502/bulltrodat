@@ -165,6 +165,15 @@ const ASSET_CATALOG = [
   { symbol: "BRENT/USD", name: "Brent Crude Oil (Petróleo Brent)" },
 ];
 
+const POPULAR_ASSETS = [
+  ASSET_CATALOG.find((a) => a.symbol === "BTC-USDT"),
+  ASSET_CATALOG.find((a) => a.symbol === "ETH-USDT"),
+  ASSET_CATALOG.find((a) => a.symbol === "AAPL"),
+  ASSET_CATALOG.find((a) => a.symbol === "TSLA"),
+  ASSET_CATALOG.find((a) => a.symbol === "EUR/USD"),
+  ASSET_CATALOG.find((a) => a.symbol === "XAU/USD"),
+].filter(Boolean); // Filter out any potential undefined if symbols change
+
 // --- Contexto de la App ---
 const AppContext = createContext();
 
@@ -577,9 +586,9 @@ const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
 
 const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
   const { setSelectedAsset, selectedAsset } = useContext(AppContext);
-  const [newSymbol, setNewSymbol] = useState("");
+  const [inputValue, setInputValue] = useState("");
   const [recommendations, setRecommendations] = useState([]);
-  const [showRecommendations, setShowRecommendations] = useState(false);
+  const [isSuggestionVisible, setIsSuggestionVisible] = useState(false);
   const searchContainerRef = useRef(null);
 
   useEffect(() => {
@@ -588,7 +597,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
         searchContainerRef.current &&
         !searchContainerRef.current.contains(event.target)
       ) {
-        setShowRecommendations(false);
+        setIsSuggestionVisible(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -597,9 +606,16 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
     };
   }, []);
 
+  const handleFocus = () => {
+    if (!inputValue) {
+      setRecommendations(POPULAR_ASSETS);
+    }
+    setIsSuggestionVisible(true);
+  };
+
   const handleInputChange = (e) => {
     const value = e.target.value.toUpperCase();
-    setNewSymbol(value);
+    setInputValue(value);
     if (value) {
       const filtered = ASSET_CATALOG.filter(
         (asset) =>
@@ -607,15 +623,14 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
           asset.name.toUpperCase().includes(value)
       );
       setRecommendations(filtered);
-      setShowRecommendations(true);
     } else {
-      setShowRecommendations(false);
+      setRecommendations(POPULAR_ASSETS);
     }
   };
 
   const handleRecommendationClick = (symbol) => {
-    setNewSymbol(symbol);
-    setShowRecommendations(false);
+    setInputValue(symbol);
+    setIsSuggestionVisible(false);
   };
 
   const handleAssetClick = useCallback(
@@ -627,10 +642,10 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (newSymbol) {
-      onAddAsset(newSymbol);
-      setNewSymbol("");
-      setShowRecommendations(false);
+    if (inputValue) {
+      onAddAsset(inputValue);
+      setInputValue("");
+      setIsSuggestionVisible(false);
     }
   };
 
@@ -640,9 +655,9 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
         <form onSubmit={handleSubmit} className="mb-1 flex gap-2">
           <input
             type="text"
-            value={newSymbol}
+            value={inputValue}
             onChange={handleInputChange}
-            onFocus={() => newSymbol && setShowRecommendations(true)}
+            onFocus={handleFocus}
             placeholder="Ej: Amazon, AMZN"
             className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
             autoComplete="off"
@@ -654,12 +669,12 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
             <Icons.Plus />
           </button>
         </form>
-        {showRecommendations && recommendations.length > 0 && (
+        {isSuggestionVisible && recommendations.length > 0 && (
           <motion.ul
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="absolute w-full bg-neutral-900 border border-white/10 rounded-md mt-1 max-h-40 overflow-y-auto z-20"
+            className="absolute w-full bg-neutral-900 border border-white/10 rounded-md mt-1 max-h-48 overflow-y-auto z-20"
           >
             {recommendations.map((rec) => (
               <li
@@ -667,8 +682,13 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
                 onClick={() => handleRecommendationClick(rec.symbol)}
                 className="px-3 py-2 text-sm text-neutral-300 hover:bg-red-500/50 cursor-pointer flex justify-between items-center"
               >
-                <span>{rec.name}</span>
-                <span className="font-mono text-neutral-500">{rec.symbol}</span>
+                <div>
+                  <span className="font-semibold text-white">{rec.symbol}</span>
+                  <span className="ml-2 text-neutral-500 text-xs">
+                    {rec.name}
+                  </span>
+                </div>
+                <AssetPrice symbol={rec.symbol} />
               </li>
             ))}
           </motion.ul>
