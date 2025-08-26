@@ -465,7 +465,7 @@ async function cerrarOperacionesAutomáticamente(operationId = null) {
 app.get("/", (req, res) => res.send("Backend de Trading está funcionando."));
 
 // ==========================================================
-// RUTA DE REGISTRO ACTUALIZADA PARA 3 PLATAFORMAS
+// RUTA DE REGISTRO ACTUALIZADA PARA MÚLTIPLES PLATAFORMAS
 // ==========================================================
 app.post("/register", async (req, res) => {
   const { nombre, email, password, codigo, telefono, platform_id } = req.body;
@@ -487,9 +487,8 @@ app.post("/register", async (req, res) => {
         .status(400)
         .json({ error: "El número de teléfono es obligatorio." });
     }
-  } else if (platform_id === "luxtrading") {
-    // Para LuxTrading no se requiere ni código ni teléfono.
-    // No hay validación extra necesaria aquí, solo que el platform_id sea correcto.
+  } else if (platform_id === "luxtrading" || platform_id === "unique1global") {
+    // Para LuxTrading y Unique 1 Global no se requiere validación extra.
   } else {
     return res.status(400).json({ error: "Plataforma no reconocida." });
   }
