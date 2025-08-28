@@ -225,6 +225,41 @@ function broadcast(data) {
   });
 }
 
+function subscribeToKuCoin(symbols) {
+  if (kuCoinWs && kuCoinWs.readyState === WebSocket.OPEN) {
+    const topic = `/market/ticker:${symbols.join(",")}`;
+    kuCoinWs.send(
+      JSON.stringify({
+        id: Date.now(),
+        type: "subscribe",
+        topic: topic,
+        privateChannel: false,
+        response: true,
+      })
+    );
+  }
+}
+
+function getTwelveDataSymbolFormat(symbol) {
+  const s = symbol.toUpperCase();
+  if (s.includes("/") && s.length > 6) return s;
+  if (!s.includes("/") && s.length === 6)
+    return `${s.slice(0, 3)}/${s.slice(3)}`;
+  return s;
+}
+
+function subscribeToTwelveData(symbols) {
+  if (twelveDataWs && twelveDataWs.readyState === WebSocket.OPEN) {
+    const formattedSymbols = symbols.map(getTwelveDataSymbolFormat);
+    twelveDataWs.send(
+      JSON.stringify({
+        action: "subscribe",
+        params: { symbols: formattedSymbols.join(",") },
+      })
+    );
+  }
+}
+
 async function iniciarWebSocketKuCoin() {
   try {
     const tokenResponse = await fetch(
@@ -794,9 +829,6 @@ app.get("/admin-operaciones/:usuarioId", async (req, res) => {
   }
 });
 
-// ==========================================================
-// NUEVA RUTA PARA EDICIÓN COMPLETA DE OPERACIONES
-// ==========================================================
 app.post("/admin/actualizar-operacion", async (req, res) => {
   if (!req.session.userId) {
     return res.status(401).json({ error: "No autenticado" });
@@ -837,7 +869,6 @@ app.post("/admin/actualizar-operacion", async (req, res) => {
 
     await client.query("BEGIN");
 
-    // 1. Revertir la ganancia/pérdida original del balance del usuario si la operación estaba cerrada
     if (opOriginal.cerrada) {
       await client.query(
         "UPDATE usuarios SET balance = balance - $1 WHERE id = $2",
@@ -845,7 +876,6 @@ app.post("/admin/actualizar-operacion", async (req, res) => {
       );
     }
 
-    // 2. Calcular la nueva ganancia
     let nuevaGanancia = 0;
     const esCerrada = cerrada === true || cerrada === "true";
 
@@ -865,7 +895,6 @@ app.post("/admin/actualizar-operacion", async (req, res) => {
       }
     }
 
-    // 3. Actualizar la operación con todos los nuevos datos
     const capitalInvertido = parseFloat(precio_entrada) * parseFloat(volumen);
     await client.query(
       `UPDATE operaciones SET 
@@ -895,7 +924,6 @@ app.post("/admin/actualizar-operacion", async (req, res) => {
       ]
     );
 
-    // 4. Aplicar la nueva ganancia/pérdida al balance del usuario si la operación está cerrada
     if (esCerrada) {
       await client.query(
         "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
