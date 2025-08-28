@@ -21,7 +21,6 @@ const {
   DATABASE_URL,
   SESSION_SECRET,
   TWELVE_DATA_API_KEY,
-  ALPHA_VANTAGE_API_KEY,
   FRONTEND_URLS,
   NODE_ENV,
   PORT = 3000,
@@ -57,8 +56,9 @@ app.use(
   cors({
     origin: function (origin, callback) {
       if (
+        !origin ||
         allowedOrigins.indexOf(origin) !== -1 ||
-        (!origin && NODE_ENV !== "production")
+        (NODE_ENV !== "production" && !origin)
       ) {
         callback(null, true);
       } else {
@@ -95,18 +95,18 @@ const sessionMiddleware = session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
+  proxy: true,
   cookie: {
     secure: NODE_ENV === "production",
     httpOnly: true,
-    maxAge: 1000 * 60 * 60 * 24 * 7,
+    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 días
     sameSite: NODE_ENV === "production" ? "none" : "lax",
   },
 });
 app.use(sessionMiddleware);
 
-// --- Lógica de WebSockets (sin cambios) ---
+// --- Lógica de WebSockets ---
 global.preciosEnTiempoReal = {};
-const usuariosSockets = {};
 
 const initialCrypto = [
   "BTC-USDT",
@@ -216,25 +216,6 @@ const activeTwelveDataSubscriptions = new Set([
   ...initialForex,
   ...initialCommodities,
 ]);
-const knownCurrencies = new Set([
-  "USD",
-  "EUR",
-  "JPY",
-  "GBP",
-  "AUD",
-  "CAD",
-  "CHF",
-  "NZD",
-  "CNY",
-  "HKD",
-  "SGD",
-  "MXN",
-  "XAU",
-  "XAG",
-  "XPT",
-  "XPD",
-  "XCU",
-]);
 
 function broadcast(data) {
   wss.clients.forEach((client) => {
@@ -243,54 +224,7 @@ function broadcast(data) {
     }
   });
 }
-const getSymbolType = (symbol) => {
-  const s = symbol.toUpperCase();
-  if (s.includes("-USDT") || s.endsWith("USDT")) return "crypto";
-  if (s.includes("/")) return "forex/commodity";
-  if (s.length === 6) {
-    const base = s.substring(0, 3);
-    const quote = s.substring(3, 6);
-    if (knownCurrencies.has(base) && knownCurrencies.has(quote))
-      return "forex/commodity";
-  }
-  return "stock";
-};
-const getKuCoinSymbolFormat = (symbol) => {
-  const s = symbol.toUpperCase();
-  if (s.endsWith("USDT") && !s.includes("-")) return `${s.slice(0, -4)}-USDT`;
-  return s;
-};
-const getTwelveDataSymbolFormat = (symbol) => {
-  const s = symbol.toUpperCase();
-  if (getSymbolType(s) === "forex/commodity" && !s.includes("/"))
-    return `${s.slice(0, 3)}/${s.slice(3)}`;
-  return s;
-};
-function subscribeToKuCoin(symbols) {
-  if (kuCoinWs && kuCoinWs.readyState === WebSocket.OPEN) {
-    const topic = `/market/ticker:${symbols.join(",")}`;
-    kuCoinWs.send(
-      JSON.stringify({
-        id: Date.now(),
-        type: "subscribe",
-        topic: topic,
-        privateChannel: false,
-        response: true,
-      })
-    );
-  }
-}
-function subscribeToTwelveData(symbols) {
-  if (twelveDataWs && twelveDataWs.readyState === WebSocket.OPEN) {
-    const formattedSymbols = symbols.map(getTwelveDataSymbolFormat);
-    twelveDataWs.send(
-      JSON.stringify({
-        action: "subscribe",
-        params: { symbols: formattedSymbols.join(",") },
-      })
-    );
-  }
-}
+
 async function iniciarWebSocketKuCoin() {
   try {
     const tokenResponse = await fetch(
@@ -336,6 +270,7 @@ async function iniciarWebSocketKuCoin() {
     setTimeout(iniciarWebSocketKuCoin, 10000);
   }
 }
+
 function iniciarWebSocketTwelveData() {
   if (!TWELVE_DATA_API_KEY) return;
   let twelveDataRetryTimeout = 5000;
@@ -374,42 +309,15 @@ function iniciarWebSocketTwelveData() {
   });
   twelveDataWs.on("error", (err) => twelveDataWs.close());
 }
+
 async function getLatestPrice(symbol) {
   return (
     global.preciosEnTiempoReal[symbol.toUpperCase().replace(/[-/]/g, "")] ||
     null
   );
 }
-async function getFreshPriceFromApi(symbol) {
-  const upperSymbol = symbol.toUpperCase();
-  const type = getSymbolType(upperSymbol);
-  try {
-    if (type === "crypto") {
-      const kucoinSymbol = getKuCoinSymbolFormat(upperSymbol);
-      const response = await fetch(
-        `https://api.kucoin.com/api/v1/market/orderbook/level1?symbol=${kucoinSymbol}`
-      );
-      if (response.ok) {
-        const { data } = await response.json();
-        if (data && data.price) return parseFloat(data.price);
-      }
-    }
-    if (type === "forex/commodity" || type === "stock") {
-      const twelveDataSymbol = getTwelveDataSymbolFormat(upperSymbol);
-      const tdResponse = await fetch(
-        `https://api.twelvedata.com/price?symbol=${twelveDataSymbol}&apikey=${TWELVE_DATA_API_KEY}`
-      );
-      if (tdResponse.ok) {
-        const tdData = await tdResponse.json();
-        if (tdData.price) return parseFloat(tdData.price);
-      }
-    }
-  } catch (error) {
-    return null;
-  }
-  return null;
-}
-async function cerrarOperacionesAutomáticamente(operationId = null) {
+
+async function cerrarOperacionesAutomáticamente() {
   try {
     const result = await pool.query(
       "SELECT * FROM operaciones WHERE cerrada = false AND (take_profit IS NOT NULL OR stop_loss IS NOT NULL)"
@@ -464,9 +372,6 @@ async function cerrarOperacionesAutomáticamente(operationId = null) {
 // --- RUTAS DE LA API ---
 app.get("/", (req, res) => res.send("Backend de Trading está funcionando."));
 
-// ==========================================================
-// RUTA DE REGISTRO ACTUALIZADA PARA MÚLTIPLES PLATAFORMAS
-// ==========================================================
 app.post("/register", async (req, res) => {
   const { nombre, email, password, codigo, telefono, platform_id } = req.body;
 
@@ -476,7 +381,6 @@ app.post("/register", async (req, res) => {
       .json({ error: "Falta el identificador de la plataforma." });
   }
 
-  // Validación específica para cada plataforma
   if (platform_id === "bulltrodat") {
     if (codigo !== REGISTRATION_CODE) {
       return res.status(403).json({ error: "Código de registro inválido." });
@@ -488,16 +392,15 @@ app.post("/register", async (req, res) => {
         .json({ error: "El número de teléfono es obligatorio." });
     }
   } else if (platform_id === "luxtrading" || platform_id === "unique1global") {
-    // Para LuxTrading y Unique 1 Global no se requiere validación extra.
+    // No se requiere validación extra.
   } else {
     return res.status(400).json({ error: "Plataforma no reconocida." });
   }
 
   try {
     const hash = await bcrypt.hash(password, 10);
-    // Insertar el usuario con el teléfono (será null si no se proporciona)
     await pool.query(
-      "INSERT INTO usuarios (nombre, email, password, rol, balance, balance_real, platform_id, telefono) VALUES ($1, $2, $3, 'usuario', 0, 0, $4, $5)",
+      "INSERT INTO usuarios (nombre, email, password, rol, balance, platform_id, telefono) VALUES ($1, $2, $3, 'usuario', 0, $4, $5)",
       [nombre, email, hash, platform_id, telefono || null]
     );
     res.json({ success: true });
@@ -508,9 +411,6 @@ app.post("/register", async (req, res) => {
     });
   }
 });
-
-// El resto de las rutas no necesitan cambios, ya que filtran por session.userId o platform_id
-// de forma dinámica.
 
 app.post("/login", async (req, res) => {
   const { email, password, platform_id } = req.body;
@@ -550,21 +450,6 @@ app.get("/me", async (req, res) => {
     res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: "Error al obtener datos del usuario" });
-  }
-});
-
-app.put("/me/profile", async (req, res) => {
-  if (!req.session.userId)
-    return res.status(401).json({ error: "No autenticado" });
-  const { identificacion, telefono } = req.body;
-  try {
-    const result = await pool.query(
-      "UPDATE usuarios SET identificacion = $1, telefono = $2 WHERE id = $3 RETURNING *",
-      [identificacion, telefono, req.session.userId]
-    );
-    res.json({ success: true, user: result.rows[0] });
-  } catch (err) {
-    res.status(500).json({ error: "Error al actualizar el perfil" });
   }
 });
 
@@ -675,7 +560,7 @@ app.post("/cerrar-operacion", async (req, res) => {
     }
     const op = rows[0];
     const { activo, tipo_operacion, volumen, precio_entrada } = op;
-    const precioActual = await getFreshPriceFromApi(activo);
+    const precioActual = await getLatestPrice(activo);
     if (precioActual === null) {
       await client.query("ROLLBACK");
       return res
@@ -909,26 +794,123 @@ app.get("/admin-operaciones/:usuarioId", async (req, res) => {
   }
 });
 
-app.post("/actualizar-precio", async (req, res) => {
-  const { id, nuevoPrecio } = req.body;
-  if (!req.session.userId)
+// ==========================================================
+// NUEVA RUTA PARA EDICIÓN COMPLETA DE OPERACIONES
+// ==========================================================
+app.post("/admin/actualizar-operacion", async (req, res) => {
+  if (!req.session.userId) {
     return res.status(401).json({ error: "No autenticado" });
+  }
+
+  const {
+    id,
+    activo,
+    tipo_operacion,
+    volumen,
+    precio_entrada,
+    precio_cierre,
+    take_profit,
+    stop_loss,
+    cerrada,
+  } = req.body;
+
+  const client = await pool.connect();
   try {
-    const adminResult = await pool.query(
+    const adminResult = await client.query(
       "SELECT rol FROM usuarios WHERE id = $1",
       [req.session.userId]
     );
-    if (adminResult.rows[0].rol !== "admin")
+    if (adminResult.rows.length === 0 || adminResult.rows[0].rol !== "admin") {
       return res.status(403).json({ error: "No autorizado" });
-    await pool.query(
-      "UPDATE operaciones SET precio_entrada = $1 WHERE id = $2",
-      [nuevoPrecio, id]
+    }
+
+    const opOriginalRes = await client.query(
+      "SELECT * FROM operaciones WHERE id = $1",
+      [id]
     );
-    await cerrarOperacionesAutomáticamente(id);
+    if (opOriginalRes.rows.length === 0) {
+      return res.status(404).json({ error: "Operación no encontrada" });
+    }
+    const opOriginal = opOriginalRes.rows[0];
+    const usuario_id = opOriginal.usuario_id;
+    const gananciaOriginal = parseFloat(opOriginal.ganancia || 0);
+
+    await client.query("BEGIN");
+
+    // 1. Revertir la ganancia/pérdida original del balance del usuario si la operación estaba cerrada
+    if (opOriginal.cerrada) {
+      await client.query(
+        "UPDATE usuarios SET balance = balance - $1 WHERE id = $2",
+        [gananciaOriginal, usuario_id]
+      );
+    }
+
+    // 2. Calcular la nueva ganancia
+    let nuevaGanancia = 0;
+    const esCerrada = cerrada === true || cerrada === "true";
+
+    if (esCerrada) {
+      if (
+        tipo_operacion.toLowerCase() === "buy" ||
+        tipo_operacion.toLowerCase() === "compra"
+      ) {
+        nuevaGanancia =
+          (parseFloat(precio_cierre) - parseFloat(precio_entrada)) *
+          parseFloat(volumen);
+      } else {
+        // sell
+        nuevaGanancia =
+          (parseFloat(precio_entrada) - parseFloat(precio_cierre)) *
+          parseFloat(volumen);
+      }
+    }
+
+    // 3. Actualizar la operación con todos los nuevos datos
+    const capitalInvertido = parseFloat(precio_entrada) * parseFloat(volumen);
+    await client.query(
+      `UPDATE operaciones SET 
+                activo = $1, 
+                tipo_operacion = $2, 
+                volumen = $3, 
+                precio_entrada = $4, 
+                precio_cierre = $5, 
+                take_profit = $6, 
+                stop_loss = $7, 
+                cerrada = $8, 
+                ganancia = $9,
+                capital_invertido = $10
+             WHERE id = $11`,
+      [
+        activo,
+        tipo_operacion,
+        volumen,
+        precio_entrada,
+        precio_cierre,
+        take_profit,
+        stop_loss,
+        esCerrada,
+        nuevaGanancia,
+        capitalInvertido,
+        id,
+      ]
+    );
+
+    // 4. Aplicar la nueva ganancia/pérdida al balance del usuario si la operación está cerrada
+    if (esCerrada) {
+      await client.query(
+        "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
+        [nuevaGanancia, usuario_id]
+      );
+    }
+
+    await client.query("COMMIT");
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Error al actualizar precio" });
+    await client.query("ROLLBACK");
+    console.error("Error en /admin/actualizar-operacion:", err);
+    res.status(500).json({ error: "Error al actualizar la operación" });
+  } finally {
+    client.release();
   }
 });
 
@@ -992,11 +974,33 @@ const startServer = async () => {
     });
 
     server.on("upgrade", (request, socket, head) => {
+      const origin = request.headers.origin;
+      console.log(
+        `[WebSocket Upgrade] Intento de conexión desde el origen: ${origin}`
+      );
+
+      if (!origin || allowedOrigins.indexOf(origin) === -1) {
+        console.error(
+          `[WebSocket Upgrade] Bloqueado: El origen '${origin}' no está en la lista de permitidos.`
+        );
+        socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+        socket.destroy();
+        return;
+      }
+
       sessionMiddleware(request, {}, () => {
-        if (!request.session.userId) {
+        if (!request.session || !request.session.userId) {
+          console.error(
+            `[WebSocket Upgrade] Bloqueado: No se encontró una sesión activa para el origen '${origin}'.`
+          );
+          socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
           socket.destroy();
           return;
         }
+
+        console.log(
+          `[WebSocket Upgrade] Éxito: Sesión validada para el usuario ${request.session.userId}. Actualizando conexión.`
+        );
         wss.handleUpgrade(request, socket, head, (ws) => {
           wss.emit("connection", ws, request);
         });
