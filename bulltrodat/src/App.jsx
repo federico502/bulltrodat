@@ -563,7 +563,7 @@ const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
     onClick={() => onClick(symbol)}
     className={`cursor-pointer transition-all duration-200 rounded-md flex justify-between items-center p-2 group ${
       isSelected
-        ? "bg-amber-500/20 text-white"
+        ? "bg-red-500/20 text-white"
         : "hover:bg-white/10 text-neutral-300"
     }`}
   >
@@ -659,12 +659,12 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
             onChange={handleInputChange}
             onFocus={handleFocus}
             placeholder="Ej: Amazon, AMZN"
-            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
             autoComplete="off"
           />
           <button
             type="submit"
-            className="bg-amber-600 hover:bg-amber-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
+            className="bg-red-600 hover:bg-red-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
           >
             <Icons.Plus />
           </button>
@@ -680,7 +680,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
               <li
                 key={rec.symbol}
                 onClick={() => handleRecommendationClick(rec.symbol)}
-                className="px-3 py-2 text-sm text-neutral-300 hover:bg-amber-500/50 cursor-pointer flex justify-between items-center"
+                className="px-3 py-2 text-sm text-neutral-300 hover:bg-red-500/50 cursor-pointer flex justify-between items-center"
               >
                 <div>
                   <span className="font-semibold text-white">{rec.symbol}</span>
@@ -748,7 +748,7 @@ const ProfileMenu = React.memo(
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="bg-white/10 cursor-pointer text-white p-2 rounded-full hover:bg-amber-500 transition-colors"
+          className="bg-white/10 cursor-pointer text-white p-2 rounded-full hover:bg-red-500 transition-colors"
           title="Cuenta"
         >
           <Icons.UserCircle className="h-6 w-6" />
@@ -797,7 +797,7 @@ const ProfileMenu = React.memo(
                 <div className="my-1 h-px bg-white/10" />
                 <MenuItem
                   icon={
-                    <Icons.Logout className="h-5 w-5 cursor-pointer text-amber-400" />
+                    <Icons.Logout className="h-5 w-5 cursor-pointer text-red-400" />
                   }
                   text="Cerrar Sesión"
                   onClick={() => handleItemClick(logout)}
@@ -844,7 +844,7 @@ const Header = ({
             onChange={(e) => setVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-2 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+            className="w-24 p-2 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
           />
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -1058,7 +1058,7 @@ const OperationsHistory = ({
           ) : (
             <button
               onClick={(e) => handleCloseOperation(e, op.id)}
-              className="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded-md text-xs transition-colors cursor-pointer"
+              className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded-md text-xs transition-colors cursor-pointer"
             >
               Cerrar
             </button>
@@ -1082,7 +1082,7 @@ const OperationsHistory = ({
             id="filter"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="bg-white/5 text-white text-sm rounded-md p-1 border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+            className="bg-white/5 text-white text-sm rounded-md p-1 border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
           >
             <option value="todas">Todas</option>
             <option value="abiertas">Abiertas</option>
@@ -1162,7 +1162,7 @@ const OperationsHistory = ({
                       ) : (
                         <button
                           onClick={(e) => handleCloseOperation(e, op.id)}
-                          className="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded-md text-xs w-full transition-colors cursor-pointer"
+                          className="bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded-md text-xs w-full transition-colors cursor-pointer"
                         >
                           Cerrar
                         </button>
@@ -1534,7 +1534,7 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
                 <td className="p-2">
                   <button
                     onClick={() => handleSavePrice(op.id)}
-                    className="bg-amber-600 text-white px-3 py-1 text-xs rounded hover:bg-amber-500 cursor-pointer"
+                    className="bg-red-600 text-white px-3 py-1 text-xs rounded hover:bg-red-500 cursor-pointer"
                   >
                     Guardar
                   </button>
@@ -1569,7 +1569,7 @@ const UserCard = React.memo(
           <span
             className={`px-2 py-0.5 rounded-full text-xs ${
               user.rol === "admin"
-                ? "bg-amber-500/20 text-amber-400"
+                ? "bg-red-500/20 text-red-400"
                 : "bg-blue-500/20 text-blue-400"
             }`}
           >
@@ -1935,12 +1935,12 @@ const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
           type="text"
           value={newCode}
           onChange={(e) => setNewCode(e.target.value)}
-          className="w-full p-2 bg-white/5 border border-white/10 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          className="w-full p-2 bg-white/5 border border-white/10 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-red-500"
         />
         <div className="flex justify-end mt-4">
           <button
             onClick={handleSave}
-            className="px-5 py-2 rounded-md text-white font-bold transition-colors bg-amber-600 hover:bg-amber-500 cursor-pointer"
+            className="px-5 py-2 rounded-md text-white font-bold transition-colors bg-red-600 hover:bg-red-500 cursor-pointer"
           >
             Guardar Código
           </button>
@@ -1962,7 +1962,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => (
       </button>
       <button
         onClick={onConfirm}
-        className="px-4 py-2 rounded-md bg-amber-600 hover:bg-amber-500 text-white font-bold transition-colors"
+        className="px-4 py-2 rounded-md bg-red-600 hover:bg-red-500 text-white font-bold transition-colors"
       >
         Confirmar
       </button>
@@ -1996,7 +1996,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
     <div className="p-4">
       <button
         onClick={onBack}
-        className="flex items-center text-amber-400 hover:text-amber-300 mb-4 cursor-pointer"
+        className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
       >
         <Icons.ChevronLeft /> Volver al Menú
       </button>
@@ -2057,7 +2057,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
         <div className="flex justify-end">
           <button
             onClick={handleSave}
-            className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 cursor-pointer transition-colors"
+            className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 cursor-pointer transition-colors"
           >
             Guardar Cambios
           </button>
@@ -2081,7 +2081,7 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-amber-400 hover:text-amber-300 mb-6 cursor-pointer"
+      className="flex items-center text-red-400 hover:text-red-300 mb-6 cursor-pointer"
     >
       <Icons.ChevronLeft /> Volver al Menú Principal
     </button>
@@ -2090,7 +2090,7 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
     </h2>
     <div className="space-y-4">
       <PaymentMethodButton
-        icon={<Icons.CreditCard className="h-8 w-8 text-amber-400" />}
+        icon={<Icons.CreditCard className="h-8 w-8 text-red-400" />}
         text="Criptomonedas"
         onClick={() => onSelectMethod("crypto", "deposit")}
       />
@@ -2107,7 +2107,7 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-amber-400 hover:text-amber-300 mb-6 cursor-pointer"
+      className="flex items-center text-red-400 hover:text-red-300 mb-6 cursor-pointer"
     >
       <Icons.ChevronLeft /> Volver al Menú Principal
     </button>
@@ -2116,7 +2116,7 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
     </h2>
     <div className="space-y-4">
       <PaymentMethodButton
-        icon={<Icons.CreditCard className="h-8 w-8 text-amber-400" />}
+        icon={<Icons.CreditCard className="h-8 w-8 text-red-400" />}
         text="Criptomonedas"
         onClick={() => onSelectMethod("crypto", "withdraw")}
       />
@@ -2171,10 +2171,7 @@ const SideMenu = React.memo(
               <div className="p-4 border-b border-white/10 flex-shrink-0">
                 <img
                   className="mb-2"
-                  src={
-                    import.meta.env.VITE_PLATFORM_LOGO ||
-                    "/bulltrading-logo.png"
-                  }
+                  src={import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png"}
                   width="220"
                   alt="Logo"
                 />
@@ -2191,7 +2188,7 @@ const SideMenu = React.memo(
                     />
                     <MenuButton
                       icon={
-                        <Icons.ArrowUpTray className="h-5 w-5 text-amber-400" />
+                        <Icons.ArrowUpTray className="h-5 w-5 text-red-400" />
                       }
                       text="Retirar"
                       onClick={() => setView("withdraw")}
@@ -2298,7 +2295,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
               required
               type="text"
               placeholder="Introduce tu dirección de billetera"
-              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
           <div>
@@ -2308,7 +2305,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
             <select
               value={network}
               onChange={(e) => setNetwork(e.target.value)}
-              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               <option value="TRC20">TRON (TRC20)</option>
               <option value="ERC20">Ethereum (ERC20)</option>
@@ -2324,13 +2321,13 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
               type="number"
               step="0.01"
               placeholder="0.00"
-              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
           <div className="flex justify-end pt-4">
             <button
               type="submit"
-              className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 transition-colors"
+              className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 transition-colors"
             >
               Solicitar Retiro
             </button>
@@ -2811,8 +2808,7 @@ const DashboardPage = () => {
     marginLevel: metrics.marginLevel.toFixed(2),
   };
 
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
+  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
 
   return (
     <div className="flex h-screen bg-black text-white font-sans overflow-hidden">
@@ -2992,7 +2988,7 @@ const DashboardPage = () => {
             onChange={(e) => setMobileVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-3 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+            className="w-24 p-3 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
           />
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -3007,7 +3003,7 @@ const DashboardPage = () => {
   );
 };
 
-// --- LOGIN/REGISTER ADAPTADO PARA BULLTRADING ---
+// --- LOGIN/REGISTER ADAPTADO PARA BULLTRODAT ---
 const LoginPage = () => {
   const { setUser, setIsAuthenticated } = useContext(AppContext);
   const [isLogin, setIsLogin] = useState(true);
@@ -3020,13 +3016,13 @@ const LoginPage = () => {
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
-  const [regPhone, setRegPhone] = useState("");
+  const [regCode, setRegCode] = useState(""); // Campo específico para Bulltrodat
 
   const handleAuth = async (e, action) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    const platform_id = import.meta.env.VITE_PLATFORM_ID || "bulltrading";
+    const platform_id = import.meta.env.VITE_PLATFORM_ID || "bulltrodat";
 
     if (action === "login") {
       try {
@@ -3054,7 +3050,7 @@ const LoginPage = () => {
           nombre: regName,
           email: regEmail,
           password: regPassword,
-          telefono: regPhone, // Enviamos el teléfono
+          codigo: regCode, // Enviamos el código de registro
           platform_id,
         };
         const { data } = await axios.post("/register", payload);
@@ -3072,8 +3068,7 @@ const LoginPage = () => {
     }
   };
 
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
+  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
   const formVariants = {
     hidden: { opacity: 0, x: 300 },
     visible: {
@@ -3093,7 +3088,7 @@ const LoginPage = () => {
       }}
     >
       <div className="relative w-full max-w-4xl min-h-[600px] bg-black/50 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
-        <div className="w-full md:w-1/2 text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-amber-600 to-amber-800">
+        <div className="w-full md:w-1/2 text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-red-600 to-red-800">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -3151,18 +3146,18 @@ const LoginPage = () => {
                     placeholder="Email"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                   <input
                     type="password"
                     placeholder="Contraseña"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                   <button
                     type="submit"
-                    className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
+                    className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
                   >
                     Entrar
                   </button>
@@ -3198,32 +3193,32 @@ const LoginPage = () => {
                     placeholder="Nombre Completo"
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
-                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                   <input
                     type="email"
                     placeholder="Email"
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
-                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                  <input
-                    type="tel"
-                    placeholder="Número de Teléfono"
-                    value={regPhone}
-                    onChange={(e) => setRegPhone(e.target.value)}
-                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                   <input
                     type="password"
                     placeholder="Contraseña"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
-                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Código de Registro"
+                    value={regCode}
+                    onChange={(e) => setRegCode(e.target.value)}
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                   <button
                     type="submit"
-                    className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
+                    className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
                   >
                     Crear Cuenta
                   </button>
@@ -3239,8 +3234,7 @@ const LoginPage = () => {
 
 const App = () => {
   const { isAppLoading, isAuthenticated } = useContext(AppContext);
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
+  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
 
   if (isAppLoading) {
     return (
