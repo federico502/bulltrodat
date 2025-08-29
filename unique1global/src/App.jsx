@@ -2218,8 +2218,20 @@ const SideMenu = React.memo(
                       icon={
                         <Icons.UserCircle className="h-5 w-5 text-gray-500" />
                       }
-                      text="Completar Perfil"
+                      text="Mis Datos"
                       onClick={() => setView("profile")}
+                    />
+                    <MenuButton
+                      icon={<Icons.Key className="h-5 w-5 text-gray-500" />}
+                      text="Cambiar Contraseña"
+                      onClick={() => setView("change-password")}
+                    />
+                    <MenuButton
+                      icon={
+                        <Icons.ShieldCheck className="h-5 w-5 text-gray-500" />
+                      }
+                      text="Seguridad"
+                      onClick={() => setView("security")}
                     />
                   </div>
                 )}
@@ -2243,6 +2255,12 @@ const SideMenu = React.memo(
                     onSelectMethod={(method) =>
                       handleSelectMethod(method, "withdraw")
                     }
+                  />
+                )}
+                {view === "change-password" && (
+                  <ChangePasswordView
+                    setAlert={setAlert}
+                    onBack={() => setView("main")}
                   />
                 )}
               </div>
@@ -3033,7 +3051,26 @@ const DashboardPage = () => {
 };
 
 const ChangePasswordView = React.memo(({ onBack, setAlert }) => {
-  // Lógica para cambiar contraseña...
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setAlert({
+        message: "Las contraseñas nuevas no coinciden.",
+        type: "error",
+      });
+      return;
+    }
+    // Lógica para llamar a la API y cambiar la contraseña...
+    setAlert({
+      message: "Contraseña actualizada (simulación).",
+      type: "success",
+    });
+  };
+
   return (
     <div className="p-4">
       <button
@@ -3045,7 +3082,52 @@ const ChangePasswordView = React.memo(({ onBack, setAlert }) => {
       <h2 className="text-xl font-bold mb-4 text-gray-900">
         Cambiar Contraseña
       </h2>
-      {/* Formulario para cambiar contraseña */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1 text-gray-500">
+            Contraseña Actual
+          </label>
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            className="w-full p-2 bg-gray-100 border border-gray-300 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1 text-gray-500">
+            Nueva Contraseña
+          </label>
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            className="w-full p-2 bg-gray-100 border border-gray-300 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1 text-gray-500">
+            Confirmar Nueva Contraseña
+          </label>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="w-full p-2 bg-gray-100 border border-gray-300 rounded"
+            required
+          />
+        </div>
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            className="px-5 py-2 rounded-md text-white font-bold bg-indigo-600 hover:bg-indigo-500 cursor-pointer transition-colors"
+          >
+            Actualizar Contraseña
+          </button>
+        </div>
+      </form>
     </div>
   );
 });
