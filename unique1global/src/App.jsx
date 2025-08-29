@@ -118,6 +118,12 @@ const Icons = {
       className={className}
     />
   ),
+  ShieldCheck: ({ className }) => (
+    <Icon
+      path="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286Zm-1.12 8.149a.75.75 0 1 0-1.06 1.06l2.12 2.12a.75.75 0 0 0 1.06 0l4.243-4.242a.75.75 0 0 0-1.06-1.06l-3.713 3.713-1.59-1.59Z"
+      className={className}
+    />
+  ),
 };
 
 // Catálogo de activos para búsqueda y recomendaciones
@@ -722,7 +728,14 @@ const MenuItem = ({ icon, text, onClick }) => (
 );
 
 const ProfileMenu = React.memo(
-  ({ user, logout, onToggleSideMenu, onManageUsers, onManageRegCode }) => {
+  ({
+    user,
+    logout,
+    onToggleSideMenu,
+    onManageUsers,
+    onManageRegCode,
+    onOpenProfileModal,
+  }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef(null);
 
@@ -770,6 +783,11 @@ const ProfileMenu = React.memo(
               <div className="space-y-1">
                 <MenuItem
                   icon={<Icons.UserCircle className="h-5 w-5 text-gray-500" />}
+                  text="Ver Perfil"
+                  onClick={() => handleItemClick(onOpenProfileModal)}
+                />
+                <MenuItem
+                  icon={<Icons.UserCircle className="h-5 w-5 text-gray-500" />}
                   text="Gestionar Cuenta"
                   onClick={() => handleItemClick(onToggleSideMenu)}
                 />
@@ -812,6 +830,7 @@ const Header = ({
   onManageRegCode,
   onToggleSideMenu,
   onToggleMainSidebar,
+  onOpenProfileModal,
 }) => {
   const { user, logout, selectedAsset } = useContext(AppContext);
   const [volume, setVolume] = useState(0.01);
@@ -865,6 +884,7 @@ const Header = ({
           onToggleSideMenu={onToggleSideMenu}
           onManageUsers={onManageUsers}
           onManageRegCode={onManageRegCode}
+          onOpenProfileModal={onOpenProfileModal}
         />
       </div>
     </header>
@@ -2452,6 +2472,7 @@ const DashboardPage = () => {
     children: null,
     onConfirm: () => {},
   });
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const handleOpenPaymentModal = (method, type) => {
     setPaymentModalConfig({ isOpen: true, method, type });
@@ -2944,6 +2965,12 @@ const DashboardPage = () => {
         onClose={() => setIsRegCodeModalOpen(false)}
         setAlert={setAlert}
       />
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        user={user}
+        stats={stats}
+      />
 
       <main className="flex-1 flex flex-col bg-transparent overflow-hidden">
         <Header
@@ -2952,6 +2979,7 @@ const DashboardPage = () => {
           onManageRegCode={() => setIsRegCodeModalOpen(true)}
           onToggleSideMenu={() => setIsSideMenuOpen(true)}
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
+          onOpenProfileModal={() => setIsProfileModalOpen(true)}
         />
         <div className="flex-1 flex flex-col p-2 sm:p-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
           <div className="flex-grow min-h-[300px] sm:min-h-[400px] bg-white rounded-xl shadow-lg border border-gray-200">
@@ -3001,6 +3029,81 @@ const DashboardPage = () => {
         </div>
       </main>
     </div>
+  );
+};
+
+const ChangePasswordView = React.memo(({ onBack, setAlert }) => {
+  // Lógica para cambiar contraseña...
+  return (
+    <div className="p-4">
+      <button
+        onClick={onBack}
+        className="flex items-center text-indigo-600 hover:text-indigo-500 mb-4 cursor-pointer"
+      >
+        <Icons.ChevronLeft /> Volver
+      </button>
+      <h2 className="text-xl font-bold mb-4 text-gray-900">
+        Cambiar Contraseña
+      </h2>
+      {/* Formulario para cambiar contraseña */}
+    </div>
+  );
+});
+
+const ProfileModal = ({ isOpen, onClose, user, stats }) => {
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Resumen de Perfil"
+      maxWidth="max-w-md"
+    >
+      {user && stats && (
+        <div className="space-y-4 text-sm">
+          <div className="p-4 bg-gray-100 rounded-lg">
+            <h3 className="font-bold text-lg mb-2 text-gray-900">
+              {user.nombre}
+            </h3>
+            <p className="text-gray-600">{user.email}</p>
+            <p className="text-gray-600">
+              Teléfono: {user.telefono || "No especificado"}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-gray-500">Balance</p>
+              <p className="font-bold text-xl text-gray-900">
+                ${parseFloat(user.balance).toFixed(2)}
+              </p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-gray-500">Ganancia Total</p>
+              <p
+                className={`font-bold text-xl ${
+                  parseFloat(stats.ganancia_total) >= 0
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                ${parseFloat(stats.ganancia_total || 0).toFixed(2)}
+              </p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-gray-500">Op. Abiertas</p>
+              <p className="font-bold text-xl text-gray-900">
+                {stats.abiertas || 0}
+              </p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-gray-500">Op. Cerradas</p>
+              <p className="font-bold text-xl text-gray-900">
+                {stats.cerradas || 0}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </Modal>
   );
 };
 
