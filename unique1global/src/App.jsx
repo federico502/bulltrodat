@@ -2213,6 +2213,11 @@ const SideMenu = React.memo(
                       text="Retirar"
                       onClick={() => setView("withdraw")}
                     />
+                    <MenuButton
+                      icon={<Icons.Key className="h-5 w-5 text-gray-500" />}
+                      text="Cambiar Contraseña"
+                      onClick={() => setView("change-password")}
+                    />
                     <div className="my-2 h-px bg-gray-200" />
                     <MenuButton
                       icon={
@@ -2220,11 +2225,6 @@ const SideMenu = React.memo(
                       }
                       text="Mis Datos"
                       onClick={() => setView("profile")}
-                    />
-                    <MenuButton
-                      icon={<Icons.Key className="h-5 w-5 text-gray-500" />}
-                      text="Cambiar Contraseña"
-                      onClick={() => setView("change-password")}
                     />
                     <MenuButton
                       icon={
@@ -2262,6 +2262,9 @@ const SideMenu = React.memo(
                     setAlert={setAlert}
                     onBack={() => setView("main")}
                   />
+                )}
+                {view === "security" && (
+                  <SecurityView onBack={() => setView("main")} />
                 )}
               </div>
             </motion.div>
@@ -2409,6 +2412,25 @@ const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => (
     </div>
   </Modal>
 );
+
+const SecurityView = React.memo(({ onBack }) => {
+  return (
+    <div className="p-4">
+      <button
+        onClick={onBack}
+        className="flex items-center text-indigo-600 hover:text-indigo-500 mb-4 cursor-pointer"
+      >
+        <Icons.ChevronLeft /> Volver
+      </button>
+      <h2 className="text-xl font-bold mb-4 text-gray-900">
+        Seguridad de la Cuenta
+      </h2>
+      <p className="text-gray-600">
+        Próximamente: Verificación de dos factores y más opciones de seguridad.
+      </p>
+    </div>
+  );
+});
 
 const DashboardPage = () => {
   const {
