@@ -118,6 +118,12 @@ const Icons = {
       className={className}
     />
   ),
+  ShieldCheck: ({ className }) => (
+    <Icon
+      path="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286Zm-1.12 8.149a.75.75 0 1 0-1.06 1.06l2.12 2.12a.75.75 0 0 0 1.06 0l4.243-4.242a.75.75 0 0 0-1.06-1.06l-3.713 3.713-1.59-1.59Z"
+      className={className}
+    />
+  ),
 };
 
 // Catálogo de activos para búsqueda y recomendaciones
@@ -454,8 +460,8 @@ const PerformanceChart = ({ performanceData, isLoading }) => {
           label: "Ganancia Diaria",
           data: performanceData.map((d) => parseFloat(d.ganancia_dia || 0)),
           fill: true,
-          backgroundColor: "rgba(22, 163, 74, 0.2)",
-          borderColor: "#22c55e",
+          backgroundColor: "rgba(217, 119, 6, 0.2)",
+          borderColor: "#d97706",
           tension: 0.4,
           pointRadius: 0,
         },
@@ -563,7 +569,7 @@ const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
     onClick={() => onClick(symbol)}
     className={`cursor-pointer transition-all duration-200 rounded-md flex justify-between items-center p-2 group ${
       isSelected
-        ? "bg-red-500/20 text-white"
+        ? "bg-amber-500/20 text-white"
         : "hover:bg-white/10 text-neutral-300"
     }`}
   >
@@ -659,12 +665,12 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
             onChange={handleInputChange}
             onFocus={handleFocus}
             placeholder="Ej: Amazon, AMZN"
-            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
             autoComplete="off"
           />
           <button
             type="submit"
-            className="bg-red-600 hover:bg-red-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
+            className="bg-amber-600 hover:bg-amber-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
           >
             <Icons.Plus />
           </button>
@@ -680,7 +686,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
               <li
                 key={rec.symbol}
                 onClick={() => handleRecommendationClick(rec.symbol)}
-                className="px-3 py-2 text-sm text-neutral-300 hover:bg-red-500/50 cursor-pointer flex justify-between items-center"
+                className="px-3 py-2 text-sm text-neutral-300 hover:bg-amber-500/50 cursor-pointer flex justify-between items-center"
               >
                 <div>
                   <span className="font-semibold text-white">{rec.symbol}</span>
@@ -725,7 +731,14 @@ const MenuItem = ({ icon, text, onClick }) => (
 );
 
 const ProfileMenu = React.memo(
-  ({ user, logout, onToggleSideMenu, onManageUsers, onManageRegCode }) => {
+  ({
+    user,
+    logout,
+    onToggleSideMenu,
+    onManageUsers,
+    onManageRegCode,
+    onOpenProfileModal,
+  }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef(null);
 
@@ -748,7 +761,7 @@ const ProfileMenu = React.memo(
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="bg-white/10 cursor-pointer text-white p-2 rounded-full hover:bg-red-500 transition-colors"
+          className="bg-white/10 cursor-pointer text-white p-2 rounded-full hover:bg-amber-500 transition-colors"
           title="Cuenta"
         >
           <Icons.UserCircle className="h-6 w-6" />
@@ -775,6 +788,13 @@ const ProfileMenu = React.memo(
                   icon={
                     <Icons.UserCircle className="h-5 w-5 text-neutral-400" />
                   }
+                  text="Ver Perfil"
+                  onClick={() => handleItemClick(onOpenProfileModal)}
+                />
+                <MenuItem
+                  icon={
+                    <Icons.UserCircle className="h-5 w-5 text-neutral-400" />
+                  }
                   text="Gestionar Cuenta"
                   onClick={() => handleItemClick(onToggleSideMenu)}
                 />
@@ -797,7 +817,7 @@ const ProfileMenu = React.memo(
                 <div className="my-1 h-px bg-white/10" />
                 <MenuItem
                   icon={
-                    <Icons.Logout className="h-5 w-5 cursor-pointer text-red-400" />
+                    <Icons.Logout className="h-5 w-5 cursor-pointer text-amber-400" />
                   }
                   text="Cerrar Sesión"
                   onClick={() => handleItemClick(logout)}
@@ -817,6 +837,7 @@ const Header = ({
   onManageRegCode,
   onToggleSideMenu,
   onToggleMainSidebar,
+  onOpenProfileModal,
 }) => {
   const { user, logout, selectedAsset } = useContext(AppContext);
   const [volume, setVolume] = useState(0.01);
@@ -844,7 +865,7 @@ const Header = ({
             onChange={(e) => setVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-2 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
+            className="w-24 p-2 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
           />
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -870,6 +891,7 @@ const Header = ({
           onToggleSideMenu={onToggleSideMenu}
           onManageUsers={onManageUsers}
           onManageRegCode={onManageRegCode}
+          onOpenProfileModal={onOpenProfileModal}
         />
       </div>
     </header>
@@ -1058,7 +1080,7 @@ const OperationsHistory = ({
           ) : (
             <button
               onClick={(e) => handleCloseOperation(e, op.id)}
-              className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded-md text-xs transition-colors cursor-pointer"
+              className="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded-md text-xs transition-colors cursor-pointer"
             >
               Cerrar
             </button>
@@ -1082,7 +1104,7 @@ const OperationsHistory = ({
             id="filter"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="bg-white/5 text-white text-sm rounded-md p-1 border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
+            className="bg-white/5 text-white text-sm rounded-md p-1 border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
           >
             <option value="todas">Todas</option>
             <option value="abiertas">Abiertas</option>
@@ -1162,7 +1184,7 @@ const OperationsHistory = ({
                       ) : (
                         <button
                           onClick={(e) => handleCloseOperation(e, op.id)}
-                          className="bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded-md text-xs w-full transition-colors cursor-pointer"
+                          className="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded-md text-xs w-full transition-colors cursor-pointer"
                         >
                           Cerrar
                         </button>
@@ -1445,28 +1467,13 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
   </Modal>
 );
 
-const UserOperationsModal = ({
-  isOpen,
-  onClose,
-  user,
-  onUpdateOperation,
-  setAlert,
-}) => {
+const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
   const [operations, setOperations] = useState([]);
+  const [editingPrices, setEditingPrices] = useState({});
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
   });
-
-  const calculateProfit = (op) => {
-    if (!op.cerrada) return 0;
-    const { tipo_operacion, precio_cierre, precio_entrada, volumen } = op;
-    if (tipo_operacion.toLowerCase().includes("buy")) {
-      return (precio_cierre - precio_entrada) * volumen;
-    } else {
-      return (precio_entrada - precio_cierre) * volumen;
-    }
-  };
 
   const fetchUserOperations = useCallback(
     (page = 1) => {
@@ -1474,12 +1481,7 @@ const UserOperationsModal = ({
         axios
           .get(`/admin-operaciones/${user.id}?page=${page}&limit=10`)
           .then((res) => {
-            setOperations(
-              res.data.operaciones.map((op) => ({
-                ...op,
-                ganancia: calculateProfit(op),
-              }))
-            );
+            setOperations(res.data.operaciones);
             setPagination({
               currentPage: res.data.currentPage,
               totalPages: res.data.totalPages,
@@ -1497,36 +1499,13 @@ const UserOperationsModal = ({
     fetchUserOperations(1);
   }, [isOpen, user, fetchUserOperations]);
 
-  const handleInputChange = (opId, field, value) => {
-    setOperations((currentOps) =>
-      currentOps.map((op) => {
-        if (op.id === opId) {
-          const updatedOp = { ...op, [field]: value };
-          // Recalcular ganancia si se cambia un valor relevante
-          if (
-            [
-              "precio_entrada",
-              "precio_cierre",
-              "volumen",
-              "tipo_operacion",
-              "cerrada",
-            ].includes(field)
-          ) {
-            updatedOp.ganancia = calculateProfit(updatedOp);
-          }
-          return updatedOp;
-        }
-        return op;
-      })
-    );
-  };
-
-  const handleSave = async (operationData) => {
-    try {
-      await onUpdateOperation(operationData);
-      setAlert({ message: "Operación actualizada con éxito", type: "success" });
-    } catch (error) {
-      setAlert({ message: "Error al actualizar la operación", type: "error" });
+  const handlePriceChange = (opId, value) =>
+    setEditingPrices((prev) => ({ ...prev, [opId]: value }));
+  const handleSavePrice = async (opId) => {
+    const newPrice = editingPrices[opId];
+    if (newPrice !== undefined) {
+      await onUpdatePrice(opId, newPrice);
+      fetchUserOperations(pagination.currentPage);
     }
   };
 
@@ -1535,7 +1514,6 @@ const UserOperationsModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title={`Operaciones de ${user?.nombre}`}
-      maxWidth="max-w-7xl"
     >
       <div className="overflow-auto">
         <table className="w-full text-sm text-left border-collapse">
@@ -1546,12 +1524,9 @@ const UserOperationsModal = ({
                 "Activo",
                 "Tipo",
                 "Volumen",
-                "P. Entrada",
-                "P. Cierre",
-                "TP",
-                "SL",
+                "Precio Entrada",
+                "Fecha",
                 "Estado",
-                "G/P",
                 "Acción",
               ].map((h) => (
                 <th key={h} className="p-2 font-medium">
@@ -1562,106 +1537,26 @@ const UserOperationsModal = ({
           </thead>
           <tbody className="bg-neutral-800">
             {operations.map((op) => (
-              <tr key={op.id} className="border-b border-neutral-700">
-                <td className="p-1">{op.id}</td>
-                <td className="p-1">
-                  <input
-                    type="text"
-                    value={op.activo}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "activo", e.target.value)
-                    }
-                    className="w-full p-1 bg-white/5 rounded border border-white/10"
-                  />
-                </td>
-                <td className="p-1">
-                  <select
-                    value={op.tipo_operacion}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "tipo_operacion", e.target.value)
-                    }
-                    className="w-full p-1 bg-white/5 rounded border border-white/10"
-                  >
-                    <option value="buy">buy</option>
-                    <option value="sell">sell</option>
-                  </select>
-                </td>
-                <td className="p-1">
+              <tr key={op.id} className="border-b border-white/10">
+                <td className="p-2">{op.id}</td>
+                <td className="p-2">{op.activo}</td>
+                <td className="p-2">{op.tipo_operacion}</td>
+                <td className="p-2">{op.volumen}</td>
+                <td className="p-2">
                   <input
                     type="number"
                     step="any"
-                    value={op.volumen}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "volumen", e.target.value)
-                    }
+                    defaultValue={op.precio_entrada}
+                    onChange={(e) => handlePriceChange(op.id, e.target.value)}
                     className="w-full p-1 bg-white/5 rounded border border-white/10"
                   />
                 </td>
-                <td className="p-1">
-                  <input
-                    type="number"
-                    step="any"
-                    value={op.precio_entrada}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "precio_entrada", e.target.value)
-                    }
-                    className="w-full p-1 bg-white/5 rounded border border-white/10"
-                  />
-                </td>
-                <td className="p-1">
-                  <input
-                    type="number"
-                    step="any"
-                    value={op.precio_cierre || ""}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "precio_cierre", e.target.value)
-                    }
-                    className="w-full p-1 bg-white/5 rounded border border-white/10"
-                  />
-                </td>
-                <td className="p-1">
-                  <input
-                    type="number"
-                    step="any"
-                    value={op.take_profit || ""}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "take_profit", e.target.value)
-                    }
-                    className="w-full p-1 bg-white/5 rounded border border-white/10"
-                  />
-                </td>
-                <td className="p-1">
-                  <input
-                    type="number"
-                    step="any"
-                    value={op.stop_loss || ""}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "stop_loss", e.target.value)
-                    }
-                    className="w-full p-1 bg-white/5 rounded border border-white/10"
-                  />
-                </td>
-                <td className="p-1">
-                  <input
-                    type="checkbox"
-                    checked={op.cerrada}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "cerrada", e.target.checked)
-                    }
-                    className="form-checkbox h-5 w-5 text-red-600 bg-white/10 border-white/20 rounded focus:ring-red-500"
-                  />
-                </td>
-                <td
-                  className={`p-1 font-mono ${
-                    op.ganancia >= 0 ? "text-green-400" : "text-red-500"
-                  }`}
-                >
-                  {op.ganancia.toFixed(2)}
-                </td>
-                <td className="p-1">
+                <td className="p-2">{new Date(op.fecha).toLocaleString()}</td>
+                <td className="p-2">{op.cerrada ? "Cerrada" : "Abierta"}</td>
+                <td className="p-2">
                   <button
-                    onClick={() => handleSave(op)}
-                    className="bg-red-600 text-white px-3 py-1 text-xs rounded hover:bg-red-500 cursor-pointer"
+                    onClick={() => handleSavePrice(op.id)}
+                    className="bg-amber-600 text-white px-3 py-1 text-xs rounded hover:bg-amber-500 cursor-pointer"
                   >
                     Guardar
                   </button>
@@ -1696,7 +1591,7 @@ const UserCard = React.memo(
           <span
             className={`px-2 py-0.5 rounded-full text-xs ${
               user.rol === "admin"
-                ? "bg-red-500/20 text-red-400"
+                ? "bg-amber-500/20 text-amber-400"
                 : "bg-blue-500/20 text-blue-400"
             }`}
           >
@@ -2062,12 +1957,12 @@ const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
           type="text"
           value={newCode}
           onChange={(e) => setNewCode(e.target.value)}
-          className="w-full p-2 bg-white/5 border border-white/10 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-red-500"
+          className="w-full p-2 bg-white/5 border border-white/10 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-amber-500"
         />
         <div className="flex justify-end mt-4">
           <button
             onClick={handleSave}
-            className="px-5 py-2 rounded-md text-white font-bold transition-colors bg-red-600 hover:bg-red-500 cursor-pointer"
+            className="px-5 py-2 rounded-md text-white font-bold transition-colors bg-amber-600 hover:bg-amber-500 cursor-pointer"
           >
             Guardar Código
           </button>
@@ -2089,7 +1984,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => (
       </button>
       <button
         onClick={onConfirm}
-        className="px-4 py-2 rounded-md bg-red-600 hover:bg-red-500 text-white font-bold transition-colors"
+        className="px-4 py-2 rounded-md bg-amber-600 hover:bg-amber-500 text-white font-bold transition-colors"
       >
         Confirmar
       </button>
@@ -2123,7 +2018,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
     <div className="p-4">
       <button
         onClick={onBack}
-        className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
+        className="flex items-center text-amber-400 hover:text-amber-300 mb-4 cursor-pointer"
       >
         <Icons.ChevronLeft /> Volver al Menú
       </button>
@@ -2184,7 +2079,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
         <div className="flex justify-end">
           <button
             onClick={handleSave}
-            className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 cursor-pointer transition-colors"
+            className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 cursor-pointer transition-colors"
           >
             Guardar Cambios
           </button>
@@ -2208,7 +2103,7 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-red-400 hover:text-red-300 mb-6 cursor-pointer"
+      className="flex items-center text-amber-400 hover:text-amber-300 mb-6 cursor-pointer"
     >
       <Icons.ChevronLeft /> Volver al Menú Principal
     </button>
@@ -2217,7 +2112,7 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
     </h2>
     <div className="space-y-4">
       <PaymentMethodButton
-        icon={<Icons.CreditCard className="h-8 w-8 text-red-400" />}
+        icon={<Icons.CreditCard className="h-8 w-8 text-amber-400" />}
         text="Criptomonedas"
         onClick={() => onSelectMethod("crypto", "deposit")}
       />
@@ -2225,6 +2120,11 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
         icon={<Icons.Banknotes className="h-8 w-8 text-green-400" />}
         text="Transferencia Bancaria"
         onClick={() => onSelectMethod("bank", "deposit")}
+      />
+      <PaymentMethodButton
+        icon={<Icons.CreditCard className="h-8 w-8 text-blue-400" />}
+        text="Tarjeta de Crédito / Débito"
+        onClick={() => onSelectMethod("card", "deposit")}
       />
     </div>
   </div>
@@ -2234,7 +2134,7 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-red-400 hover:text-red-300 mb-6 cursor-pointer"
+      className="flex items-center text-amber-400 hover:text-amber-300 mb-6 cursor-pointer"
     >
       <Icons.ChevronLeft /> Volver al Menú Principal
     </button>
@@ -2243,7 +2143,7 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
     </h2>
     <div className="space-y-4">
       <PaymentMethodButton
-        icon={<Icons.CreditCard className="h-8 w-8 text-red-400" />}
+        icon={<Icons.CreditCard className="h-8 w-8 text-amber-400" />}
         text="Criptomonedas"
         onClick={() => onSelectMethod("crypto", "withdraw")}
       />
@@ -2251,6 +2151,11 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
         icon={<Icons.Banknotes className="h-8 w-8 text-green-400" />}
         text="Transferencia Bancaria"
         onClick={() => onSelectMethod("bank", "withdraw")}
+      />
+      <PaymentMethodButton
+        icon={<Icons.CreditCard className="h-8 w-8 text-blue-400" />}
+        text="Tarjeta de Crédito / Débito"
+        onClick={() => onSelectMethod("card", "withdraw")}
       />
     </div>
   </div>
@@ -2298,7 +2203,10 @@ const SideMenu = React.memo(
               <div className="p-4 border-b border-white/10 flex-shrink-0">
                 <img
                   className="mb-2"
-                  src={import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png"}
+                  src={
+                    import.meta.env.VITE_PLATFORM_LOGO ||
+                    "/bulltrading-logo.png"
+                  }
                   width="220"
                   alt="Logo"
                 />
@@ -2315,18 +2223,30 @@ const SideMenu = React.memo(
                     />
                     <MenuButton
                       icon={
-                        <Icons.ArrowUpTray className="h-5 w-5 text-red-400" />
+                        <Icons.ArrowUpTray className="h-5 w-5 text-amber-400" />
                       }
                       text="Retirar"
                       onClick={() => setView("withdraw")}
+                    />
+                    <MenuButton
+                      icon={<Icons.Key className="h-5 w-5 text-neutral-400" />}
+                      text="Cambiar Contraseña"
+                      onClick={() => setView("change-password")}
                     />
                     <div className="my-2 h-px bg-white/10" />
                     <MenuButton
                       icon={
                         <Icons.UserCircle className="h-5 w-5 text-neutral-400" />
                       }
-                      text="Completar Perfil"
+                      text="Mis Datos"
                       onClick={() => setView("profile")}
+                    />
+                    <MenuButton
+                      icon={
+                        <Icons.ShieldCheck className="h-5 w-5 text-neutral-400" />
+                      }
+                      text="Seguridad"
+                      onClick={() => setView("security")}
                     />
                   </div>
                 )}
@@ -2351,6 +2271,15 @@ const SideMenu = React.memo(
                       handleSelectMethod(method, "withdraw")
                     }
                   />
+                )}
+                {view === "change-password" && (
+                  <ChangePasswordView
+                    setAlert={setAlert}
+                    onBack={() => setView("main")}
+                  />
+                )}
+                {view === "security" && (
+                  <SecurityView onBack={() => setView("main")} />
                 )}
               </div>
             </motion.div>
@@ -2422,7 +2351,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
               required
               type="text"
               placeholder="Introduce tu dirección de billetera"
-              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
           <div>
@@ -2432,7 +2361,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
             <select
               value={network}
               onChange={(e) => setNetwork(e.target.value)}
-              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
             >
               <option value="TRC20">TRON (TRC20)</option>
               <option value="ERC20">Ethereum (ERC20)</option>
@@ -2448,13 +2377,13 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
               type="number"
               step="0.01"
               placeholder="0.00"
-              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
           <div className="flex justify-end pt-4">
             <button
               type="submit"
-              className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 transition-colors"
+              className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 transition-colors"
             >
               Solicitar Retiro
             </button>
@@ -2465,39 +2394,177 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
   );
 };
 
-const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => (
-  <Modal
-    isOpen={isOpen}
-    onClose={onClose}
-    title={`${type === "deposit" ? "Depositar" : "Retirar"} por Transferencia`}
-    maxWidth="max-w-lg"
-  >
-    <div className="space-y-4 text-neutral-300">
-      <p>
-        Para continuar, por favor contacta a soporte con los siguientes
-        detalles:
+const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => {
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmitted();
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`${
+        type === "deposit" ? "Depositar" : "Retirar"
+      } por Transferencia`}
+      maxWidth="max-w-lg"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
+            Nombre del Titular
+          </label>
+          <input
+            required
+            type="text"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
+            Nombre del Banco
+          </label>
+          <input
+            required
+            type="text"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
+            Número de Cuenta
+          </label>
+          <input
+            required
+            type="text"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
+            Monto
+          </label>
+          <input
+            required
+            type="number"
+            step="0.01"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+        </div>
+        <div className="flex justify-end pt-4">
+          <button
+            type="submit"
+            className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 transition-colors"
+          >
+            {type === "deposit" ? "Confirmar Depósito" : "Solicitar Retiro"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
+const CardPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmitted();
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`${type === "deposit" ? "Depositar" : "Retirar"} con Tarjeta`}
+      maxWidth="max-w-lg"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
+            Número de Tarjeta
+          </label>
+          <input
+            required
+            type="text"
+            placeholder="0000 0000 0000 0000"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
+            Nombre en la Tarjeta
+          </label>
+          <input
+            required
+            type="text"
+            placeholder="Juan Perez"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-300 mb-1">
+              Fecha de Expiración
+            </label>
+            <input
+              required
+              type="text"
+              placeholder="MM/YY"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-300 mb-1">
+              CVV
+            </label>
+            <input
+              required
+              type="text"
+              placeholder="123"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
+            Monto
+          </label>
+          <input
+            required
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+        </div>
+        <div className="flex justify-end pt-4">
+          <button
+            type="submit"
+            className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 transition-colors"
+          >
+            {type === "deposit" ? "Pagar Ahora" : "Confirmar Retiro"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
+const SecurityView = React.memo(({ onBack }) => {
+  return (
+    <div className="p-4">
+      <button
+        onClick={onBack}
+        className="flex items-center text-amber-400 hover:text-amber-300 mb-4 cursor-pointer"
+      >
+        <Icons.ChevronLeft /> Volver
+      </button>
+      <h2 className="text-xl font-bold mb-4">Seguridad de la Cuenta</h2>
+      <p className="text-neutral-300">
+        Próximamente: Verificación de dos factores y más opciones de seguridad.
       </p>
-      <ul className="list-disc list-inside bg-white/5 p-4 rounded-md">
-        <li>
-          Tipo de operación:{" "}
-          <span className="font-semibold text-white">
-            {type === "deposit" ? "Depósito" : "Retiro"}
-          </span>
-        </li>
-        <li>Monto deseado</li>
-        <li>Comprobante de la transacción (si es un depósito)</li>
-      </ul>
-      <div className="text-center pt-4">
-        <button
-          onClick={onSubmitted}
-          className="px-6 py-2 bg-green-600 hover:bg-green-500 rounded-md text-white font-bold"
-        >
-          Entendido
-        </button>
-      </div>
     </div>
-  </Modal>
-);
+  );
+});
 
 const DashboardPage = () => {
   const {
@@ -2579,6 +2646,7 @@ const DashboardPage = () => {
     children: null,
     onConfirm: () => {},
   });
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const handleOpenPaymentModal = (method, type) => {
     setPaymentModalConfig({ isOpen: true, method, type });
@@ -2591,9 +2659,9 @@ const DashboardPage = () => {
     handleClosePaymentModal();
     setConfirmationModal({
       isOpen: true,
-      title: "Solicitud Recibida",
+      title: "Solicitud en Proceso",
       children:
-        "Un asesor se comunicará con usted a la brevedad para completar la operación.",
+        "Su solicitud ha sido recibida. Un agente se comunicará con usted a la brevedad para completar la operación.",
       onConfirm: () =>
         setConfirmationModal({
           isOpen: false,
@@ -2880,18 +2948,17 @@ const DashboardPage = () => {
     [realTimePrices]
   );
 
-  const handleUpdateOperation = useCallback(
-    async (operationData) => {
+  const handleUpdatePrice = useCallback(
+    async (opId, newPrice) => {
       try {
-        await axios.post("/admin/actualizar-operacion", operationData);
-        setAlert({ message: "Operación actualizada", type: "success" });
-        fetchData(pagination.currentPage, opHistoryFilter); // Recargar datos del usuario
-      } catch (error) {
-        setAlert({
-          message: "Error al actualizar la operación",
-          type: "error",
+        await axios.post("/actualizar-precio", {
+          id: opId,
+          nuevoPrecio: parseFloat(newPrice),
         });
-        throw error; // Re-throw para que el modal sepa que falló
+        setAlert({ message: "Precio actualizado", type: "success" });
+        fetchData(pagination.currentPage, opHistoryFilter);
+      } catch (error) {
+        setAlert({ message: "Error al actualizar el precio", type: "error" });
       }
     },
     [fetchData, pagination.currentPage, opHistoryFilter]
@@ -2936,10 +3003,11 @@ const DashboardPage = () => {
     marginLevel: metrics.marginLevel.toFixed(2),
   };
 
-  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
+  const platformLogo =
+    import.meta.env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
 
   return (
-    <div className="flex h-screen bg-black text-white font-sans overflow-hidden">
+    <div className="flex h-screen bg-gray-50 text-gray-800 font-sans overflow-hidden">
       <AnimatePresence>
         {alert.message && (
           <Toast
@@ -2965,6 +3033,14 @@ const DashboardPage = () => {
       )}
       {paymentModalConfig.method === "bank" && (
         <BankTransferModal
+          isOpen={paymentModalConfig.isOpen}
+          onClose={handleClosePaymentModal}
+          type={paymentModalConfig.type}
+          onSubmitted={handlePaymentSubmitted}
+        />
+      )}
+      {paymentModalConfig.method === "card" && (
+        <CardPaymentModal
           isOpen={paymentModalConfig.isOpen}
           onClose={handleClosePaymentModal}
           type={paymentModalConfig.type}
@@ -2998,7 +3074,7 @@ const DashboardPage = () => {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="fixed top-0 left-0 h-full w-72 bg-neutral-900 p-4 overflow-y-auto flex-shrink-0 border-r border-white/10 flex flex-col z-40 lg:hidden"
+              className="fixed top-0 left-0 h-full w-72 bg-white p-4 overflow-y-auto flex-shrink-0 border-r border-gray-200 flex flex-col z-40 lg:hidden"
             >
               <div className="flex-grow">
                 <img
@@ -3024,7 +3100,7 @@ const DashboardPage = () => {
           </>
         )}
       </AnimatePresence>
-      <aside className="hidden lg:flex lg:flex-col w-72 bg-black/30 p-4 overflow-y-auto flex-shrink-0 border-r border-white/10">
+      <aside className="hidden lg:flex lg:flex-col w-72 bg-white p-4 overflow-y-auto flex-shrink-0 border-r border-gray-200">
         <div className="flex-grow">
           <img className="mb-4" src={platformLogo} width="220" alt="Logo" />
           <AssetLists
@@ -3058,8 +3134,7 @@ const DashboardPage = () => {
         isOpen={isUserOpsModalOpen}
         onClose={() => setIsUserOpsModalOpen(false)}
         user={currentUserForOps}
-        onUpdateOperation={handleUpdateOperation}
-        setAlert={setAlert}
+        onUpdatePrice={handleUpdatePrice}
       />
       <OperationDetailsModal
         isOpen={isOpDetailsModalOpen}
@@ -3072,6 +3147,12 @@ const DashboardPage = () => {
         onClose={() => setIsRegCodeModalOpen(false)}
         setAlert={setAlert}
       />
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        user={user}
+        stats={stats}
+      />
 
       <main className="flex-1 flex flex-col bg-transparent overflow-hidden">
         <Header
@@ -3080,9 +3161,10 @@ const DashboardPage = () => {
           onManageRegCode={() => setIsRegCodeModalOpen(true)}
           onToggleSideMenu={() => setIsSideMenuOpen(true)}
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
+          onOpenProfileModal={() => setIsProfileModalOpen(true)}
         />
         <div className="flex-1 flex flex-col p-2 sm:p-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
-          <div className="flex-grow min-h-[300px] sm:min-h-[400px] bg-black/20 rounded-xl shadow-2xl border border-white/10">
+          <div className="flex-grow min-h-[300px] sm:min-h-[400px] bg-white rounded-xl shadow-lg border border-gray-200">
             <TradingViewWidget symbol={selectedAsset} />
           </div>
           <FinancialMetrics
@@ -3103,7 +3185,7 @@ const DashboardPage = () => {
             />
           </div>
         </div>
-        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm p-3 border-t border-white/10 flex justify-around items-center gap-2">
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm p-3 border-t border-gray-200 flex justify-around items-center gap-2">
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={() => handleOpenNewOpModal("sell", mobileVolume)}
@@ -3117,7 +3199,7 @@ const DashboardPage = () => {
             onChange={(e) => setMobileVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-3 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
+            className="w-24 p-3 border border-gray-300 bg-gray-50 rounded-md text-gray-900 text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           />
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -3132,7 +3214,146 @@ const DashboardPage = () => {
   );
 };
 
-// --- LOGIN/REGISTER ADAPTADO PARA BULLTRODAT ---
+const ChangePasswordView = React.memo(({ onBack, setAlert }) => {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setAlert({
+        message: "Las contraseñas nuevas no coinciden.",
+        type: "error",
+      });
+      return;
+    }
+    // Lógica para llamar a la API y cambiar la contraseña...
+    setAlert({
+      message: "Contraseña actualizada (simulación).",
+      type: "success",
+    });
+  };
+
+  return (
+    <div className="p-4">
+      <button
+        onClick={onBack}
+        className="flex items-center text-indigo-600 hover:text-indigo-500 mb-4 cursor-pointer"
+      >
+        <Icons.ChevronLeft /> Volver
+      </button>
+      <h2 className="text-xl font-bold mb-4 text-gray-900">
+        Cambiar Contraseña
+      </h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1 text-gray-500">
+            Contraseña Actual
+          </label>
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            className="w-full p-2 bg-gray-100 border border-gray-300 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1 text-gray-500">
+            Nueva Contraseña
+          </label>
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            className="w-full p-2 bg-gray-100 border border-gray-300 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1 text-gray-500">
+            Confirmar Nueva Contraseña
+          </label>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="w-full p-2 bg-gray-100 border border-gray-300 rounded"
+            required
+          />
+        </div>
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            className="px-5 py-2 rounded-md text-white font-bold bg-indigo-600 hover:bg-indigo-500 cursor-pointer transition-colors"
+          >
+            Actualizar Contraseña
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+});
+
+const ProfileModal = ({ isOpen, onClose, user, stats }) => {
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Resumen de Perfil"
+      maxWidth="max-w-md"
+    >
+      {user && stats && (
+        <div className="space-y-4 text-sm">
+          <div className="p-4 bg-gray-100 rounded-lg">
+            <h3 className="font-bold text-lg mb-2 text-gray-900">
+              {user.nombre}
+            </h3>
+            <p className="text-gray-600">{user.email}</p>
+            <p className="text-gray-600">
+              Teléfono: {user.telefono || "No especificado"}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-gray-500">Balance</p>
+              <p className="font-bold text-xl text-gray-900">
+                ${parseFloat(user.balance).toFixed(2)}
+              </p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-gray-500">Ganancia Total</p>
+              <p
+                className={`font-bold text-xl ${
+                  parseFloat(stats.ganancia_total) >= 0
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                ${parseFloat(stats.ganancia_total || 0).toFixed(2)}
+              </p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-gray-500">Op. Abiertas</p>
+              <p className="font-bold text-xl text-gray-900">
+                {stats.abiertas || 0}
+              </p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-gray-500">Op. Cerradas</p>
+              <p className="font-bold text-xl text-gray-900">
+                {stats.cerradas || 0}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+};
+
+// --- LOGIN/REGISTER ADAPTADO PARA UNIQUE 1 GLOBAL ---
 const LoginPage = () => {
   const { setUser, setIsAuthenticated } = useContext(AppContext);
   const [isLogin, setIsLogin] = useState(true);
@@ -3145,13 +3366,12 @@ const LoginPage = () => {
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
-  const [regCode, setRegCode] = useState(""); // Campo específico para Bulltrodat
 
   const handleAuth = async (e, action) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    const platform_id = import.meta.env.VITE_PLATFORM_ID || "bulltrodat";
+    const platform_id = import.meta.env.VITE_PLATFORM_ID || "unique1global";
 
     if (action === "login") {
       try {
@@ -3179,7 +3399,6 @@ const LoginPage = () => {
           nombre: regName,
           email: regEmail,
           password: regPassword,
-          codigo: regCode, // Enviamos el código de registro
           platform_id,
         };
         const { data } = await axios.post("/register", payload);
@@ -3197,7 +3416,8 @@ const LoginPage = () => {
     }
   };
 
-  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
+  const platformLogo =
+    import.meta.env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
   const formVariants = {
     hidden: { opacity: 0, x: 300 },
     visible: {
@@ -3210,14 +3430,14 @@ const LoginPage = () => {
 
   return (
     <div
-      className="min-h-screen bg-neutral-900 flex items-center justify-center p-4 bg-cover bg-center"
+      className="min-h-screen bg-gray-100 flex items-center justify-center p-4 bg-cover bg-center"
       style={{
         backgroundImage:
-          "url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=2070&auto=format&fit=crop')",
+          "url('https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?q=80&w=2070&auto=format&fit=crop')",
       }}
     >
-      <div className="relative w-full max-w-4xl min-h-[600px] bg-black/50 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
-        <div className="w-full md:w-1/2 text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-red-600 to-red-800">
+      <div className="relative w-full max-w-4xl min-h-[600px] bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-200">
+        <div className="w-full md:w-1/2 text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-indigo-600 to-indigo-800">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -3258,11 +3478,11 @@ const LoginPage = () => {
                 animate="visible"
                 exit="exit"
               >
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6 text-center">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 text-center">
                   Iniciar Sesión
                 </h2>
                 {error && (
-                  <p className="text-red-400 text-center text-sm mb-4">
+                  <p className="text-red-500 text-center text-sm mb-4">
                     {error}
                   </p>
                 )}
@@ -3275,18 +3495,18 @@ const LoginPage = () => {
                     placeholder="Email"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full p-3 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <input
                     type="password"
                     placeholder="Contraseña"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full p-3 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <button
                     type="submit"
-                    className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
                   >
                     Entrar
                   </button>
@@ -3300,16 +3520,16 @@ const LoginPage = () => {
                 animate="visible"
                 exit="exit"
               >
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 text-center">
+                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 text-center">
                   Crear Cuenta
                 </h2>
                 {error && (
-                  <p className="text-red-400 text-center text-sm mb-2">
+                  <p className="text-red-500 text-center text-sm mb-2">
                     {error}
                   </p>
                 )}
                 {success && (
-                  <p className="text-green-400 text-center text-sm mb-2">
+                  <p className="text-green-500 text-center text-sm mb-2">
                     {success}
                   </p>
                 )}
@@ -3322,32 +3542,25 @@ const LoginPage = () => {
                     placeholder="Nombre Completo"
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
-                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <input
                     type="email"
                     placeholder="Email"
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
-                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <input
                     type="password"
                     placeholder="Contraseña"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
-                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Código de Registro"
-                    value={regCode}
-                    onChange={(e) => setRegCode(e.target.value)}
-                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <button
                     type="submit"
-                    className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
                   >
                     Crear Cuenta
                   </button>
@@ -3363,12 +3576,13 @@ const LoginPage = () => {
 
 const App = () => {
   const { isAppLoading, isAuthenticated } = useContext(AppContext);
-  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
+  const platformLogo =
+    import.meta.env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
 
   if (isAppLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-white text-xl font-bold animate-pulse">
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-xl font-bold animate-pulse">
           <img src={platformLogo} width="220" alt="Cargando..." />
         </div>
       </div>
