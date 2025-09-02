@@ -2116,11 +2116,6 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
         text="Transferencia Bancaria"
         onClick={() => onSelectMethod("bank", "deposit")}
       />
-      <PaymentMethodButton
-        icon={<Icons.CreditCard className="h-8 w-8 text-blue-500" />}
-        text="Tarjeta de Crédito / Débito"
-        onClick={() => onSelectMethod("card", "deposit")}
-      />
     </div>
   </div>
 ));
@@ -2146,11 +2141,6 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
         icon={<Icons.Banknotes className="h-8 w-8 text-green-500" />}
         text="Transferencia Bancaria"
         onClick={() => onSelectMethod("bank", "withdraw")}
-      />
-      <PaymentMethodButton
-        icon={<Icons.CreditCard className="h-8 w-8 text-blue-500" />}
-        text="Tarjeta de Crédito / Débito"
-        onClick={() => onSelectMethod("card", "withdraw")}
       />
     </div>
   </div>
@@ -2389,160 +2379,39 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
   );
 };
 
-const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => {
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmitted();
-  };
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={`${
-        type === "deposit" ? "Depositar" : "Retirar"
-      } por Transferencia`}
-      maxWidth="max-w-lg"
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nombre del Titular
-          </label>
-          <input
-            required
-            type="text"
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nombre del Banco
-          </label>
-          <input
-            required
-            type="text"
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Número de Cuenta
-          </label>
-          <input
-            required
-            type="text"
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Monto
-          </label>
-          <input
-            required
-            type="number"
-            step="0.01"
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-        <div className="flex justify-end pt-4">
-          <button
-            type="submit"
-            className="px-5 py-2 rounded-md text-white font-bold bg-indigo-600 hover:bg-indigo-500 transition-colors"
-          >
-            {type === "deposit" ? "Confirmar Depósito" : "Solicitar Retiro"}
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
-};
-
-const CardPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmitted();
-  };
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={`${type === "deposit" ? "Depositar" : "Retirar"} con Tarjeta`}
-      maxWidth="max-w-lg"
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Número de Tarjeta
-          </label>
-          <input
-            required
-            type="text"
-            placeholder="0000 0000 0000 0000"
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nombre en la Tarjeta
-          </label>
-          <input
-            required
-            type="text"
-            placeholder="Juan Perez"
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Fecha de Expiración
-            </label>
-            <input
-              required
-              type="text"
-              placeholder="MM/YY"
-              className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              CVV
-            </label>
-            <input
-              required
-              type="text"
-              placeholder="123"
-              className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Monto
-          </label>
-          <input
-            required
-            type="number"
-            step="0.01"
-            placeholder="0.00"
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-        </div>
-        <div className="flex justify-end pt-4">
-          <button
-            type="submit"
-            className="px-5 py-2 rounded-md text-white font-bold bg-indigo-600 hover:bg-indigo-500 transition-colors"
-          >
-            {type === "deposit" ? "Pagar Ahora" : "Confirmar Retiro"}
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
-};
+const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => (
+  <Modal
+    isOpen={isOpen}
+    onClose={onClose}
+    title={`${type === "deposit" ? "Depositar" : "Retirar"} por Transferencia`}
+    maxWidth="max-w-lg"
+  >
+    <div className="space-y-4 text-gray-700">
+      <p>
+        Para continuar, por favor contacta a soporte con los siguientes
+        detalles:
+      </p>
+      <ul className="list-disc list-inside bg-gray-100 p-4 rounded-md">
+        <li>
+          Tipo de operación:{" "}
+          <span className="font-semibold text-gray-900">
+            {type === "deposit" ? "Depósito" : "Retiro"}
+          </span>
+        </li>
+        <li>Monto deseado</li>
+        <li>Comprobante de la transacción (si es un depósito)</li>
+      </ul>
+      <div className="text-center pt-4">
+        <button
+          onClick={onSubmitted}
+          className="px-6 py-2 bg-green-600 hover:bg-green-500 rounded-md text-white font-bold"
+        >
+          Entendido
+        </button>
+      </div>
+    </div>
+  </Modal>
+);
 
 const SecurityView = React.memo(({ onBack }) => {
   return (
@@ -2656,9 +2525,9 @@ const DashboardPage = () => {
     handleClosePaymentModal();
     setConfirmationModal({
       isOpen: true,
-      title: "Solicitud en Proceso",
+      title: "Solicitud Recibida",
       children:
-        "Su solicitud ha sido recibida. Un agente se comunicará con usted a la brevedad para completar la operación.",
+        "Un asesor se comunicará con usted a la brevedad para completar la operación.",
       onConfirm: () =>
         setConfirmationModal({
           isOpen: false,
@@ -3030,14 +2899,6 @@ const DashboardPage = () => {
       )}
       {paymentModalConfig.method === "bank" && (
         <BankTransferModal
-          isOpen={paymentModalConfig.isOpen}
-          onClose={handleClosePaymentModal}
-          type={paymentModalConfig.type}
-          onSubmitted={handlePaymentSubmitted}
-        />
-      )}
-      {paymentModalConfig.method === "card" && (
-        <CardPaymentModal
           isOpen={paymentModalConfig.isOpen}
           onClose={handleClosePaymentModal}
           type={paymentModalConfig.type}
