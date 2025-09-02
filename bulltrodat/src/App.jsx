@@ -118,6 +118,12 @@ const Icons = {
       className={className}
     />
   ),
+  ShieldCheck: ({ className }) => (
+    <Icon
+      path="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286Zm-1.12 8.149a.75.75 0 1 0-1.06 1.06l2.12 2.12a.75.75 0 0 0 1.06 0l4.243-4.242a.75.75 0 0 0-1.06-1.06l-3.713 3.713-1.59-1.59Z"
+      className={className}
+    />
+  ),
 };
 
 // Catálogo de activos para búsqueda y recomendaciones
@@ -454,8 +460,8 @@ const PerformanceChart = ({ performanceData, isLoading }) => {
           label: "Ganancia Diaria",
           data: performanceData.map((d) => parseFloat(d.ganancia_dia || 0)),
           fill: true,
-          backgroundColor: "rgba(22, 163, 74, 0.2)",
-          borderColor: "#22c55e",
+          backgroundColor: "rgba(220, 38, 38, 0.2)",
+          borderColor: "#dc2626",
           tension: 0.4,
           pointRadius: 0,
         },
@@ -725,7 +731,14 @@ const MenuItem = ({ icon, text, onClick }) => (
 );
 
 const ProfileMenu = React.memo(
-  ({ user, logout, onToggleSideMenu, onManageUsers, onManageRegCode }) => {
+  ({
+    user,
+    logout,
+    onToggleSideMenu,
+    onManageUsers,
+    onManageRegCode,
+    onOpenProfileModal,
+  }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef(null);
 
@@ -775,6 +788,13 @@ const ProfileMenu = React.memo(
                   icon={
                     <Icons.UserCircle className="h-5 w-5 text-neutral-400" />
                   }
+                  text="Ver Perfil"
+                  onClick={() => handleItemClick(onOpenProfileModal)}
+                />
+                <MenuItem
+                  icon={
+                    <Icons.UserCircle className="h-5 w-5 text-neutral-400" />
+                  }
                   text="Gestionar Cuenta"
                   onClick={() => handleItemClick(onToggleSideMenu)}
                 />
@@ -817,6 +837,7 @@ const Header = ({
   onManageRegCode,
   onToggleSideMenu,
   onToggleMainSidebar,
+  onOpenProfileModal,
 }) => {
   const { user, logout, selectedAsset } = useContext(AppContext);
   const [volume, setVolume] = useState(0.01);
@@ -870,6 +891,7 @@ const Header = ({
           onToggleSideMenu={onToggleSideMenu}
           onManageUsers={onManageUsers}
           onManageRegCode={onManageRegCode}
+          onOpenProfileModal={onOpenProfileModal}
         />
       </div>
     </header>
@@ -1445,28 +1467,13 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
   </Modal>
 );
 
-const UserOperationsModal = ({
-  isOpen,
-  onClose,
-  user,
-  onUpdateOperation,
-  setAlert,
-}) => {
+const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
   const [operations, setOperations] = useState([]);
+  const [editingPrices, setEditingPrices] = useState({});
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
   });
-
-  const calculateProfit = (op) => {
-    if (!op.cerrada) return 0;
-    const { tipo_operacion, precio_cierre, precio_entrada, volumen } = op;
-    if (tipo_operacion.toLowerCase().includes("buy")) {
-      return (precio_cierre - precio_entrada) * volumen;
-    } else {
-      return (precio_entrada - precio_cierre) * volumen;
-    }
-  };
 
   const fetchUserOperations = useCallback(
     (page = 1) => {
@@ -1474,12 +1481,7 @@ const UserOperationsModal = ({
         axios
           .get(`/admin-operaciones/${user.id}?page=${page}&limit=10`)
           .then((res) => {
-            setOperations(
-              res.data.operaciones.map((op) => ({
-                ...op,
-                ganancia: calculateProfit(op),
-              }))
-            );
+            setOperations(res.data.operaciones);
             setPagination({
               currentPage: res.data.currentPage,
               totalPages: res.data.totalPages,
@@ -1497,36 +1499,13 @@ const UserOperationsModal = ({
     fetchUserOperations(1);
   }, [isOpen, user, fetchUserOperations]);
 
-  const handleInputChange = (opId, field, value) => {
-    setOperations((currentOps) =>
-      currentOps.map((op) => {
-        if (op.id === opId) {
-          const updatedOp = { ...op, [field]: value };
-          // Recalcular ganancia si se cambia un valor relevante
-          if (
-            [
-              "precio_entrada",
-              "precio_cierre",
-              "volumen",
-              "tipo_operacion",
-              "cerrada",
-            ].includes(field)
-          ) {
-            updatedOp.ganancia = calculateProfit(updatedOp);
-          }
-          return updatedOp;
-        }
-        return op;
-      })
-    );
-  };
-
-  const handleSave = async (operationData) => {
-    try {
-      await onUpdateOperation(operationData);
-      setAlert({ message: "Operación actualizada con éxito", type: "success" });
-    } catch (error) {
-      setAlert({ message: "Error al actualizar la operación", type: "error" });
+  const handlePriceChange = (opId, value) =>
+    setEditingPrices((prev) => ({ ...prev, [opId]: value }));
+  const handleSavePrice = async (opId) => {
+    const newPrice = editingPrices[opId];
+    if (newPrice !== undefined) {
+      await onUpdatePrice(opId, newPrice);
+      fetchUserOperations(pagination.currentPage);
     }
   };
 
@@ -1535,7 +1514,6 @@ const UserOperationsModal = ({
       isOpen={isOpen}
       onClose={onClose}
       title={`Operaciones de ${user?.nombre}`}
-      maxWidth="max-w-7xl"
     >
       <div className="overflow-auto">
         <table className="w-full text-sm text-left border-collapse">
@@ -1546,12 +1524,9 @@ const UserOperationsModal = ({
                 "Activo",
                 "Tipo",
                 "Volumen",
-                "P. Entrada",
-                "P. Cierre",
-                "TP",
-                "SL",
+                "Precio Entrada",
+                "Fecha",
                 "Estado",
-                "G/P",
                 "Acción",
               ].map((h) => (
                 <th key={h} className="p-2 font-medium">
@@ -1562,105 +1537,25 @@ const UserOperationsModal = ({
           </thead>
           <tbody className="bg-neutral-800">
             {operations.map((op) => (
-              <tr key={op.id} className="border-b border-neutral-700">
-                <td className="p-1">{op.id}</td>
-                <td className="p-1">
-                  <input
-                    type="text"
-                    value={op.activo}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "activo", e.target.value)
-                    }
-                    className="w-full p-1 bg-white/5 rounded border border-white/10"
-                  />
-                </td>
-                <td className="p-1">
-                  <select
-                    value={op.tipo_operacion}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "tipo_operacion", e.target.value)
-                    }
-                    className="w-full p-1 bg-white/5 rounded border border-white/10"
-                  >
-                    <option value="buy">buy</option>
-                    <option value="sell">sell</option>
-                  </select>
-                </td>
-                <td className="p-1">
+              <tr key={op.id} className="border-b border-white/10">
+                <td className="p-2">{op.id}</td>
+                <td className="p-2">{op.activo}</td>
+                <td className="p-2">{op.tipo_operacion}</td>
+                <td className="p-2">{op.volumen}</td>
+                <td className="p-2">
                   <input
                     type="number"
                     step="any"
-                    value={op.volumen}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "volumen", e.target.value)
-                    }
+                    defaultValue={op.precio_entrada}
+                    onChange={(e) => handlePriceChange(op.id, e.target.value)}
                     className="w-full p-1 bg-white/5 rounded border border-white/10"
                   />
                 </td>
-                <td className="p-1">
-                  <input
-                    type="number"
-                    step="any"
-                    value={op.precio_entrada}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "precio_entrada", e.target.value)
-                    }
-                    className="w-full p-1 bg-white/5 rounded border border-white/10"
-                  />
-                </td>
-                <td className="p-1">
-                  <input
-                    type="number"
-                    step="any"
-                    value={op.precio_cierre || ""}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "precio_cierre", e.target.value)
-                    }
-                    className="w-full p-1 bg-white/5 rounded border border-white/10"
-                  />
-                </td>
-                <td className="p-1">
-                  <input
-                    type="number"
-                    step="any"
-                    value={op.take_profit || ""}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "take_profit", e.target.value)
-                    }
-                    className="w-full p-1 bg-white/5 rounded border border-white/10"
-                  />
-                </td>
-                <td className="p-1">
-                  <input
-                    type="number"
-                    step="any"
-                    value={op.stop_loss || ""}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "stop_loss", e.target.value)
-                    }
-                    className="w-full p-1 bg-white/5 rounded border border-white/10"
-                  />
-                </td>
-                <td className="p-1">
-                  <input
-                    type="checkbox"
-                    checked={op.cerrada}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "cerrada", e.target.checked)
-                    }
-                    className="form-checkbox h-5 w-5 text-red-600 bg-white/10 border-white/20 rounded focus:ring-red-500"
-                  />
-                </td>
-                <td
-                  className={`p-1 font-mono ${
-                    op.ganancia >= 0 ? "text-green-400" : "text-red-500"
-                  }`}
-                >
-                  {op.ganancia.toFixed(2)}
-                </td>
-                <td className="p-1">
+                <td className="p-2">{new Date(op.fecha).toLocaleString()}</td>
+                <td className="p-2">{op.cerrada ? "Cerrada" : "Abierta"}</td>
+                <td className="p-2">
                   <button
-                    onClick={() => handleSave(op)}
+                    onClick={() => handleSavePrice(op.id)}
                     className="bg-red-600 text-white px-3 py-1 text-xs rounded hover:bg-red-500 cursor-pointer"
                   >
                     Guardar
@@ -2226,6 +2121,11 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
         text="Transferencia Bancaria"
         onClick={() => onSelectMethod("bank", "deposit")}
       />
+      <PaymentMethodButton
+        icon={<Icons.CreditCard className="h-8 w-8 text-blue-400" />}
+        text="Tarjeta de Crédito / Débito"
+        onClick={() => onSelectMethod("card", "deposit")}
+      />
     </div>
   </div>
 ));
@@ -2251,6 +2151,11 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
         icon={<Icons.Banknotes className="h-8 w-8 text-green-400" />}
         text="Transferencia Bancaria"
         onClick={() => onSelectMethod("bank", "withdraw")}
+      />
+      <PaymentMethodButton
+        icon={<Icons.CreditCard className="h-8 w-8 text-blue-400" />}
+        text="Tarjeta de Crédito / Débito"
+        onClick={() => onSelectMethod("card", "withdraw")}
       />
     </div>
   </div>
@@ -2320,13 +2225,25 @@ const SideMenu = React.memo(
                       text="Retirar"
                       onClick={() => setView("withdraw")}
                     />
+                    <MenuButton
+                      icon={<Icons.Key className="h-5 w-5 text-neutral-400" />}
+                      text="Cambiar Contraseña"
+                      onClick={() => setView("change-password")}
+                    />
                     <div className="my-2 h-px bg-white/10" />
                     <MenuButton
                       icon={
                         <Icons.UserCircle className="h-5 w-5 text-neutral-400" />
                       }
-                      text="Completar Perfil"
+                      text="Mis Datos"
                       onClick={() => setView("profile")}
+                    />
+                    <MenuButton
+                      icon={
+                        <Icons.ShieldCheck className="h-5 w-5 text-neutral-400" />
+                      }
+                      text="Seguridad"
+                      onClick={() => setView("security")}
                     />
                   </div>
                 )}
@@ -2351,6 +2268,15 @@ const SideMenu = React.memo(
                       handleSelectMethod(method, "withdraw")
                     }
                   />
+                )}
+                {view === "change-password" && (
+                  <ChangePasswordView
+                    setAlert={setAlert}
+                    onBack={() => setView("main")}
+                  />
+                )}
+                {view === "security" && (
+                  <SecurityView onBack={() => setView("main")} />
                 )}
               </div>
             </motion.div>
@@ -2465,39 +2391,177 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
   );
 };
 
-const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => (
-  <Modal
-    isOpen={isOpen}
-    onClose={onClose}
-    title={`${type === "deposit" ? "Depositar" : "Retirar"} por Transferencia`}
-    maxWidth="max-w-lg"
-  >
-    <div className="space-y-4 text-neutral-300">
-      <p>
-        Para continuar, por favor contacta a soporte con los siguientes
-        detalles:
+const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => {
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmitted();
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`${
+        type === "deposit" ? "Depositar" : "Retirar"
+      } por Transferencia`}
+      maxWidth="max-w-lg"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
+            Nombre del Titular
+          </label>
+          <input
+            required
+            type="text"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
+            Nombre del Banco
+          </label>
+          <input
+            required
+            type="text"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
+            Número de Cuenta
+          </label>
+          <input
+            required
+            type="text"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
+            Monto
+          </label>
+          <input
+            required
+            type="number"
+            step="0.01"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+        </div>
+        <div className="flex justify-end pt-4">
+          <button
+            type="submit"
+            className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 transition-colors"
+          >
+            {type === "deposit" ? "Confirmar Depósito" : "Solicitar Retiro"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
+const CardPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSubmitted();
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`${type === "deposit" ? "Depositar" : "Retirar"} con Tarjeta`}
+      maxWidth="max-w-lg"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
+            Número de Tarjeta
+          </label>
+          <input
+            required
+            type="text"
+            placeholder="0000 0000 0000 0000"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
+            Nombre en la Tarjeta
+          </label>
+          <input
+            required
+            type="text"
+            placeholder="Juan Perez"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-300 mb-1">
+              Fecha de Expiración
+            </label>
+            <input
+              required
+              type="text"
+              placeholder="MM/YY"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-neutral-300 mb-1">
+              CVV
+            </label>
+            <input
+              required
+              type="text"
+              placeholder="123"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
+            Monto
+          </label>
+          <input
+            required
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+        </div>
+        <div className="flex justify-end pt-4">
+          <button
+            type="submit"
+            className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 transition-colors"
+          >
+            {type === "deposit" ? "Pagar Ahora" : "Confirmar Retiro"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
+const SecurityView = React.memo(({ onBack }) => {
+  return (
+    <div className="p-4">
+      <button
+        onClick={onBack}
+        className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
+      >
+        <Icons.ChevronLeft /> Volver
+      </button>
+      <h2 className="text-xl font-bold mb-4">Seguridad de la Cuenta</h2>
+      <p className="text-neutral-300">
+        Próximamente: Verificación de dos factores y más opciones de seguridad.
       </p>
-      <ul className="list-disc list-inside bg-white/5 p-4 rounded-md">
-        <li>
-          Tipo de operación:{" "}
-          <span className="font-semibold text-white">
-            {type === "deposit" ? "Depósito" : "Retiro"}
-          </span>
-        </li>
-        <li>Monto deseado</li>
-        <li>Comprobante de la transacción (si es un depósito)</li>
-      </ul>
-      <div className="text-center pt-4">
-        <button
-          onClick={onSubmitted}
-          className="px-6 py-2 bg-green-600 hover:bg-green-500 rounded-md text-white font-bold"
-        >
-          Entendido
-        </button>
-      </div>
     </div>
-  </Modal>
-);
+  );
+});
 
 const DashboardPage = () => {
   const {
@@ -2579,6 +2643,7 @@ const DashboardPage = () => {
     children: null,
     onConfirm: () => {},
   });
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const handleOpenPaymentModal = (method, type) => {
     setPaymentModalConfig({ isOpen: true, method, type });
@@ -2591,9 +2656,9 @@ const DashboardPage = () => {
     handleClosePaymentModal();
     setConfirmationModal({
       isOpen: true,
-      title: "Solicitud Recibida",
+      title: "Solicitud en Proceso",
       children:
-        "Un asesor se comunicará con usted a la brevedad para completar la operación.",
+        "Su solicitud ha sido recibida. Un agente se comunicará con usted a la brevedad para completar la operación.",
       onConfirm: () =>
         setConfirmationModal({
           isOpen: false,
@@ -2971,6 +3036,14 @@ const DashboardPage = () => {
           onSubmitted={handlePaymentSubmitted}
         />
       )}
+      {paymentModalConfig.method === "card" && (
+        <CardPaymentModal
+          isOpen={paymentModalConfig.isOpen}
+          onClose={handleClosePaymentModal}
+          type={paymentModalConfig.type}
+          onSubmitted={handlePaymentSubmitted}
+        />
+      )}
       <ConfirmationModal
         isOpen={confirmationModal.isOpen}
         onClose={() =>
@@ -3072,6 +3145,12 @@ const DashboardPage = () => {
         onClose={() => setIsRegCodeModalOpen(false)}
         setAlert={setAlert}
       />
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        user={user}
+        stats={stats}
+      />
 
       <main className="flex-1 flex flex-col bg-transparent overflow-hidden">
         <Header
@@ -3080,6 +3159,7 @@ const DashboardPage = () => {
           onManageRegCode={() => setIsRegCodeModalOpen(true)}
           onToggleSideMenu={() => setIsSideMenuOpen(true)}
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
+          onOpenProfileModal={() => setIsProfileModalOpen(true)}
         />
         <div className="flex-1 flex flex-col p-2 sm:p-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
           <div className="flex-grow min-h-[300px] sm:min-h-[400px] bg-black/20 rounded-xl shadow-2xl border border-white/10">
@@ -3129,6 +3209,141 @@ const DashboardPage = () => {
         </div>
       </main>
     </div>
+  );
+};
+
+const ChangePasswordView = React.memo(({ onBack, setAlert }) => {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setAlert({
+        message: "Las contraseñas nuevas no coinciden.",
+        type: "error",
+      });
+      return;
+    }
+    // Lógica para llamar a la API y cambiar la contraseña...
+    setAlert({
+      message: "Contraseña actualizada (simulación).",
+      type: "success",
+    });
+  };
+
+  return (
+    <div className="p-4">
+      <button
+        onClick={onBack}
+        className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
+      >
+        <Icons.ChevronLeft /> Volver
+      </button>
+      <h2 className="text-xl font-bold mb-4">Cambiar Contraseña</h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1 text-neutral-400">
+            Contraseña Actual
+          </label>
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            className="w-full p-2 bg-white/5 border border-white/10 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1 text-neutral-400">
+            Nueva Contraseña
+          </label>
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            className="w-full p-2 bg-white/5 border border-white/10 rounded"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1 text-neutral-400">
+            Confirmar Nueva Contraseña
+          </label>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="w-full p-2 bg-white/5 border border-white/10 rounded"
+            required
+          />
+        </div>
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 cursor-pointer transition-colors"
+          >
+            Actualizar Contraseña
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+});
+
+const ProfileModal = ({ isOpen, onClose, user, stats }) => {
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Resumen de Perfil"
+      maxWidth="max-w-md"
+    >
+      {user && stats && (
+        <div className="space-y-4 text-sm">
+          <div className="p-4 bg-white/5 rounded-lg">
+            <h3 className="font-bold text-lg mb-2 text-white">{user.nombre}</h3>
+            <p className="text-neutral-400">{user.email}</p>
+            <p className="text-neutral-400">
+              Teléfono: {user.telefono || "No especificado"}
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-3 bg-white/5 rounded-lg">
+              <p className="text-neutral-400">Balance</p>
+              <p className="font-bold text-xl text-white">
+                ${parseFloat(user.balance).toFixed(2)}
+              </p>
+            </div>
+            <div className="p-3 bg-white/5 rounded-lg">
+              <p className="text-neutral-400">Ganancia Total</p>
+              <p
+                className={`font-bold text-xl ${
+                  parseFloat(stats.ganancia_total) >= 0
+                    ? "text-green-400"
+                    : "text-red-500"
+                }`}
+              >
+                ${parseFloat(stats.ganancia_total || 0).toFixed(2)}
+              </p>
+            </div>
+            <div className="p-3 bg-white/5 rounded-lg">
+              <p className="text-neutral-400">Op. Abiertas</p>
+              <p className="font-bold text-xl text-white">
+                {stats.abiertas || 0}
+              </p>
+            </div>
+            <div className="p-3 bg-white/5 rounded-lg">
+              <p className="text-neutral-400">Op. Cerradas</p>
+              <p className="font-bold text-xl text-white">
+                {stats.cerradas || 0}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </Modal>
   );
 };
 
