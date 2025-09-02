@@ -1467,13 +1467,28 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
   </Modal>
 );
 
-const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
+const UserOperationsModal = ({
+  isOpen,
+  onClose,
+  user,
+  onUpdateOperation,
+  setAlert,
+}) => {
   const [operations, setOperations] = useState([]);
-  const [editingPrices, setEditingPrices] = useState({});
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
   });
+
+  const calculateProfit = (op) => {
+    if (!op.cerrada || !op.precio_cierre) return 0;
+    const { tipo_operacion, precio_cierre, precio_entrada, volumen } = op;
+    if (tipo_operacion.toLowerCase().includes("buy")) {
+      return (precio_cierre - precio_entrada) * volumen;
+    } else {
+      return (precio_entrada - precio_cierre) * volumen;
+    }
+  };
 
   const fetchUserOperations = useCallback(
     (page = 1) => {
@@ -1481,7 +1496,12 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
         axios
           .get(`/admin-operaciones/${user.id}?page=${page}&limit=10`)
           .then((res) => {
-            setOperations(res.data.operaciones);
+            setOperations(
+              res.data.operaciones.map((op) => ({
+                ...op,
+                ganancia: calculateProfit(op),
+              }))
+            );
             setPagination({
               currentPage: res.data.currentPage,
               totalPages: res.data.totalPages,
@@ -1499,13 +1519,35 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
     fetchUserOperations(1);
   }, [isOpen, user, fetchUserOperations]);
 
-  const handlePriceChange = (opId, value) =>
-    setEditingPrices((prev) => ({ ...prev, [opId]: value }));
-  const handleSavePrice = async (opId) => {
-    const newPrice = editingPrices[opId];
-    if (newPrice !== undefined) {
-      await onUpdatePrice(opId, newPrice);
-      fetchUserOperations(pagination.currentPage);
+  const handleInputChange = (opId, field, value) => {
+    setOperations((currentOps) =>
+      currentOps.map((op) => {
+        if (op.id === opId) {
+          const updatedOp = { ...op, [field]: value };
+          if (
+            [
+              "precio_entrada",
+              "precio_cierre",
+              "volumen",
+              "tipo_operacion",
+              "cerrada",
+            ].includes(field)
+          ) {
+            updatedOp.ganancia = calculateProfit(updatedOp);
+          }
+          return updatedOp;
+        }
+        return op;
+      })
+    );
+  };
+
+  const handleSave = async (operationData) => {
+    try {
+      await onUpdateOperation(operationData);
+      setAlert({ message: "Operación actualizada con éxito", type: "success" });
+    } catch (error) {
+      setAlert({ message: "Error al actualizar la operación", type: "error" });
     }
   };
 
@@ -1514,6 +1556,7 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
       isOpen={isOpen}
       onClose={onClose}
       title={`Operaciones de ${user?.nombre}`}
+      maxWidth="max-w-7xl"
     >
       <div className="overflow-auto">
         <table className="w-full text-sm text-left border-collapse">
@@ -1524,9 +1567,12 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
                 "Activo",
                 "Tipo",
                 "Volumen",
-                "Precio Entrada",
-                "Fecha",
+                "P. Entrada",
+                "P. Cierre",
+                "TP",
+                "SL",
                 "Estado",
+                "G/P",
                 "Acción",
               ].map((h) => (
                 <th key={h} className="p-2 font-medium">
@@ -1537,25 +1583,105 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
           </thead>
           <tbody className="bg-neutral-800">
             {operations.map((op) => (
-              <tr key={op.id} className="border-b border-white/10">
-                <td className="p-2">{op.id}</td>
-                <td className="p-2">{op.activo}</td>
-                <td className="p-2">{op.tipo_operacion}</td>
-                <td className="p-2">{op.volumen}</td>
-                <td className="p-2">
+              <tr key={op.id} className="border-b border-neutral-700">
+                <td className="p-1">{op.id}</td>
+                <td className="p-1">
                   <input
-                    type="number"
-                    step="any"
-                    defaultValue={op.precio_entrada}
-                    onChange={(e) => handlePriceChange(op.id, e.target.value)}
+                    type="text"
+                    value={op.activo}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "activo", e.target.value)
+                    }
                     className="w-full p-1 bg-white/5 rounded border border-white/10"
                   />
                 </td>
-                <td className="p-2">{new Date(op.fecha).toLocaleString()}</td>
-                <td className="p-2">{op.cerrada ? "Cerrada" : "Abierta"}</td>
-                <td className="p-2">
+                <td className="p-1">
+                  <select
+                    value={op.tipo_operacion}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "tipo_operacion", e.target.value)
+                    }
+                    className="w-full p-1 bg-white/5 rounded border border-white/10"
+                  >
+                    <option value="buy">buy</option>
+                    <option value="sell">sell</option>
+                  </select>
+                </td>
+                <td className="p-1">
+                  <input
+                    type="number"
+                    step="any"
+                    value={op.volumen}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "volumen", e.target.value)
+                    }
+                    className="w-full p-1 bg-white/5 rounded border border-white/10"
+                  />
+                </td>
+                <td className="p-1">
+                  <input
+                    type="number"
+                    step="any"
+                    value={op.precio_entrada}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "precio_entrada", e.target.value)
+                    }
+                    className="w-full p-1 bg-white/5 rounded border border-white/10"
+                  />
+                </td>
+                <td className="p-1">
+                  <input
+                    type="number"
+                    step="any"
+                    value={op.precio_cierre || ""}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "precio_cierre", e.target.value)
+                    }
+                    className="w-full p-1 bg-white/5 rounded border border-white/10"
+                  />
+                </td>
+                <td className="p-1">
+                  <input
+                    type="number"
+                    step="any"
+                    value={op.take_profit || ""}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "take_profit", e.target.value)
+                    }
+                    className="w-full p-1 bg-white/5 rounded border border-white/10"
+                  />
+                </td>
+                <td className="p-1">
+                  <input
+                    type="number"
+                    step="any"
+                    value={op.stop_loss || ""}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "stop_loss", e.target.value)
+                    }
+                    className="w-full p-1 bg-white/5 rounded border border-white/10"
+                  />
+                </td>
+                <td className="p-1">
+                  <input
+                    type="checkbox"
+                    checked={op.cerrada}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "cerrada", e.target.checked)
+                    }
+                    className="form-checkbox h-5 w-5 text-red-600 bg-white/10 border-white/20 rounded focus:ring-red-500"
+                  />
+                </td>
+                <td
+                  className={`p-1 font-mono ${
+                    op.ganancia >= 0 ? "text-green-400" : "text-red-500"
+                  }`}
+                >
+                  {op.ganancia.toFixed(2)}
+                </td>
+                <td className="p-1">
                   <button
-                    onClick={() => handleSavePrice(op.id)}
+                    onClick={() => handleSave(op)}
                     className="bg-red-600 text-white px-3 py-1 text-xs rounded hover:bg-red-500 cursor-pointer"
                   >
                     Guardar
