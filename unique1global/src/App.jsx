@@ -263,7 +263,7 @@ const useFlashOnUpdate = (value) => {
       currentValue !== prevValue
     ) {
       setFlashClass(
-        currentValue > prevValue ? "text-green-500" : "text-red-500"
+        currentValue > prevValue ? "text-green-400" : "text-red-500"
       );
       const timer = setTimeout(() => setFlashClass(""), 300);
       return () => clearTimeout(timer);
@@ -302,7 +302,7 @@ const Card = React.forwardRef(({ children, className = "", ...props }, ref) => (
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5 }}
-    className={`bg-white p-4 rounded-xl border border-gray-200 shadow-md ${className}`}
+    className={`bg-white/5 p-4 rounded-xl border border-white/10 backdrop-blur-lg shadow-lg ${className}`}
     {...props}
   >
     {children}
@@ -310,7 +310,7 @@ const Card = React.forwardRef(({ children, className = "", ...props }, ref) => (
 ));
 
 const Skeleton = ({ className }) => (
-  <div className={`animate-pulse bg-gray-200 rounded-md ${className}`} />
+  <div className={`animate-pulse bg-white/10 rounded-md ${className}`} />
 );
 
 const TradingViewWidget = React.memo(({ symbol }) => {
@@ -379,7 +379,7 @@ const TradingViewWidget = React.memo(({ symbol }) => {
         symbol: tvSymbol,
         interval: "D",
         timezone: "Etc/UTC",
-        theme: "light", // CAMBIO: Tema claro
+        theme: "dark",
         style: "1",
         locale: "es",
         enable_publishing: false,
@@ -387,6 +387,7 @@ const TradingViewWidget = React.memo(({ symbol }) => {
         hide_top_toolbar: false,
         allow_symbol_change: false,
         container_id: containerRef.current.id,
+        backgroundColor: "rgba(0,0,0,0)",
       });
     };
 
@@ -430,17 +431,17 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
       <button
         onClick={handlePrevious}
         disabled={currentPage === 1}
-        className="px-3 py-1 bg-gray-200 text-gray-800 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors text-xs"
+        className="px-3 py-1 bg-white/10 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/20 transition-colors text-xs"
       >
         Anterior
       </button>
-      <span className="text-gray-500 text-xs">
+      <span className="text-neutral-400 text-xs">
         Página {currentPage} de {totalPages}
       </span>
       <button
         onClick={handleNext}
         disabled={currentPage === totalPages}
-        className="px-3 py-1 bg-gray-200 text-gray-800 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-300 transition-colors text-xs"
+        className="px-3 py-1 bg-white/10 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/20 transition-colors text-xs"
       >
         Siguiente
       </button>
@@ -459,8 +460,8 @@ const PerformanceChart = ({ performanceData, isLoading }) => {
           label: "Ganancia Diaria",
           data: performanceData.map((d) => parseFloat(d.ganancia_dia || 0)),
           fill: true,
-          backgroundColor: "rgba(79, 70, 229, 0.2)", // CAMBIO: Morado
-          borderColor: "#4f46e5", // CAMBIO: Morado
+          backgroundColor: "rgba(220, 38, 38, 0.2)",
+          borderColor: "#dc2626",
           tension: 0.4,
           pointRadius: 0,
         },
@@ -481,12 +482,12 @@ const PerformanceChart = ({ performanceData, isLoading }) => {
 
   return (
     <Card className="mt-4">
-      <h3 className="text-gray-900 font-bold text-base mb-4">Rendimiento</h3>
+      <h3 className="text-white font-bold text-base mb-4">Rendimiento</h3>
       <div className="h-28">
         {isLoading ? (
           <Skeleton className="h-full w-full" />
         ) : !performanceData || performanceData.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500 text-xs">
+          <div className="flex items-center justify-center h-full text-neutral-500 text-xs">
             No hay datos de rendimiento
           </div>
         ) : (
@@ -500,35 +501,35 @@ const PerformanceChart = ({ performanceData, isLoading }) => {
 const StatisticsPanel = ({ stats, performanceData, isLoading }) => (
   <div className="mt-6 space-y-4">
     <Card>
-      <h3 className="text-gray-900 font-bold text-base mb-4">Estadísticas</h3>
+      <h3 className="text-white font-bold text-base mb-4">Estadísticas</h3>
       {isLoading ? (
         <div className="grid grid-cols-2 gap-4">
           <Skeleton className="h-5" /> <Skeleton className="h-5" />
           <Skeleton className="h-5" /> <Skeleton className="h-5" />
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-4 text-gray-600 text-sm">
+        <div className="grid grid-cols-2 gap-4 text-neutral-300 text-sm">
           <div>
             Total Invertido:{" "}
-            <span className="font-semibold text-gray-900">
+            <span className="font-semibold text-white">
               ${parseFloat(stats.total_invertido || 0).toFixed(2)}
             </span>
           </div>
           <div>
             Ganancia Total:{" "}
-            <span className="font-semibold text-green-600">
+            <span className="font-semibold text-green-400">
               ${parseFloat(stats.ganancia_total || 0).toFixed(2)}
             </span>
           </div>
           <div>
             Abiertas:{" "}
-            <span className="font-semibold text-gray-900">
+            <span className="font-semibold text-white">
               {stats.abiertas || 0}
             </span>
           </div>
           <div>
             Cerradas:{" "}
-            <span className="font-semibold text-gray-900">
+            <span className="font-semibold text-white">
               {stats.cerradas || 0}
             </span>
           </div>
@@ -544,7 +545,7 @@ const AssetPrice = React.memo(({ symbol }) => {
   const normalizedSymbol = symbol.toUpperCase().replace(/[-/]/g, "");
   const price = realTimePrices[normalizedSymbol];
   const flashClass = useFlashOnUpdate(price);
-  const baseColor = price ? "text-gray-800" : "text-gray-400";
+  const baseColor = price ? "text-white" : "text-neutral-500";
   const finalColorClass = flashClass || baseColor;
   return (
     <div className="px-2 py-1 rounded-md">
@@ -568,8 +569,8 @@ const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
     onClick={() => onClick(symbol)}
     className={`cursor-pointer transition-all duration-200 rounded-md flex justify-between items-center p-2 group ${
       isSelected
-        ? "bg-indigo-100 text-indigo-800"
-        : "hover:bg-gray-100 text-gray-700"
+        ? "bg-red-500/20 text-white"
+        : "hover:bg-white/10 text-neutral-300"
     }`}
   >
     <span className="font-semibold">{symbol}</span>
@@ -580,7 +581,7 @@ const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
           e.stopPropagation();
           onRemove(symbol);
         }}
-        className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+        className="text-neutral-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
         title={`Eliminar ${symbol}`}
       >
         <Icons.X className="h-4 w-4" />
@@ -664,12 +665,12 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
             onChange={handleInputChange}
             onFocus={handleFocus}
             placeholder="Ej: Amazon, AMZN"
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm text-gray-900"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
             autoComplete="off"
           />
           <button
             type="submit"
-            className="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
+            className="bg-red-600 hover:bg-red-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
           >
             <Icons.Plus />
           </button>
@@ -679,17 +680,19 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="absolute w-full bg-white border border-gray-200 rounded-md mt-1 max-h-48 overflow-y-auto z-20 shadow-lg"
+            className="absolute w-full bg-neutral-900 border border-white/10 rounded-md mt-1 max-h-48 overflow-y-auto z-20"
           >
             {recommendations.map((rec) => (
               <li
                 key={rec.symbol}
                 onClick={() => handleRecommendationClick(rec.symbol)}
-                className="px-3 py-2 text-sm text-gray-700 hover:bg-indigo-500 hover:text-white cursor-pointer flex justify-between items-center"
+                className="px-3 py-2 text-sm text-neutral-300 hover:bg-red-500/50 cursor-pointer flex justify-between items-center"
               >
                 <div>
-                  <span className="font-semibold">{rec.symbol}</span>
-                  <span className="ml-2 text-gray-500 text-xs">{rec.name}</span>
+                  <span className="font-semibold text-white">{rec.symbol}</span>
+                  <span className="ml-2 text-neutral-500 text-xs">
+                    {rec.name}
+                  </span>
                 </div>
                 <AssetPrice symbol={rec.symbol} />
               </li>
@@ -697,7 +700,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
           </motion.ul>
         )}
       </div>
-      <h2 className="text-gray-500 font-bold text-sm tracking-wider uppercase mt-4 mb-3 px-2">
+      <h2 className="text-neutral-400 font-bold text-sm tracking-wider uppercase mt-4 mb-3 px-2">
         Mis Activos
       </h2>
       <ul className="space-y-1 max-h-48 overflow-y-auto">
@@ -720,7 +723,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
 const MenuItem = ({ icon, text, onClick }) => (
   <button
     onClick={onClick}
-    className="flex items-center w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+    className="flex items-center w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-white/10 rounded-md transition-colors"
   >
     {icon}
     <span className="ml-3">{text}</span>
@@ -758,7 +761,7 @@ const ProfileMenu = React.memo(
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="bg-gray-100 cursor-pointer text-gray-600 p-2 rounded-full hover:bg-indigo-500 hover:text-white transition-colors"
+          className="bg-white/10 cursor-pointer text-white p-2 rounded-full hover:bg-red-500 transition-colors"
           title="Cuenta"
         >
           <Icons.UserCircle className="h-6 w-6" />
@@ -770,24 +773,28 @@ const ProfileMenu = React.memo(
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -10 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="origin-top-right absolute right-0 mt-2 w-64 rounded-xl shadow-2xl bg-white ring-1 ring-gray-200 focus:outline-none z-50 p-2 border border-gray-200"
+              className="origin-top-right absolute right-0 mt-2 w-64 rounded-xl shadow-2xl bg-neutral-900 ring-1 ring-white/10 focus:outline-none z-50 p-2 border border-white/10"
             >
-              <div className="px-3 py-2 border-b border-gray-200 mb-2">
-                <p className="text-sm font-semibold text-gray-900 truncate">
+              <div className="px-3 py-2 border-b border-white/10 mb-2">
+                <p className="text-sm font-semibold text-white truncate">
                   {user?.nombre || "Usuario"}
                 </p>
-                <p className="text-xs text-gray-500 truncate">
+                <p className="text-xs text-neutral-400 truncate">
                   {user?.email || "email@example.com"}
                 </p>
               </div>
               <div className="space-y-1">
                 <MenuItem
-                  icon={<Icons.UserCircle className="h-5 w-5 text-gray-500" />}
+                  icon={
+                    <Icons.UserCircle className="h-5 w-5 text-neutral-400" />
+                  }
                   text="Ver Perfil"
                   onClick={() => handleItemClick(onOpenProfileModal)}
                 />
                 <MenuItem
-                  icon={<Icons.UserCircle className="h-5 w-5 text-gray-500" />}
+                  icon={
+                    <Icons.UserCircle className="h-5 w-5 text-neutral-400" />
+                  }
                   text="Gestionar Cuenta"
                   onClick={() => handleItemClick(onToggleSideMenu)}
                 />
@@ -795,22 +802,22 @@ const ProfileMenu = React.memo(
                   <>
                     <MenuItem
                       icon={
-                        <Icons.UserGroup className="h-5 w-5 text-gray-500" />
+                        <Icons.UserGroup className="h-5 w-5 text-neutral-400" />
                       }
                       text="Gestionar Usuarios"
                       onClick={() => handleItemClick(onManageUsers)}
                     />
                     <MenuItem
-                      icon={<Icons.Key className="h-5 w-5 text-gray-500" />}
+                      icon={<Icons.Key className="h-5 w-5 text-neutral-400" />}
                       text="Código de Registro"
                       onClick={() => handleItemClick(onManageRegCode)}
                     />
                   </>
                 )}
-                <div className="my-1 h-px bg-gray-200" />
+                <div className="my-1 h-px bg-white/10" />
                 <MenuItem
                   icon={
-                    <Icons.Logout className="h-5 w-5 cursor-pointer text-indigo-500" />
+                    <Icons.Logout className="h-5 w-5 cursor-pointer text-red-400" />
                   }
                   text="Cerrar Sesión"
                   onClick={() => handleItemClick(logout)}
@@ -836,11 +843,11 @@ const Header = ({
   const [volume, setVolume] = useState(0.01);
 
   return (
-    <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-white border-b border-gray-200">
+    <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-black/20 border-b border-white/10">
       <div className="flex items-center gap-4">
         <button
           onClick={onToggleMainSidebar}
-          className="p-2 rounded-full hover:bg-gray-100 text-gray-600 lg:hidden"
+          className="p-2 rounded-full hover:bg-white/10 lg:hidden"
         >
           <Icons.Menu />
         </button>
@@ -858,7 +865,7 @@ const Header = ({
             onChange={(e) => setVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-2 border border-gray-300 bg-gray-50 rounded-md text-gray-900 text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="w-24 p-2 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
           />
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -870,10 +877,10 @@ const Header = ({
         </div>
       </div>
       <div className="text-center">
-        <h2 className="text-xl sm:text-3xl font-bold text-gray-900">
+        <h2 className="text-xl sm:text-3xl font-bold text-white">
           {selectedAsset}
         </h2>
-        <p className="text-xs text-gray-500 hidden sm:block">
+        <p className="text-xs text-neutral-400 hidden sm:block">
           Activo para operar
         </p>
       </div>
@@ -893,7 +900,7 @@ const Header = ({
 
 const FlashingMetric = ({ value, prefix = "", suffix = "" }) => {
   const flashClass = useFlashOnUpdate(value);
-  const baseColor = "text-gray-900";
+  const baseColor = "text-white";
   const finalColorClass = flashClass || baseColor;
   return (
     <span
@@ -915,23 +922,23 @@ const FinancialMetrics = ({ metrics, isLoading }) => (
     ) : (
       <>
         <div className="text-center p-2 w-full">
-          <p className="text-gray-500">Balance</p>
-          <span className="font-bold text-gray-900">${metrics.balance}</span>
+          <p className="text-neutral-400">Balance</p>
+          <span className="font-bold text-white">${metrics.balance}</span>
         </div>
         <div className="text-center p-2 w-full">
-          <p className="text-gray-500">Equidad</p>
+          <p className="text-neutral-400">Equidad</p>
           <FlashingMetric value={metrics.equity} prefix="$" />
         </div>
         <div className="text-center p-2 w-full">
-          <p className="text-gray-500">M. Usado</p>
+          <p className="text-neutral-400">M. Usado</p>
           <FlashingMetric value={metrics.usedMargin} prefix="$" />
         </div>
         <div className="text-center p-2 w-full">
-          <p className="text-gray-500">M. Libre</p>
+          <p className="text-neutral-400">M. Libre</p>
           <FlashingMetric value={metrics.freeMargin} prefix="$" />
         </div>
         <div className="text-center p-2 w-full col-span-2 sm:col-span-1 md:col-span-1">
-          <p className="text-gray-500">Nivel Margen</p>
+          <p className="text-neutral-400">Nivel Margen</p>
           <FlashingMetric value={metrics.marginLevel} suffix="%" />
         </div>
       </>
@@ -954,7 +961,7 @@ const LiveProfitCell = ({ operation }) => {
   }, [realTimePrices, operation]);
 
   const profit = calculateProfit();
-  const profitColor = profit >= 0 ? "text-green-600" : "text-red-600";
+  const profitColor = profit >= 0 ? "text-green-400" : "text-red-500";
   return (
     <span className={`font-mono ${profitColor}`}>{profit.toFixed(2)}</span>
   );
@@ -1033,47 +1040,47 @@ const OperationsHistory = ({
     >
       <Card key={op.id} className="text-sm" onClick={() => onRowClick(op)}>
         <div className="flex justify-between items-center mb-3">
-          <span className="font-bold text-lg text-gray-900">{op.activo}</span>
+          <span className="font-bold text-lg text-white">{op.activo}</span>
           <span
             className={`px-2 py-1 rounded-md text-xs font-bold ${
               op.tipo_operacion.toLowerCase().includes("buy")
-                ? "bg-green-100 text-green-800"
-                : "bg-red-100 text-red-800"
+                ? "bg-green-500/20 text-green-400"
+                : "bg-red-500/20 text-red-400"
             }`}
           >
             {op.tipo_operacion}
           </span>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-gray-700 mb-4">
+        <div className="grid grid-cols-2 gap-2 text-neutral-300 mb-4">
           <div>
-            <span className="font-semibold text-gray-500">Vol:</span>{" "}
+            <span className="font-semibold text-neutral-500">Vol:</span>{" "}
             {op.volumen}
           </div>
           <div>
-            <span className="font-semibold text-gray-500">Entrada:</span>{" "}
+            <span className="font-semibold text-neutral-500">Entrada:</span>{" "}
             {parseFloat(op.precio_entrada).toFixed(4)}
           </div>
           <div>
-            <span className="font-semibold text-gray-500">TP:</span>{" "}
+            <span className="font-semibold text-neutral-500">TP:</span>{" "}
             {op.take_profit ? parseFloat(op.take_profit).toFixed(2) : "-"}
           </div>
           <div>
-            <span className="font-semibold text-gray-500">SL:</span>{" "}
+            <span className="font-semibold text-neutral-500">SL:</span>{" "}
             {op.stop_loss ? parseFloat(op.stop_loss).toFixed(2) : "-"}
           </div>
         </div>
-        <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-          <div className="text-gray-500">
+        <div className="flex justify-between items-center pt-2 border-t border-white/10">
+          <div className="text-neutral-400">
             G/P: <LiveProfitCell operation={op} />
           </div>
           {op.cerrada ? (
-            <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-xs">
+            <span className="bg-neutral-700 px-2 py-1 rounded-md text-xs">
               Cerrado
             </span>
           ) : (
             <button
               onClick={(e) => handleCloseOperation(e, op.id)}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-md text-xs transition-colors cursor-pointer"
+              className="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded-md text-xs transition-colors cursor-pointer"
             >
               Cerrar
             </button>
@@ -1085,19 +1092,19 @@ const OperationsHistory = ({
 
   return (
     <Card className="flex-grow flex flex-col overflow-hidden">
-      <div className="p-3 bg-gray-50 flex justify-between items-center flex-shrink-0">
-        <h3 className="text-base font-bold text-gray-900">
+      <div className="p-3 bg-black/20 flex justify-between items-center flex-shrink-0">
+        <h3 className="text-base font-bold text-white">
           Historial de Operaciones
         </h3>
         <div className="flex items-center">
-          <label htmlFor="filter" className="text-sm text-gray-500 mr-2">
+          <label htmlFor="filter" className="text-sm text-neutral-400 mr-2">
             Filtrar:
           </label>
           <select
             id="filter"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="bg-white text-gray-800 text-sm rounded-md p-1 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+            className="bg-white/5 text-white text-sm rounded-md p-1 border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
           >
             <option value="todas">Todas</option>
             <option value="abiertas">Abiertas</option>
@@ -1106,8 +1113,8 @@ const OperationsHistory = ({
         </div>
       </div>
       <div className="flex-grow overflow-y-auto">
-        <table className="hidden sm:table w-full text-sm text-left text-gray-700">
-          <thead className="bg-gray-100 text-xs uppercase sticky top-0 z-10">
+        <table className="hidden sm:table w-full text-sm text-left text-neutral-300">
+          <thead className="bg-white/5 text-xs uppercase sticky top-0 z-10 backdrop-blur-sm">
             <tr>
               {columns.map((h) => (
                 <th key={h} className="px-3 py-2 font-medium whitespace-nowrap">
@@ -1116,7 +1123,7 @@ const OperationsHistory = ({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-white/10">
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
@@ -1130,7 +1137,7 @@ const OperationsHistory = ({
               : operations.map((op) => (
                   <tr
                     key={op.id}
-                    className="hover:bg-gray-50 cursor-pointer"
+                    className="hover:bg-white/5 cursor-pointer"
                     onClick={() => onRowClick(op)}
                   >
                     <td className="px-3 py-2 whitespace-nowrap">
@@ -1139,8 +1146,8 @@ const OperationsHistory = ({
                     <td
                       className={`px-3 py-2 font-bold whitespace-nowrap ${
                         op.tipo_operacion.toLowerCase().includes("buy")
-                          ? "text-green-600"
-                          : "text-red-600"
+                          ? "text-green-500"
+                          : "text-red-500"
                       }`}
                     >
                       {op.tipo_operacion}
@@ -1171,13 +1178,13 @@ const OperationsHistory = ({
                     </td>
                     <td className="px-3 py-2">
                       {op.cerrada ? (
-                        <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-xs">
+                        <span className="bg-neutral-700 px-2 py-1 rounded-md text-xs">
                           Cerrado
                         </span>
                       ) : (
                         <button
                           onClick={(e) => handleCloseOperation(e, op.id)}
-                          className="bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1 rounded-md text-xs w-full transition-colors cursor-pointer"
+                          className="bg-red-600 hover:bg-red-500 text-white px-2 py-1 rounded-md text-xs w-full transition-colors cursor-pointer"
                         >
                           Cerrar
                         </button>
@@ -1195,7 +1202,7 @@ const OperationsHistory = ({
             : operations.map(renderMobileCard)}
         </div>
       </div>
-      <div className="p-2 border-t border-gray-200">
+      <div className="p-2 border-t border-white/10">
         <Pagination
           currentPage={pagination.currentPage}
           totalPages={pagination.totalPages}
@@ -1226,14 +1233,14 @@ const Modal = ({
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className={`bg-white rounded-lg shadow-xl w-full ${maxWidth} text-gray-900 border border-gray-200 flex flex-col max-h-[90vh]`}
+          className={`bg-neutral-900 rounded-lg shadow-xl w-full ${maxWidth} text-white border border-white/10 flex flex-col max-h-[90vh]`}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex-shrink-0 flex justify-between items-center p-4 sm:p-6 border-b border-gray-200">
+          <div className="flex-shrink-0 flex justify-between items-center p-4 sm:p-6 border-b border-white/10">
             <h2 className="text-xl font-bold">{title}</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-800 cursor-pointer"
+              className="text-neutral-400 hover:text-white cursor-pointer"
             >
               <Icons.X />
             </button>
@@ -1250,7 +1257,7 @@ const ModalLivePrice = React.memo(({ symbol }) => {
   const normalizedSymbol = symbol?.toUpperCase().replace(/[-/]/g, "");
   const price = realTimePrices[normalizedSymbol];
   const flashClass = useFlashOnUpdate(price);
-  const baseColor = price ? "text-gray-900" : "text-yellow-500";
+  const baseColor = price ? "text-white" : "text-yellow-400";
   const finalColorClass = flashClass || baseColor;
   return (
     <span
@@ -1315,22 +1322,22 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
       title={`${type === "buy" ? "Comprar" : "Vender"} ${asset}`}
       maxWidth="max-w-md"
     >
-      <div className="space-y-3 mb-4 text-gray-700">
-        <p className="flex justify-between">
+      <div className="space-y-3 mb-4">
+        <p className="text-neutral-300 flex justify-between">
           <span>Precio Actual:</span>
           <ModalLivePrice symbol={asset} />
         </p>
-        <p className="flex justify-between">
+        <p className="text-neutral-300 flex justify-between">
           <span>Volumen:</span>
-          <span className="font-mono text-gray-900">{volume}</span>
+          <span className="font-mono text-white">{volume}</span>
         </p>
-        <p className="flex justify-between">
+        <p className="text-neutral-300 flex justify-between">
           <span>Margen Requerido:</span>
-          <span className="font-mono text-gray-900">${requiredMargin}</span>
+          <span className="font-mono text-white">${requiredMargin}</span>
         </p>
       </div>
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-2 text-gray-700">
+        <label className="block text-sm font-medium mb-2 text-neutral-300">
           Take Profit (opcional):
         </label>
         <input
@@ -1338,16 +1345,16 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           value={tp}
           onChange={(e) => setTp(e.target.value)}
           placeholder="Precio de cierre para tomar ganancias"
-          className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+          className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
         />
         {potentialTpProfit !== null && (
-          <p className="text-xs mt-1 text-green-600">
+          <p className="text-xs mt-1 text-green-400">
             Ganancia Potencial: ${potentialTpProfit.toFixed(2)}
           </p>
         )}
       </div>
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-2 text-gray-700">
+        <label className="block text-sm font-medium mb-2 text-neutral-300">
           Stop Loss (opcional):
         </label>
         <input
@@ -1355,10 +1362,10 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           value={sl}
           onChange={(e) => setSl(e.target.value)}
           placeholder="Precio de cierre para limitar pérdidas"
-          className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+          className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
         />
         {potentialSlProfit !== null && (
-          <p className="text-xs mt-1 text-red-500">
+          <p className="text-xs mt-1 text-red-400">
             Pérdida Potencial: ${potentialSlProfit.toFixed(2)}
           </p>
         )}
@@ -1369,7 +1376,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           disabled={!livePrice}
           className={`px-5 py-2 rounded-md text-white font-bold transition-colors cursor-pointer ${
             !livePrice
-              ? "bg-gray-400 cursor-not-allowed"
+              ? "bg-gray-500 cursor-not-allowed"
               : type === "buy"
               ? "bg-green-600 hover:bg-green-500"
               : "bg-red-600 hover:bg-red-500"
@@ -1390,20 +1397,18 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
     maxWidth="max-w-md"
   >
     {operation && (
-      <div className="space-y-3 text-sm text-gray-700">
+      <div className="space-y-3 text-sm text-neutral-300">
         <div className="flex justify-between">
           <span>Activo:</span>
-          <span className="font-semibold text-gray-900">
-            {operation.activo}
-          </span>
+          <span className="font-semibold text-white">{operation.activo}</span>
         </div>
         <div className="flex justify-between">
           <span>Tipo:</span>
           <span
             className={`font-bold ${
               operation.tipo_operacion.toLowerCase().includes("buy")
-                ? "text-green-600"
-                : "text-red-600"
+                ? "text-green-500"
+                : "text-red-500"
             }`}
           >
             {operation.tipo_operacion}
@@ -1411,17 +1416,17 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
         </div>
         <div className="flex justify-between">
           <span>Volumen:</span>
-          <span className="font-mono text-gray-900">{operation.volumen}</span>
+          <span className="font-mono text-white">{operation.volumen}</span>
         </div>
         <div className="flex justify-between">
           <span>Precio de Entrada:</span>
-          <span className="font-mono text-gray-900">
+          <span className="font-mono text-white">
             ${parseFloat(operation.precio_entrada).toFixed(4)}
           </span>
         </div>
         <div className="flex justify-between">
           <span>Fecha de Apertura:</span>
-          <span className="text-gray-900">
+          <span className="text-white">
             {new Date(operation.fecha).toLocaleString()}
           </span>
         </div>
@@ -1430,7 +1435,7 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
           <span
             className={`px-2 py-0.5 rounded-full text-xs ${
               operation.cerrada
-                ? "bg-gray-200 text-gray-800"
+                ? "bg-neutral-600 text-white"
                 : "bg-blue-500 text-white"
             }`}
           >
@@ -1440,7 +1445,7 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
         {operation.cerrada && (
           <div className="flex justify-between">
             <span>Precio de Cierre:</span>
-            <span className="font-mono text-gray-900">
+            <span className="font-mono text-white">
               {operation.precio_cierre
                 ? `$${parseFloat(operation.precio_cierre).toFixed(4)}`
                 : "-"}
@@ -1451,7 +1456,7 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
           <span>Ganancia/Pérdida:</span>
           <span
             className={`font-mono font-bold ${
-              profit >= 0 ? "text-green-600" : "text-red-600"
+              profit >= 0 ? "text-green-400" : "text-red-400"
             }`}
           >
             {profit.toFixed(2)} USD
@@ -1462,13 +1467,28 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
   </Modal>
 );
 
-const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
+const UserOperationsModal = ({
+  isOpen,
+  onClose,
+  user,
+  onUpdateOperation,
+  setAlert,
+}) => {
   const [operations, setOperations] = useState([]);
-  const [editingPrices, setEditingPrices] = useState({});
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
   });
+
+  const calculateProfit = (op) => {
+    if (!op.cerrada || !op.precio_cierre) return 0;
+    const { tipo_operacion, precio_cierre, precio_entrada, volumen } = op;
+    if (tipo_operacion.toLowerCase().includes("buy")) {
+      return (precio_cierre - precio_entrada) * volumen;
+    } else {
+      return (precio_entrada - precio_cierre) * volumen;
+    }
+  };
 
   const fetchUserOperations = useCallback(
     (page = 1) => {
@@ -1476,7 +1496,12 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
         axios
           .get(`/admin-operaciones/${user.id}?page=${page}&limit=10`)
           .then((res) => {
-            setOperations(res.data.operaciones);
+            setOperations(
+              res.data.operaciones.map((op) => ({
+                ...op,
+                ganancia: calculateProfit(op),
+              }))
+            );
             setPagination({
               currentPage: res.data.currentPage,
               totalPages: res.data.totalPages,
@@ -1494,13 +1519,35 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
     fetchUserOperations(1);
   }, [isOpen, user, fetchUserOperations]);
 
-  const handlePriceChange = (opId, value) =>
-    setEditingPrices((prev) => ({ ...prev, [opId]: value }));
-  const handleSavePrice = async (opId) => {
-    const newPrice = editingPrices[opId];
-    if (newPrice !== undefined) {
-      await onUpdatePrice(opId, newPrice);
-      fetchUserOperations(pagination.currentPage);
+  const handleInputChange = (opId, field, value) => {
+    setOperations((currentOps) =>
+      currentOps.map((op) => {
+        if (op.id === opId) {
+          const updatedOp = { ...op, [field]: value };
+          if (
+            [
+              "precio_entrada",
+              "precio_cierre",
+              "volumen",
+              "tipo_operacion",
+              "cerrada",
+            ].includes(field)
+          ) {
+            updatedOp.ganancia = calculateProfit(updatedOp);
+          }
+          return updatedOp;
+        }
+        return op;
+      })
+    );
+  };
+
+  const handleSave = async (operationData) => {
+    try {
+      await onUpdateOperation(operationData);
+      setAlert({ message: "Operación actualizada con éxito", type: "success" });
+    } catch (error) {
+      setAlert({ message: "Error al actualizar la operación", type: "error" });
     }
   };
 
@@ -1509,19 +1556,23 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
       isOpen={isOpen}
       onClose={onClose}
       title={`Operaciones de ${user?.nombre}`}
+      maxWidth="max-w-7xl"
     >
       <div className="overflow-auto">
         <table className="w-full text-sm text-left border-collapse">
-          <thead className="bg-gray-200 text-gray-600 sticky top-0">
+          <thead className="bg-neutral-700 text-neutral-300 sticky top-0">
             <tr>
               {[
                 "ID",
                 "Activo",
                 "Tipo",
                 "Volumen",
-                "Precio Entrada",
-                "Fecha",
+                "P. Entrada",
+                "P. Cierre",
+                "TP",
+                "SL",
                 "Estado",
+                "G/P",
                 "Acción",
               ].map((h) => (
                 <th key={h} className="p-2 font-medium">
@@ -1530,28 +1581,108 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white">
+          <tbody className="bg-neutral-800">
             {operations.map((op) => (
-              <tr key={op.id} className="border-b border-gray-200">
-                <td className="p-2">{op.id}</td>
-                <td className="p-2">{op.activo}</td>
-                <td className="p-2">{op.tipo_operacion}</td>
-                <td className="p-2">{op.volumen}</td>
-                <td className="p-2">
+              <tr key={op.id} className="border-b border-neutral-700">
+                <td className="p-1">{op.id}</td>
+                <td className="p-1">
+                  <input
+                    type="text"
+                    value={op.activo}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "activo", e.target.value)
+                    }
+                    className="w-full p-1 bg-white/5 rounded border border-white/10"
+                  />
+                </td>
+                <td className="p-1">
+                  <select
+                    value={op.tipo_operacion}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "tipo_operacion", e.target.value)
+                    }
+                    className="w-full p-1 bg-white/5 rounded border border-white/10"
+                  >
+                    <option value="buy">buy</option>
+                    <option value="sell">sell</option>
+                  </select>
+                </td>
+                <td className="p-1">
                   <input
                     type="number"
                     step="any"
-                    defaultValue={op.precio_entrada}
-                    onChange={(e) => handlePriceChange(op.id, e.target.value)}
-                    className="w-full p-1 bg-gray-50 rounded border border-gray-300"
+                    value={op.volumen}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "volumen", e.target.value)
+                    }
+                    className="w-full p-1 bg-white/5 rounded border border-white/10"
                   />
                 </td>
-                <td className="p-2">{new Date(op.fecha).toLocaleString()}</td>
-                <td className="p-2">{op.cerrada ? "Cerrada" : "Abierta"}</td>
-                <td className="p-2">
+                <td className="p-1">
+                  <input
+                    type="number"
+                    step="any"
+                    value={op.precio_entrada}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "precio_entrada", e.target.value)
+                    }
+                    className="w-full p-1 bg-white/5 rounded border border-white/10"
+                  />
+                </td>
+                <td className="p-1">
+                  <input
+                    type="number"
+                    step="any"
+                    value={op.precio_cierre || ""}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "precio_cierre", e.target.value)
+                    }
+                    className="w-full p-1 bg-white/5 rounded border border-white/10"
+                  />
+                </td>
+                <td className="p-1">
+                  <input
+                    type="number"
+                    step="any"
+                    value={op.take_profit || ""}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "take_profit", e.target.value)
+                    }
+                    className="w-full p-1 bg-white/5 rounded border border-white/10"
+                  />
+                </td>
+                <td className="p-1">
+                  <input
+                    type="number"
+                    step="any"
+                    value={op.stop_loss || ""}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "stop_loss", e.target.value)
+                    }
+                    className="w-full p-1 bg-white/5 rounded border border-white/10"
+                  />
+                </td>
+                <td className="p-1">
+                  <input
+                    type="checkbox"
+                    checked={op.cerrada}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "cerrada", e.target.checked)
+                    }
+                    className="form-checkbox h-5 w-5 text-red-600 bg-white/10 border-white/20 rounded focus:ring-red-500"
+                  />
+                </td>
+                <td
+                  className={`p-1 font-mono ${
+                    op.ganancia >= 0 ? "text-green-400" : "text-red-500"
+                  }`}
+                >
+                  {op.ganancia.toFixed(2)}
+                </td>
+                <td className="p-1">
                   <button
-                    onClick={() => handleSavePrice(op.id)}
-                    className="bg-indigo-600 text-white px-3 py-1 text-xs rounded hover:bg-indigo-500 cursor-pointer"
+                    onClick={() => handleSave(op)}
+                    className="bg-red-600 text-white px-3 py-1 text-xs rounded hover:bg-red-500 cursor-pointer"
                   >
                     Guardar
                   </button>
@@ -1580,14 +1711,14 @@ const UserCard = React.memo(
       <Card className="text-sm">
         <div className="flex justify-between items-start mb-2">
           <div>
-            <p className="font-bold text-gray-900">{user.nombre}</p>
-            <p className="text-gray-500">{user.email}</p>
+            <p className="font-bold text-white">{user.nombre}</p>
+            <p className="text-neutral-400">{user.email}</p>
           </div>
           <span
             className={`px-2 py-0.5 rounded-full text-xs ${
               user.rol === "admin"
-                ? "bg-indigo-100 text-indigo-800"
-                : "bg-blue-100 text-blue-800"
+                ? "bg-red-500/20 text-red-400"
+                : "bg-blue-500/20 text-blue-400"
             }`}
           >
             {user.rol}
@@ -1595,48 +1726,48 @@ const UserCard = React.memo(
         </div>
         <div className="space-y-2 my-4">
           <div className="flex items-center">
-            <label className="w-24 text-gray-500">Balance:</label>
+            <label className="w-24 text-neutral-400">Balance:</label>
             <input
               type="number"
               name="balance"
               value={user.balance}
               onChange={handleInputChange}
-              className="flex-1 p-1 bg-gray-50 rounded border border-gray-300"
+              className="flex-1 p-1 bg-white/5 rounded border border-white/10"
             />
           </div>
           <div className="flex items-center">
-            <label className="w-24 text-gray-500">ID:</label>
+            <label className="w-24 text-neutral-400">ID:</label>
             <input
               type="text"
               name="identificacion"
               value={user.identificacion}
               onChange={handleInputChange}
-              className="flex-1 p-1 bg-gray-50 rounded border border-gray-300"
+              className="flex-1 p-1 bg-white/5 rounded border border-white/10"
             />
           </div>
           <div className="flex items-center">
-            <label className="w-24 text-gray-500">Teléfono:</label>
+            <label className="w-24 text-neutral-400">Teléfono:</label>
             <input
               type="text"
               name="telefono"
               value={user.telefono}
               onChange={handleInputChange}
-              className="flex-1 p-1 bg-gray-50 rounded border border-gray-300"
+              className="flex-1 p-1 bg-white/5 rounded border border-white/10"
             />
           </div>
           <div className="flex items-center">
-            <label className="w-24 text-gray-500">Password:</label>
+            <label className="w-24 text-neutral-400">Password:</label>
             <input
               type="password"
               name="password"
               value={user.password || ""}
               placeholder="No cambiar"
               onChange={handleInputChange}
-              className="flex-1 p-1 bg-gray-50 rounded border border-gray-300"
+              className="flex-1 p-1 bg-white/5 rounded border border-white/10"
             />
           </div>
         </div>
-        <div className="flex justify-end gap-2 pt-2 border-t border-gray-200">
+        <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
           <button
             onClick={() => onSave(user)}
             className="bg-green-600 text-white px-3 py-1 text-xs rounded hover:bg-green-500 cursor-pointer"
@@ -1646,7 +1777,7 @@ const UserCard = React.memo(
           <button
             onClick={() => onViewUserOps(user)}
             title="Ver Operaciones"
-            className="bg-yellow-500 text-white p-1 text-xs rounded hover:bg-yellow-400 cursor-pointer"
+            className="bg-yellow-600 text-white p-1 text-xs rounded hover:bg-yellow-500 cursor-pointer"
           >
             <Icons.ViewList />
           </button>
@@ -1670,7 +1801,7 @@ const UserTableRow = React.memo(
       onDataChange(user.id, name, value);
     };
     return (
-      <tr className="border-b border-gray-200">
+      <tr className="border-b border-white/10">
         <td className="p-2 whitespace-nowrap">{user.id}</td>
         <td className="p-2">
           <input
@@ -1678,7 +1809,7 @@ const UserTableRow = React.memo(
             name="nombre"
             value={user.nombre}
             onChange={handleInputChange}
-            className="w-full p-1 bg-gray-50 rounded border border-gray-300"
+            className="w-full p-1 bg-white/5 rounded border border-white/10"
           />
         </td>
         <td className="p-2">
@@ -1687,7 +1818,7 @@ const UserTableRow = React.memo(
             name="email"
             value={user.email}
             onChange={handleInputChange}
-            className="w-full p-1 bg-gray-50 rounded border border-gray-300"
+            className="w-full p-1 bg-white/5 rounded border border-white/10"
           />
         </td>
         <td className="p-2">
@@ -1697,7 +1828,7 @@ const UserTableRow = React.memo(
             step="any"
             value={user.balance}
             onChange={handleInputChange}
-            className="w-full p-1 bg-gray-50 rounded border border-gray-300"
+            className="w-full p-1 bg-white/5 rounded border border-white/10"
           />
         </td>
         <td className="p-2">
@@ -1705,7 +1836,7 @@ const UserTableRow = React.memo(
             name="rol"
             value={user.rol}
             onChange={handleInputChange}
-            className="w-full p-1 bg-gray-50 rounded border border-gray-300 cursor-pointer"
+            className="w-full p-1 bg-white/5 rounded border border-white/10 cursor-pointer"
           >
             <option value="usuario">Usuario</option>
             <option value="admin">Admin</option>
@@ -1717,7 +1848,7 @@ const UserTableRow = React.memo(
             name="identificacion"
             value={user.identificacion}
             onChange={handleInputChange}
-            className="w-full p-1 bg-gray-50 rounded border border-gray-300"
+            className="w-full p-1 bg-white/5 rounded border border-white/10"
           />
         </td>
         <td className="p-2">
@@ -1726,7 +1857,7 @@ const UserTableRow = React.memo(
             name="telefono"
             value={user.telefono}
             onChange={handleInputChange}
-            className="w-full p-1 bg-gray-50 rounded border border-gray-300"
+            className="w-full p-1 bg-white/5 rounded border border-white/10"
           />
         </td>
         <td className="p-2">
@@ -1736,7 +1867,7 @@ const UserTableRow = React.memo(
             placeholder="No cambiar"
             value={user.password || ""}
             onChange={handleInputChange}
-            className="w-full p-1 bg-gray-50 rounded border border-gray-300"
+            className="w-full p-1 bg-white/5 rounded border border-white/10"
           />
         </td>
         <td className="p-2 flex gap-2">
@@ -1749,7 +1880,7 @@ const UserTableRow = React.memo(
           <button
             onClick={() => onViewUserOps(user)}
             title="Ver Operaciones"
-            className="bg-yellow-500 text-white p-1 text-xs rounded hover:bg-yellow-400 cursor-pointer"
+            className="bg-yellow-600 text-white p-1 text-xs rounded hover:bg-yellow-500 cursor-pointer"
           >
             <Icons.ViewList />
           </button>
@@ -1855,7 +1986,7 @@ const ManageUsersModal = ({
       </div>
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-sm text-left border-collapse">
-          <thead className="bg-gray-200 text-gray-600 sticky top-0">
+          <thead className="bg-neutral-700 text-neutral-300 sticky top-0">
             <tr>
               {[
                 "ID",
@@ -1874,7 +2005,7 @@ const ManageUsersModal = ({
               ))}
             </tr>
           </thead>
-          <tbody className="bg-white">
+          <tbody className="bg-neutral-800">
             {users.map((user) => (
               <UserTableRow
                 key={user.id}
@@ -1936,28 +2067,28 @@ const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
       maxWidth="max-w-md"
     >
       <div>
-        <label className="block text-sm font-medium mb-2 text-gray-700">
+        <label className="block text-sm font-medium mb-2 text-neutral-300">
           Código Actual:
         </label>
         <input
           type="text"
           readOnly
           value={code}
-          className="w-full p-2 bg-gray-100 border border-gray-300 rounded mb-4 focus:outline-none"
+          className="w-full p-2 bg-white/5 border border-white/10 rounded mb-4 focus:outline-none"
         />
-        <label className="block text-sm font-medium mb-2 text-gray-700">
+        <label className="block text-sm font-medium mb-2 text-neutral-300">
           Nuevo Código:
         </label>
         <input
           type="text"
           value={newCode}
           onChange={(e) => setNewCode(e.target.value)}
-          className="w-full p-2 bg-gray-100 border border-gray-300 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full p-2 bg-white/5 border border-white/10 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-red-500"
         />
         <div className="flex justify-end mt-4">
           <button
             onClick={handleSave}
-            className="px-5 py-2 rounded-md text-white font-bold transition-colors bg-indigo-600 hover:bg-indigo-500 cursor-pointer"
+            className="px-5 py-2 rounded-md text-white font-bold transition-colors bg-red-600 hover:bg-red-500 cursor-pointer"
           >
             Guardar Código
           </button>
@@ -1969,17 +2100,17 @@ const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => (
   <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="max-w-sm">
-    <div className="text-gray-700 mb-6">{children}</div>
+    <div className="text-neutral-300 mb-6">{children}</div>
     <div className="flex justify-end gap-4">
       <button
         onClick={onClose}
-        className="px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold transition-colors"
+        className="px-4 py-2 rounded-md bg-neutral-600 hover:bg-neutral-500 text-white font-bold transition-colors"
       >
         Cancelar
       </button>
       <button
         onClick={onConfirm}
-        className="px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-colors"
+        className="px-4 py-2 rounded-md bg-red-600 hover:bg-red-500 text-white font-bold transition-colors"
       >
         Confirmar
       </button>
@@ -2013,38 +2144,38 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
     <div className="p-4">
       <button
         onClick={onBack}
-        className="flex items-center text-indigo-600 hover:text-indigo-500 mb-4 cursor-pointer"
+        className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
       >
         <Icons.ChevronLeft /> Volver al Menú
       </button>
-      <h2 className="text-xl font-bold mb-4 text-gray-900">Mis datos</h2>
+      <h2 className="text-xl font-bold mb-4">Mis datos</h2>
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1 text-gray-500">
+          <label className="block text-sm font-medium mb-1 text-neutral-400">
             Nombre
           </label>
           <input
             type="text"
             readOnly
             value={user?.nombre || ""}
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1 text-gray-500">
+          <label className="block text-sm font-medium mb-1 text-neutral-400">
             Email
           </label>
           <input
             type="email"
             readOnly
             value={user?.email || ""}
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded"
           />
         </div>
         <div>
           <label
             htmlFor="identificacion"
-            className="block text-sm font-medium mb-1 text-gray-500"
+            className="block text-sm font-medium mb-1 text-neutral-400"
           >
             Identificación
           </label>
@@ -2053,13 +2184,13 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
             type="text"
             value={identificacion}
             onChange={(e) => setIdentificacion(e.target.value)}
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded"
           />
         </div>
         <div>
           <label
             htmlFor="telefono"
-            className="block text-sm font-medium mb-1 text-gray-500"
+            className="block text-sm font-medium mb-1 text-neutral-400"
           >
             Teléfono
           </label>
@@ -2068,13 +2199,13 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
             type="text"
             value={telefono}
             onChange={(e) => setTelefono(e.target.value)}
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded"
           />
         </div>
         <div className="flex justify-end">
           <button
             onClick={handleSave}
-            className="px-5 py-2 rounded-md text-white font-bold bg-indigo-600 hover:bg-indigo-500 cursor-pointer transition-colors"
+            className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 cursor-pointer transition-colors"
           >
             Guardar Cambios
           </button>
@@ -2087,10 +2218,10 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
 const PaymentMethodButton = ({ icon, text, onClick }) => (
   <button
     onClick={onClick}
-    className="w-full text-left p-4 flex items-center gap-4 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+    className="w-full text-left p-4 flex items-center gap-4 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
   >
     {icon}
-    <span className="font-semibold text-lg text-gray-800">{text}</span>
+    <span className="font-semibold text-lg">{text}</span>
   </button>
 );
 
@@ -2098,26 +2229,26 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-indigo-600 hover:text-indigo-500 mb-6 cursor-pointer"
+      className="flex items-center text-red-400 hover:text-red-300 mb-6 cursor-pointer"
     >
       <Icons.ChevronLeft /> Volver al Menú Principal
     </button>
-    <h2 className="text-2xl font-bold mb-6 text-gray-900">
+    <h2 className="text-2xl font-bold mb-6 text-white">
       Seleccione un Método de Depósito
     </h2>
     <div className="space-y-4">
       <PaymentMethodButton
-        icon={<Icons.CreditCard className="h-8 w-8 text-indigo-500" />}
+        icon={<Icons.CreditCard className="h-8 w-8 text-red-400" />}
         text="Criptomonedas"
         onClick={() => onSelectMethod("crypto", "deposit")}
       />
       <PaymentMethodButton
-        icon={<Icons.Banknotes className="h-8 w-8 text-green-500" />}
+        icon={<Icons.Banknotes className="h-8 w-8 text-green-400" />}
         text="Transferencia Bancaria"
         onClick={() => onSelectMethod("bank", "deposit")}
       />
       <PaymentMethodButton
-        icon={<Icons.CreditCard className="h-8 w-8 text-blue-500" />}
+        icon={<Icons.CreditCard className="h-8 w-8 text-blue-400" />}
         text="Tarjeta de Crédito / Débito"
         onClick={() => onSelectMethod("card", "deposit")}
       />
@@ -2129,26 +2260,26 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-indigo-600 hover:text-indigo-500 mb-6 cursor-pointer"
+      className="flex items-center text-red-400 hover:text-red-300 mb-6 cursor-pointer"
     >
       <Icons.ChevronLeft /> Volver al Menú Principal
     </button>
-    <h2 className="text-2xl font-bold mb-6 text-gray-900">
+    <h2 className="text-2xl font-bold mb-6 text-white">
       Seleccione un Método de Retiro
     </h2>
     <div className="space-y-4">
       <PaymentMethodButton
-        icon={<Icons.CreditCard className="h-8 w-8 text-indigo-500" />}
+        icon={<Icons.CreditCard className="h-8 w-8 text-red-400" />}
         text="Criptomonedas"
         onClick={() => onSelectMethod("crypto", "withdraw")}
       />
       <PaymentMethodButton
-        icon={<Icons.Banknotes className="h-8 w-8 text-green-500" />}
+        icon={<Icons.Banknotes className="h-8 w-8 text-green-400" />}
         text="Transferencia Bancaria"
         onClick={() => onSelectMethod("bank", "withdraw")}
       />
       <PaymentMethodButton
-        icon={<Icons.CreditCard className="h-8 w-8 text-blue-500" />}
+        icon={<Icons.CreditCard className="h-8 w-8 text-blue-400" />}
         text="Tarjeta de Crédito / Débito"
         onClick={() => onSelectMethod("card", "withdraw")}
       />
@@ -2159,7 +2290,7 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
 const MenuButton = React.memo(({ icon, text, onClick }) => (
   <button
     onClick={onClick}
-    className="w-full text-left p-2 rounded hover:bg-gray-100 transition-colors flex items-center text-gray-700 cursor-pointer"
+    className="w-full text-left p-2 rounded hover:bg-white/10 transition-colors flex items-center text-neutral-300 cursor-pointer"
   >
     {icon}
     <span className="ml-3">{text}</span>
@@ -2193,15 +2324,12 @@ const SideMenu = React.memo(
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "tween", ease: "circOut", duration: 0.4 }}
-              className="fixed top-0 left-0 h-full w-80 bg-white shadow-2xl z-50 border-r border-gray-200 flex flex-col"
+              className="fixed top-0 left-0 h-full w-80 bg-neutral-900 shadow-2xl z-50 border-r border-white/10 flex flex-col"
             >
-              <div className="p-4 border-b border-gray-200 flex-shrink-0">
+              <div className="p-4 border-b border-white/10 flex-shrink-0">
                 <img
                   className="mb-2"
-                  src={
-                    import.meta.env.VITE_PLATFORM_LOGO ||
-                    "/unique1global-logo.png"
-                  }
+                  src={import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png"}
                   width="220"
                   alt="Logo"
                 />
@@ -2211,34 +2339,34 @@ const SideMenu = React.memo(
                   <div className="p-4 space-y-2">
                     <MenuButton
                       icon={
-                        <Icons.ArrowDownTray className="h-5 w-5 text-green-500" />
+                        <Icons.ArrowDownTray className="h-5 w-5 text-green-400" />
                       }
                       text="Depositar"
                       onClick={() => setView("deposit")}
                     />
                     <MenuButton
                       icon={
-                        <Icons.ArrowUpTray className="h-5 w-5 text-indigo-500" />
+                        <Icons.ArrowUpTray className="h-5 w-5 text-red-400" />
                       }
                       text="Retirar"
                       onClick={() => setView("withdraw")}
                     />
                     <MenuButton
-                      icon={<Icons.Key className="h-5 w-5 text-gray-500" />}
+                      icon={<Icons.Key className="h-5 w-5 text-neutral-400" />}
                       text="Cambiar Contraseña"
                       onClick={() => setView("change-password")}
                     />
-                    <div className="my-2 h-px bg-gray-200" />
+                    <div className="my-2 h-px bg-white/10" />
                     <MenuButton
                       icon={
-                        <Icons.UserCircle className="h-5 w-5 text-gray-500" />
+                        <Icons.UserCircle className="h-5 w-5 text-neutral-400" />
                       }
                       text="Mis Datos"
                       onClick={() => setView("profile")}
                     />
                     <MenuButton
                       icon={
-                        <Icons.ShieldCheck className="h-5 w-5 text-gray-500" />
+                        <Icons.ShieldCheck className="h-5 w-5 text-neutral-400" />
                       }
                       text="Seguridad"
                       onClick={() => setView("security")}
@@ -2310,28 +2438,28 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
     >
       {type === "deposit" ? (
         <div className="text-center">
-          <p className="text-gray-500 mb-4">
+          <p className="text-neutral-400 mb-4">
             Envía USDT a la siguiente dirección usando la red TRON (TRC20).
           </p>
-          <div className="bg-gray-100 p-4 rounded-lg my-4">
+          <div className="bg-neutral-800 p-4 rounded-lg my-4">
             <img
               src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${depositAddress}`}
               alt="QR Code"
               className="mx-auto border-4 border-white rounded-lg"
             />
           </div>
-          <div className="bg-gray-50 p-3 rounded-lg flex items-center justify-between gap-4">
-            <span className="font-mono text-sm break-all text-gray-700">
+          <div className="bg-neutral-900/50 p-3 rounded-lg flex items-center justify-between gap-4">
+            <span className="font-mono text-sm break-all text-neutral-300">
               {depositAddress}
             </span>
             <button
               onClick={handleCopy}
-              className="p-2 rounded-md hover:bg-gray-200 transition-colors flex-shrink-0"
+              className="p-2 rounded-md hover:bg-neutral-700 transition-colors flex-shrink-0"
             >
               <Icons.Clipboard className="h-5 w-5" />
             </button>
           </div>
-          <p className="text-xs text-yellow-600 mt-4">
+          <p className="text-xs text-yellow-400 mt-4">
             Asegúrate de enviar únicamente USDT en la red TRC20. Enviar otra
             moneda o usar otra red podría resultar en la pérdida de tus fondos.
           </p>
@@ -2339,24 +2467,24 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
       ) : (
         <form onSubmit={handleWithdrawal} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-300 mb-1">
               Tu Dirección de Billetera (USDT)
             </label>
             <input
               required
               type="text"
               placeholder="Introduce tu dirección de billetera"
-              className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-300 mb-1">
               Red
             </label>
             <select
               value={network}
               onChange={(e) => setNetwork(e.target.value)}
-              className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
             >
               <option value="TRC20">TRON (TRC20)</option>
               <option value="ERC20">Ethereum (ERC20)</option>
@@ -2364,7 +2492,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-300 mb-1">
               Monto a Retirar
             </label>
             <input
@@ -2372,13 +2500,13 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
               type="number"
               step="0.01"
               placeholder="0.00"
-              className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
           <div className="flex justify-end pt-4">
             <button
               type="submit"
-              className="px-5 py-2 rounded-md text-white font-bold bg-indigo-600 hover:bg-indigo-500 transition-colors"
+              className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 transition-colors"
             >
               Solicitar Retiro
             </button>
@@ -2406,50 +2534,50 @@ const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
             Nombre del Titular
           </label>
           <input
             required
             type="text"
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
             Nombre del Banco
           </label>
           <input
             required
             type="text"
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
             Número de Cuenta
           </label>
           <input
             required
             type="text"
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
             Monto
           </label>
           <input
             required
             type="number"
             step="0.01"
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
           />
         </div>
         <div className="flex justify-end pt-4">
           <button
             type="submit"
-            className="px-5 py-2 rounded-md text-white font-bold bg-indigo-600 hover:bg-indigo-500 transition-colors"
+            className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 transition-colors"
           >
             {type === "deposit" ? "Confirmar Depósito" : "Solicitar Retiro"}
           </button>
@@ -2474,53 +2602,53 @@ const CardPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
             Número de Tarjeta
           </label>
           <input
             required
             type="text"
             placeholder="0000 0000 0000 0000"
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
             Nombre en la Tarjeta
           </label>
           <input
             required
             type="text"
             placeholder="Juan Perez"
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
           />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-300 mb-1">
               Fecha de Expiración
             </label>
             <input
               required
               type="text"
               placeholder="MM/YY"
-              className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-300 mb-1">
               CVV
             </label>
             <input
               required
               type="text"
               placeholder="123"
-              className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
             />
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-neutral-300 mb-1">
             Monto
           </label>
           <input
@@ -2528,13 +2656,13 @@ const CardPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
             type="number"
             step="0.01"
             placeholder="0.00"
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
           />
         </div>
         <div className="flex justify-end pt-4">
           <button
             type="submit"
-            className="px-5 py-2 rounded-md text-white font-bold bg-indigo-600 hover:bg-indigo-500 transition-colors"
+            className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 transition-colors"
           >
             {type === "deposit" ? "Pagar Ahora" : "Confirmar Retiro"}
           </button>
@@ -2549,14 +2677,12 @@ const SecurityView = React.memo(({ onBack }) => {
     <div className="p-4">
       <button
         onClick={onBack}
-        className="flex items-center text-indigo-600 hover:text-indigo-500 mb-4 cursor-pointer"
+        className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
       >
         <Icons.ChevronLeft /> Volver
       </button>
-      <h2 className="text-xl font-bold mb-4 text-gray-900">
-        Seguridad de la Cuenta
-      </h2>
-      <p className="text-gray-600">
+      <h2 className="text-xl font-bold mb-4">Seguridad de la Cuenta</h2>
+      <p className="text-neutral-300">
         Próximamente: Verificación de dos factores y más opciones de seguridad.
       </p>
     </div>
@@ -2945,17 +3071,18 @@ const DashboardPage = () => {
     [realTimePrices]
   );
 
-  const handleUpdatePrice = useCallback(
-    async (opId, newPrice) => {
+  const handleUpdateOperation = useCallback(
+    async (operationData) => {
       try {
-        await axios.post("/actualizar-precio", {
-          id: opId,
-          nuevoPrecio: parseFloat(newPrice),
-        });
-        setAlert({ message: "Precio actualizado", type: "success" });
-        fetchData(pagination.currentPage, opHistoryFilter);
+        await axios.post("/admin/actualizar-operacion", operationData);
+        setAlert({ message: "Operación actualizada", type: "success" });
+        fetchData(pagination.currentPage, opHistoryFilter); // Recargar datos del usuario
       } catch (error) {
-        setAlert({ message: "Error al actualizar el precio", type: "error" });
+        setAlert({
+          message: "Error al actualizar la operación",
+          type: "error",
+        });
+        throw error; // Re-throw para que el modal sepa que falló
       }
     },
     [fetchData, pagination.currentPage, opHistoryFilter]
@@ -3000,11 +3127,10 @@ const DashboardPage = () => {
     marginLevel: metrics.marginLevel.toFixed(2),
   };
 
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
+  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
 
   return (
-    <div className="flex h-screen bg-gray-50 text-gray-800 font-sans overflow-hidden">
+    <div className="flex h-screen bg-black text-white font-sans overflow-hidden">
       <AnimatePresence>
         {alert.message && (
           <Toast
@@ -3071,7 +3197,7 @@ const DashboardPage = () => {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="fixed top-0 left-0 h-full w-72 bg-white p-4 overflow-y-auto flex-shrink-0 border-r border-gray-200 flex flex-col z-40 lg:hidden"
+              className="fixed top-0 left-0 h-full w-72 bg-neutral-900 p-4 overflow-y-auto flex-shrink-0 border-r border-white/10 flex flex-col z-40 lg:hidden"
             >
               <div className="flex-grow">
                 <img
@@ -3097,7 +3223,7 @@ const DashboardPage = () => {
           </>
         )}
       </AnimatePresence>
-      <aside className="hidden lg:flex lg:flex-col w-72 bg-white p-4 overflow-y-auto flex-shrink-0 border-r border-gray-200">
+      <aside className="hidden lg:flex lg:flex-col w-72 bg-black/30 p-4 overflow-y-auto flex-shrink-0 border-r border-white/10">
         <div className="flex-grow">
           <img className="mb-4" src={platformLogo} width="220" alt="Logo" />
           <AssetLists
@@ -3131,7 +3257,8 @@ const DashboardPage = () => {
         isOpen={isUserOpsModalOpen}
         onClose={() => setIsUserOpsModalOpen(false)}
         user={currentUserForOps}
-        onUpdatePrice={handleUpdatePrice}
+        onUpdateOperation={handleUpdateOperation}
+        setAlert={setAlert}
       />
       <OperationDetailsModal
         isOpen={isOpDetailsModalOpen}
@@ -3161,7 +3288,7 @@ const DashboardPage = () => {
           onOpenProfileModal={() => setIsProfileModalOpen(true)}
         />
         <div className="flex-1 flex flex-col p-2 sm:p-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
-          <div className="flex-grow min-h-[300px] sm:min-h-[400px] bg-white rounded-xl shadow-lg border border-gray-200">
+          <div className="flex-grow min-h-[300px] sm:min-h-[400px] bg-black/20 rounded-xl shadow-2xl border border-white/10">
             <TradingViewWidget symbol={selectedAsset} />
           </div>
           <FinancialMetrics
@@ -3182,7 +3309,7 @@ const DashboardPage = () => {
             />
           </div>
         </div>
-        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm p-3 border-t border-gray-200 flex justify-around items-center gap-2">
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-sm p-3 border-t border-white/10 flex justify-around items-center gap-2">
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={() => handleOpenNewOpModal("sell", mobileVolume)}
@@ -3196,7 +3323,7 @@ const DashboardPage = () => {
             onChange={(e) => setMobileVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-3 border border-gray-300 bg-gray-50 rounded-md text-gray-900 text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="w-24 p-3 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
           />
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -3236,54 +3363,52 @@ const ChangePasswordView = React.memo(({ onBack, setAlert }) => {
     <div className="p-4">
       <button
         onClick={onBack}
-        className="flex items-center text-indigo-600 hover:text-indigo-500 mb-4 cursor-pointer"
+        className="flex items-center text-red-400 hover:text-red-300 mb-4 cursor-pointer"
       >
         <Icons.ChevronLeft /> Volver
       </button>
-      <h2 className="text-xl font-bold mb-4 text-gray-900">
-        Cambiar Contraseña
-      </h2>
+      <h2 className="text-xl font-bold mb-4">Cambiar Contraseña</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium mb-1 text-gray-500">
+          <label className="block text-sm font-medium mb-1 text-neutral-400">
             Contraseña Actual
           </label>
           <input
             type="password"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1 text-gray-500">
+          <label className="block text-sm font-medium mb-1 text-neutral-400">
             Nueva Contraseña
           </label>
           <input
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded"
             required
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1 text-gray-500">
+          <label className="block text-sm font-medium mb-1 text-neutral-400">
             Confirmar Nueva Contraseña
           </label>
           <input
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded"
             required
           />
         </div>
         <div className="flex justify-end">
           <button
             type="submit"
-            className="px-5 py-2 rounded-md text-white font-bold bg-indigo-600 hover:bg-indigo-500 cursor-pointer transition-colors"
+            className="px-5 py-2 rounded-md text-white font-bold bg-red-600 hover:bg-red-500 cursor-pointer transition-colors"
           >
             Actualizar Contraseña
           </button>
@@ -3303,43 +3428,41 @@ const ProfileModal = ({ isOpen, onClose, user, stats }) => {
     >
       {user && stats && (
         <div className="space-y-4 text-sm">
-          <div className="p-4 bg-gray-100 rounded-lg">
-            <h3 className="font-bold text-lg mb-2 text-gray-900">
-              {user.nombre}
-            </h3>
-            <p className="text-gray-600">{user.email}</p>
-            <p className="text-gray-600">
+          <div className="p-4 bg-white/5 rounded-lg">
+            <h3 className="font-bold text-lg mb-2 text-white">{user.nombre}</h3>
+            <p className="text-neutral-400">{user.email}</p>
+            <p className="text-neutral-400">
               Teléfono: {user.telefono || "No especificado"}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-gray-500">Balance</p>
-              <p className="font-bold text-xl text-gray-900">
+            <div className="p-3 bg-white/5 rounded-lg">
+              <p className="text-neutral-400">Balance</p>
+              <p className="font-bold text-xl text-white">
                 ${parseFloat(user.balance).toFixed(2)}
               </p>
             </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-gray-500">Ganancia Total</p>
+            <div className="p-3 bg-white/5 rounded-lg">
+              <p className="text-neutral-400">Ganancia Total</p>
               <p
                 className={`font-bold text-xl ${
                   parseFloat(stats.ganancia_total) >= 0
-                    ? "text-green-600"
-                    : "text-red-600"
+                    ? "text-green-400"
+                    : "text-red-500"
                 }`}
               >
                 ${parseFloat(stats.ganancia_total || 0).toFixed(2)}
               </p>
             </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-gray-500">Op. Abiertas</p>
-              <p className="font-bold text-xl text-gray-900">
+            <div className="p-3 bg-white/5 rounded-lg">
+              <p className="text-neutral-400">Op. Abiertas</p>
+              <p className="font-bold text-xl text-white">
                 {stats.abiertas || 0}
               </p>
             </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-gray-500">Op. Cerradas</p>
-              <p className="font-bold text-xl text-gray-900">
+            <div className="p-3 bg-white/5 rounded-lg">
+              <p className="text-neutral-400">Op. Cerradas</p>
+              <p className="font-bold text-xl text-white">
                 {stats.cerradas || 0}
               </p>
             </div>
@@ -3350,7 +3473,7 @@ const ProfileModal = ({ isOpen, onClose, user, stats }) => {
   );
 };
 
-// --- LOGIN/REGISTER ADAPTADO PARA UNIQUE 1 GLOBAL ---
+// --- LOGIN/REGISTER ADAPTADO PARA BULLTRODAT ---
 const LoginPage = () => {
   const { setUser, setIsAuthenticated } = useContext(AppContext);
   const [isLogin, setIsLogin] = useState(true);
@@ -3363,12 +3486,13 @@ const LoginPage = () => {
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
+  const [regCode, setRegCode] = useState(""); // Campo específico para Bulltrodat
 
   const handleAuth = async (e, action) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    const platform_id = import.meta.env.VITE_PLATFORM_ID || "unique1global";
+    const platform_id = import.meta.env.VITE_PLATFORM_ID || "bulltrodat";
 
     if (action === "login") {
       try {
@@ -3396,6 +3520,7 @@ const LoginPage = () => {
           nombre: regName,
           email: regEmail,
           password: regPassword,
+          codigo: regCode, // Enviamos el código de registro
           platform_id,
         };
         const { data } = await axios.post("/register", payload);
@@ -3413,8 +3538,7 @@ const LoginPage = () => {
     }
   };
 
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
+  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
   const formVariants = {
     hidden: { opacity: 0, x: 300 },
     visible: {
@@ -3427,14 +3551,14 @@ const LoginPage = () => {
 
   return (
     <div
-      className="min-h-screen bg-gray-100 flex items-center justify-center p-4 bg-cover bg-center"
+      className="min-h-screen bg-neutral-900 flex items-center justify-center p-4 bg-cover bg-center"
       style={{
         backgroundImage:
-          "url('https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?q=80&w=2070&auto=format&fit=crop')",
+          "url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=2070&auto=format&fit=crop')",
       }}
     >
-      <div className="relative w-full max-w-4xl min-h-[600px] bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-200">
-        <div className="w-full md:w-1/2 text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-indigo-600 to-indigo-800">
+      <div className="relative w-full max-w-4xl min-h-[600px] bg-black/50 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
+        <div className="w-full md:w-1/2 text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-red-600 to-red-800">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -3475,11 +3599,11 @@ const LoginPage = () => {
                 animate="visible"
                 exit="exit"
               >
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 text-center">
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-6 text-center">
                   Iniciar Sesión
                 </h2>
                 {error && (
-                  <p className="text-red-500 text-center text-sm mb-4">
+                  <p className="text-red-400 text-center text-sm mb-4">
                     {error}
                   </p>
                 )}
@@ -3492,18 +3616,18 @@ const LoginPage = () => {
                     placeholder="Email"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    className="w-full p-3 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                   <input
                     type="password"
                     placeholder="Contraseña"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full p-3 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                   <button
                     type="submit"
-                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
+                    className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
                   >
                     Entrar
                   </button>
@@ -3517,16 +3641,16 @@ const LoginPage = () => {
                 animate="visible"
                 exit="exit"
               >
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 text-center">
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4 text-center">
                   Crear Cuenta
                 </h2>
                 {error && (
-                  <p className="text-red-500 text-center text-sm mb-2">
+                  <p className="text-red-400 text-center text-sm mb-2">
                     {error}
                   </p>
                 )}
                 {success && (
-                  <p className="text-green-500 text-center text-sm mb-2">
+                  <p className="text-green-400 text-center text-sm mb-2">
                     {success}
                   </p>
                 )}
@@ -3539,25 +3663,32 @@ const LoginPage = () => {
                     placeholder="Nombre Completo"
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
-                    className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                   <input
                     type="email"
                     placeholder="Email"
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
-                    className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                   <input
                     type="password"
                     placeholder="Contraseña"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
-                    className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Código de Registro"
+                    value={regCode}
+                    onChange={(e) => setRegCode(e.target.value)}
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                   <button
                     type="submit"
-                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
+                    className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
                   >
                     Crear Cuenta
                   </button>
@@ -3573,13 +3704,12 @@ const LoginPage = () => {
 
 const App = () => {
   const { isAppLoading, isAuthenticated } = useContext(AppContext);
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
+  const platformLogo = import.meta.env.VITE_PLATFORM_LOGO || "/bulltrodatw.png";
 
   if (isAppLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-xl font-bold animate-pulse">
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white text-xl font-bold animate-pulse">
           <img src={platformLogo} width="220" alt="Cargando..." />
         </div>
       </div>
