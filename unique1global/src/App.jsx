@@ -2235,6 +2235,12 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
       Seleccione un Método de Depósito
     </h2>
     <div className="space-y-4">
+      {/* NUEVO: Botón para Tarjeta de Crédito/Débito */}
+      <PaymentMethodButton
+        icon={<Icons.CreditCard className="h-8 w-8 text-blue-500" />}
+        text="Tarjeta de Crédito/Débito"
+        onClick={() => onSelectMethod("card", "deposit")}
+      />
       <PaymentMethodButton
         icon={<Icons.CreditCard className="h-8 w-8 text-indigo-500" />}
         text="Criptomonedas"
@@ -2261,6 +2267,12 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
       Seleccione un Método de Retiro
     </h2>
     <div className="space-y-4">
+      {/* NUEVO: Botón para Tarjeta de Crédito/Débito */}
+      <PaymentMethodButton
+        icon={<Icons.CreditCard className="h-8 w-8 text-blue-500" />}
+        text="Tarjeta de Crédito/Débito"
+        onClick={() => onSelectMethod("card", "withdraw")}
+      />
       <PaymentMethodButton
         icon={<Icons.CreditCard className="h-8 w-8 text-indigo-500" />}
         text="Criptomonedas"
@@ -2541,6 +2553,96 @@ const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => (
     </div>
   </Modal>
 );
+
+// NUEVO: Modal para pagos con tarjeta
+const CardPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // En una aplicación real, aquí se integraría una pasarela de pago como Stripe.
+    // Por ahora, solo simulamos el envío exitoso.
+    onSubmitted();
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`${
+        type === "deposit" ? "Depositar" : "Retirar"
+      } con Tarjeta de Crédito/Débito`}
+      maxWidth="max-w-md"
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Monto
+          </label>
+          <input
+            required
+            type="number"
+            step="0.01"
+            placeholder="0.00"
+            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Nombre del Titular
+          </label>
+          <input
+            required
+            type="text"
+            placeholder="John Doe"
+            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Número de Tarjeta
+          </label>
+          <input
+            required
+            type="text"
+            placeholder="0000 0000 0000 0000"
+            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
+        <div className="flex gap-4">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Expiración (MM/YY)
+            </label>
+            <input
+              required
+              type="text"
+              placeholder="MM/YY"
+              className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              CVV
+            </label>
+            <input
+              required
+              type="text"
+              placeholder="123"
+              className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end pt-4">
+          <button
+            type="submit"
+            className="w-full px-5 py-3 rounded-md text-white font-bold bg-indigo-600 hover:bg-indigo-500 transition-colors"
+          >
+            {type === "deposit" ? "Confirmar Depósito" : "Solicitar Retiro"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
 
 const SecurityView = React.memo(({ onBack }) => {
   return (
@@ -3035,6 +3137,7 @@ const DashboardPage = () => {
           onSubmitted={handlePaymentSubmitted}
         />
       )}
+      {/* NUEVO: Renderizado del modal de tarjeta */}
       {paymentModalConfig.method === "card" && (
         <CardPaymentModal
           isOpen={paymentModalConfig.isOpen}
@@ -3428,9 +3531,10 @@ const LoginPage = () => {
   return (
     <div
       className="min-h-screen bg-gray-100 flex items-center justify-center p-4 bg-cover bg-center"
+      // CAMBIO: Nueva imagen de fondo para el login
       style={{
         backgroundImage:
-          "url('https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?q=80&w=2070&auto=format&fit=crop')",
+          "url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=2070&auto=format&fit=crop')",
       }}
     >
       <div className="relative w-full max-w-4xl min-h-[600px] bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-200">
