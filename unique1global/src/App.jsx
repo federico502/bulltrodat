@@ -459,8 +459,8 @@ const PerformanceChart = ({ performanceData, isLoading }) => {
           label: "Ganancia Diaria",
           data: performanceData.map((d) => parseFloat(d.ganancia_dia || 0)),
           fill: true,
-          backgroundColor: "rgba(79, 70, 229, 0.2)", // CAMBIO: Morado
-          borderColor: "#4f46e5", // CAMBIO: Morado
+          backgroundColor: "rgba(65, 0, 147, 0.2)",
+          borderColor: "#410093",
           tension: 0.4,
           pointRadius: 0,
         },
@@ -568,7 +568,7 @@ const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
     onClick={() => onClick(symbol)}
     className={`cursor-pointer transition-all duration-200 rounded-md flex justify-between items-center p-2 group ${
       isSelected
-        ? "bg-indigo-100 text-indigo-800"
+        ? "bg-purple-100 text-purple-800"
         : "hover:bg-gray-100 text-gray-700"
     }`}
   >
@@ -664,12 +664,13 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
             onChange={handleInputChange}
             onFocus={handleFocus}
             placeholder="Ej: Amazon, AMZN"
-            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm text-gray-900"
+            className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm text-gray-900"
             autoComplete="off"
           />
           <button
             type="submit"
-            className="bg-indigo-600 hover:bg-indigo-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
+            className="bg-purple-600 hover:bg-purple-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
+            style={{ backgroundColor: "#410093" }}
           >
             <Icons.Plus />
           </button>
@@ -685,7 +686,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
               <li
                 key={rec.symbol}
                 onClick={() => handleRecommendationClick(rec.symbol)}
-                className="px-3 py-2 text-sm text-gray-700 hover:bg-indigo-500 hover:text-white cursor-pointer flex justify-between items-center"
+                className="px-3 py-2 text-sm text-gray-700 hover:bg-purple-500 hover:text-white cursor-pointer flex justify-between items-center"
               >
                 <div>
                   <span className="font-semibold">{rec.symbol}</span>
@@ -758,7 +759,7 @@ const ProfileMenu = React.memo(
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="bg-gray-100 cursor-pointer text-gray-600 p-2 rounded-full hover:bg-indigo-500 hover:text-white transition-colors"
+          className="bg-gray-100 cursor-pointer text-gray-600 p-2 rounded-full hover:bg-purple-500 hover:text-white transition-colors"
           title="Cuenta"
         >
           <Icons.UserCircle className="h-6 w-6" />
@@ -810,7 +811,7 @@ const ProfileMenu = React.memo(
                 <div className="my-1 h-px bg-gray-200" />
                 <MenuItem
                   icon={
-                    <Icons.Logout className="h-5 w-5 cursor-pointer text-indigo-500" />
+                    <Icons.Logout className="h-5 w-5 cursor-pointer text-purple-500" />
                   }
                   text="Cerrar Sesión"
                   onClick={() => handleItemClick(logout)}
@@ -858,7 +859,7 @@ const Header = ({
             onChange={(e) => setVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-2 border border-gray-300 bg-gray-50 rounded-md text-gray-900 text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="w-24 p-2 border border-gray-300 bg-gray-50 rounded-md text-gray-900 text-center text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
           />
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -1073,7 +1074,8 @@ const OperationsHistory = ({
           ) : (
             <button
               onClick={(e) => handleCloseOperation(e, op.id)}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-md text-xs transition-colors cursor-pointer"
+              className="bg-purple-600 hover:bg-purple-500 text-white px-3 py-1 rounded-md text-xs transition-colors cursor-pointer"
+              style={{ backgroundColor: "#410093" }}
             >
               Cerrar
             </button>
@@ -1097,7 +1099,7 @@ const OperationsHistory = ({
             id="filter"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="bg-white text-gray-800 text-sm rounded-md p-1 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+            className="bg-white text-gray-800 text-sm rounded-md p-1 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
           >
             <option value="todas">Todas</option>
             <option value="abiertas">Abiertas</option>
@@ -1177,7 +1179,8 @@ const OperationsHistory = ({
                       ) : (
                         <button
                           onClick={(e) => handleCloseOperation(e, op.id)}
-                          className="bg-indigo-600 hover:bg-indigo-500 text-white px-2 py-1 rounded-md text-xs w-full transition-colors cursor-pointer"
+                          className="bg-purple-600 hover:bg-purple-500 text-white px-2 py-1 rounded-md text-xs w-full transition-colors cursor-pointer"
+                          style={{ backgroundColor: "#410093" }}
                         >
                           Cerrar
                         </button>
@@ -3431,7 +3434,12 @@ const LoginPage = () => {
       }}
     >
       <div className="relative w-full max-w-4xl min-h-[600px] bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-200">
-        <div className="w-full md:w-1/2 text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-indigo-600 to-indigo-800">
+        <div
+          className="w-full md:w-1/2 text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-purple-600 to-purple-800"
+          style={{
+            background: "linear-gradient(to bottom right, #5D1BC7, #410093)",
+          }}
+        >
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -3489,18 +3497,19 @@ const LoginPage = () => {
                     placeholder="Email"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    className="w-full p-3 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                   <input
                     type="password"
                     placeholder="Contraseña"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full p-3 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                   <button
                     type="submit"
-                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
+                    className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
+                    style={{ backgroundColor: "#410093" }}
                   >
                     Entrar
                   </button>
@@ -3536,25 +3545,26 @@ const LoginPage = () => {
                     placeholder="Nombre Completo"
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
-                    className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                   <input
                     type="email"
                     placeholder="Email"
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
-                    className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                   <input
                     type="password"
                     placeholder="Contraseña"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
-                    className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                   <button
                     type="submit"
-                    className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
+                    className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
+                    style={{ backgroundColor: "#410093" }}
                   >
                     Crear Cuenta
                   </button>
