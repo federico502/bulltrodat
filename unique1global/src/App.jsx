@@ -2689,7 +2689,7 @@ const DashboardPage = () => {
         setPerformanceData(performanceRes.data);
       } catch (error) {
         console.error("Failed to fetch data:", error);
-        setAlert({ message: "Error al cargar los datos", type: "error" });
+        setAlert({ message: "Error al cargar los datoss", type: "error" });
       } finally {
         setIsLoadingData(false);
       }
