@@ -2058,44 +2058,6 @@ const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
       setAlert({ message: "Error al actualizar el código", type: "error" });
     }
   };
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Gestionar Código de Registro"
-      maxWidth="max-w-md"
-    >
-      <div>
-        <label className="block text-sm font-medium mb-2 text-gray-700">
-          Código Actual:
-        </label>
-        <input
-          type="text"
-          readOnly
-          value={code}
-          className="w-full p-2 bg-gray-100 border border-gray-300 rounded mb-4 focus:outline-none"
-        />
-        <label className="block text-sm font-medium mb-2 text-gray-700">
-          Nuevo Código:
-        </label>
-        <input
-          type="text"
-          value={newCode}
-          onChange={(e) => setNewCode(e.target.value)}
-          className="w-full p-2 bg-gray-100 border border-gray-300 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <div className="flex justify-end mt-4">
-          <button
-            onClick={handleSave}
-            className="px-5 py-2 rounded-md text-white font-bold transition-colors bg-indigo-600 hover:bg-indigo-500 cursor-pointer"
-          >
-            Guardar Código
-          </button>
-        </div>
-      </div>
-    </Modal>
-  );
 };
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => (
