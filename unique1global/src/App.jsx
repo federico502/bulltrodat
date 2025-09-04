@@ -3552,7 +3552,7 @@ const LoginPage = () => {
             transition={{ delay: 0.2 }}
           >
             <img
-              src="../public/bull2.png"
+              src={platformLogo}
               alt="Logo de la Plataforma"
               className="w-40 sm:w-48 mx-auto mb-4"
             />
