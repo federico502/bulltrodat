@@ -3531,10 +3531,9 @@ const LoginPage = () => {
   return (
     <div
       className="min-h-screen bg-gray-100 flex items-center justify-center p-4 bg-cover bg-center"
-      // CAMBIO: Nueva imagen de fondo para el login
       style={{
         backgroundImage:
-          "url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=2070&auto=format&fit=crop')",
+          "url('https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=2070&auto=format&fit=crop')",
       }}
     >
       <div className="relative w-full max-w-4xl min-h-[600px] bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-200">
