@@ -3516,8 +3516,10 @@ const LoginPage = () => {
     }
   };
 
+  // CAMBIO: Se actualiza la variable para usar un logo blanco específico para el login.
+  // Puedes cambiar "/unique1global-logo-white.png" por la ruta correcta de tu logo blanco.
   const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
+    import.meta.env.VITE_PLATFORM_LOGO_WHITE || "/unique1global-logo-white.png";
   const formVariants = {
     hidden: { opacity: 0, x: 300 },
     visible: {
@@ -3532,8 +3534,9 @@ const LoginPage = () => {
     <div
       className="min-h-screen bg-gray-100 flex items-center justify-center p-4 bg-cover bg-center"
       style={{
+        // CAMBIO: Nuevo fondo abstracto con blanco predominante y toques de color.
         backgroundImage:
-          "url('https://images.unsplash.com/photo-1557682250-33bd709cbe85?q=80&w=2070&auto=format&fit=crop')",
+          "url('https://images.unsplash.com/photo-1588345921523-c2dcdb7f1dcd?q=80&w=2070&auto=format&fit=crop')",
       }}
     >
       <div className="relative w-full max-w-4xl min-h-[600px] bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-200">
@@ -3550,7 +3553,7 @@ const LoginPage = () => {
           >
             <img
               src={platformLogo}
-              alt="Logo"
+              alt="Logo de la Plataforma"
               className="w-40 sm:w-48 mx-auto mb-4"
             />
             <h1 className="text-2xl sm:text-3xl font-bold mb-2">
