@@ -290,7 +290,10 @@ const Toast = ({ message, type, onDismiss }) => (
     }`}
   >
     <p>{message}</p>
-    <button onClick={onDismiss} className="ml-4 text-white/70 hover:text-white">
+    <button
+      onClick={onDismiss}
+      className="ml-4 text-white/70 hover:text-white cursor-pointer"
+    >
       &times;
     </button>
   </motion.div>
@@ -379,7 +382,7 @@ const TradingViewWidget = React.memo(({ symbol }) => {
         symbol: tvSymbol,
         interval: "D",
         timezone: "Etc/UTC",
-        theme: "light", // CAMBIO: Tema claro
+        theme: "light",
         style: "1",
         locale: "es",
         enable_publishing: false,
@@ -1032,7 +1035,11 @@ const OperationsHistory = ({
       animate="visible"
       variants={cardVariants}
     >
-      <Card key={op.id} className="text-sm" onClick={() => onRowClick(op)}>
+      <Card
+        key={op.id}
+        className="text-sm cursor-pointer hover:bg-gray-50 transition-colors"
+        onClick={() => onRowClick(op)}
+      >
         <div className="flex justify-between items-center mb-3">
           <span className="font-bold text-lg text-gray-900">{op.activo}</span>
           <span
@@ -1222,7 +1229,7 @@ const Modal = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 backdrop-blur-sm p-4"
+        className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 backdrop-blur-sm p-4 cursor-pointer"
         onClick={onClose}
       >
         <motion.div
@@ -2317,7 +2324,7 @@ const SideMenu = React.memo(
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={onClose}
-              className="fixed inset-0 bg-black/50 z-40"
+              className="fixed inset-0 bg-black/50 z-40 cursor-pointer"
             />
             <motion.div
               initial={{ x: "-100%" }}
