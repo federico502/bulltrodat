@@ -804,11 +804,6 @@ const ProfileMenu = React.memo(
                       text="Gestionar Usuarios"
                       onClick={() => handleItemClick(onManageUsers)}
                     />
-                    <MenuItem
-                      icon={<Icons.Key className="h-5 w-5 text-gray-500" />}
-                      text="Código de Registro"
-                      onClick={() => handleItemClick(onManageRegCode)}
-                    />
                   </>
                 )}
                 <div className="my-1 h-px bg-gray-200" />
