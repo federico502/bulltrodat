@@ -1,3 +1,12 @@
+/*
+IMPORTANTE: Para que la nueva funcionalidad de apalancamiento funcione,
+es necesario modificar la base de datos. Ejecute el siguiente comando SQL
+en su base de datos PostgreSQL:
+
+ALTER TABLE operaciones ADD COLUMN apalancamiento INTEGER DEFAULT 1;
+
+Este comando añade la columna 'apalancamiento' a la tabla de operaciones.
+*/
 import express from "express";
 import session from "express-session";
 import pg from "pg";
@@ -505,9 +514,13 @@ app.post("/operar", async (req, res) => {
     precio_entrada,
     take_profit,
     stop_loss,
+    apalancamiento, // Recibe el apalancamiento
   } = req.body;
   const usuario_id = req.session.userId;
   if (!usuario_id) return res.status(401).json({ error: "No autenticado" });
+
+  const leverage = parseInt(apalancamiento) || 1; // Usa el apalancamiento o 1 por defecto
+
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -516,7 +529,10 @@ app.post("/operar", async (req, res) => {
       [usuario_id]
     );
     const balanceActual = parseFloat(userRes.rows[0].balance);
-    const costo = precio_entrada * volumen;
+
+    // Calcula el costo (margen requerido) usando el apalancamiento
+    const costo = (precio_entrada * volumen) / leverage;
+
     if (balanceActual < costo) {
       await client.query("ROLLBACK");
       return res
@@ -524,16 +540,17 @@ app.post("/operar", async (req, res) => {
         .json({ success: false, error: "Fondos insuficientes" });
     }
     await client.query(
-      "INSERT INTO operaciones (usuario_id, activo, tipo_operacion, volumen, precio_entrada, capital_invertido, take_profit, stop_loss) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+      "INSERT INTO operaciones (usuario_id, activo, tipo_operacion, volumen, precio_entrada, capital_invertido, take_profit, stop_loss, apalancamiento) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
       [
         usuario_id,
         activo,
         tipo_operacion,
         volumen,
         precio_entrada,
-        costo,
+        costo, // Guarda el margen requerido como capital invertido
         take_profit,
         stop_loss,
+        leverage, // Guarda el apalancamiento en la BD
       ]
     );
     await client.query("COMMIT");
@@ -647,7 +664,7 @@ app.get("/estadisticas", async (req, res) => {
     return res.status(401).json({ error: "No autenticado" });
   try {
     const { rows } = await pool.query(
-      `SELECT SUM(precio_entrada * volumen) AS total_invertido, SUM(CASE WHEN cerrada THEN ganancia ELSE 0 END) AS ganancia_total, COUNT(*) FILTER (WHERE cerrada) AS cerradas, COUNT(*) FILTER (WHERE NOT cerrada) AS abiertas FROM operaciones WHERE usuario_id = $1`,
+      `SELECT SUM(capital_invertido) AS total_invertido, SUM(CASE WHEN cerrada THEN ganancia ELSE 0 END) AS ganancia_total, COUNT(*) FILTER (WHERE cerrada) AS cerradas, COUNT(*) FILTER (WHERE NOT cerrada) AS abiertas FROM operaciones WHERE usuario_id = $1`,
       [req.session.userId]
     );
     res.json(rows[0]);
@@ -844,6 +861,7 @@ app.post("/admin/actualizar-operacion", async (req, res) => {
     take_profit,
     stop_loss,
     cerrada,
+    apalancamiento, // Recibe apalancamiento
   } = req.body;
 
   const client = await pool.connect();
@@ -895,7 +913,10 @@ app.post("/admin/actualizar-operacion", async (req, res) => {
       }
     }
 
-    const capitalInvertido = parseFloat(precio_entrada) * parseFloat(volumen);
+    const leverage = parseInt(apalancamiento) || 1;
+    const capitalInvertido =
+      (parseFloat(precio_entrada) * parseFloat(volumen)) / leverage;
+
     await client.query(
       `UPDATE operaciones SET 
                 activo = $1, 
@@ -907,7 +928,8 @@ app.post("/admin/actualizar-operacion", async (req, res) => {
                 stop_loss = $7, 
                 cerrada = $8, 
                 ganancia = $9,
-                capital_invertido = $10
+                capital_invertido = $10,
+                apalancamiento = $12
              WHERE id = $11`,
       [
         activo,
@@ -921,6 +943,7 @@ app.post("/admin/actualizar-operacion", async (req, res) => {
         nuevaGanancia,
         capitalInvertido,
         id,
+        leverage,
       ]
     );
 

@@ -1014,7 +1014,6 @@ const OperationsHistory = ({
     "Cierre",
     "TP",
     "SL",
-    "Apalanc.",
     "Margen",
     "G-P",
     "Acción",
@@ -1052,10 +1051,6 @@ const OperationsHistory = ({
           <div>
             <span className="font-semibold text-gray-500">Vol:</span>{" "}
             {op.volumen}
-          </div>
-          <div>
-            <span className="font-semibold text-gray-500">Apalanc:</span> 1:
-            {op.apalancamiento || 1}
           </div>
           <div>
             <span className="font-semibold text-gray-500">Entrada:</span>{" "}
@@ -1173,9 +1168,6 @@ const OperationsHistory = ({
                       {op.stop_loss ? parseFloat(op.stop_loss).toFixed(2) : "-"}
                     </td>
                     <td className="px-3 py-2 font-mono">
-                      1:{op.apalancamiento || 1}
-                    </td>
-                    <td className="px-3 py-2 font-mono">
                       ${parseFloat(op.capital_invertido || 0).toFixed(2)}
                     </td>
                     <td className="px-3 py-2">
@@ -1279,21 +1271,14 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const { realTimePrices } = useContext(AppContext);
   const normalizedAsset = asset?.toUpperCase().replace(/[-/]/g, "");
   const livePrice = realTimePrices[normalizedAsset];
-
+  const requiredMargin = livePrice ? (livePrice * volume).toFixed(2) : "0.00";
   const [tp, setTp] = useState("");
   const [sl, setSl] = useState("");
-  const [leverage, setLeverage] = useState(1);
-  const leverageOptions = [1, 5, 10, 25, 50, 100, 200];
-
-  const requiredMargin = livePrice
-    ? ((livePrice * volume) / leverage).toFixed(2)
-    : "0.00";
 
   useEffect(() => {
     if (!isOpen) {
       setTp("");
       setSl("");
-      setLeverage(1);
     }
   }, [isOpen]);
 
@@ -1324,7 +1309,6 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
       take_profit: tp ? parseFloat(tp) : null,
       stop_loss: sl ? parseFloat(sl) : null,
       tipo_operacion: type,
-      apalancamiento: leverage,
     });
     onClose();
   };
@@ -1346,29 +1330,9 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           <span className="font-mono text-gray-900">{volume}</span>
         </p>
         <p className="flex justify-between">
-          <span>Apalancamiento:</span>
-          <span className="font-mono text-gray-900">1:{leverage}</span>
-        </p>
-        <p className="flex justify-between">
           <span>Margen Requerido:</span>
           <span className="font-mono text-gray-900">${requiredMargin}</span>
         </p>
-      </div>
-      <div className="mb-4">
-        <label className="block text-sm font-medium mb-2 text-gray-700">
-          Seleccionar Apalancamiento
-        </label>
-        <select
-          value={leverage}
-          onChange={(e) => setLeverage(parseInt(e.target.value))}
-          className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
-        >
-          {leverageOptions.map((opt) => (
-            <option key={opt} value={opt}>
-              1:{opt}
-            </option>
-          ))}
-        </select>
       </div>
       <div className="mb-4">
         <label className="block text-sm font-medium mb-2 text-gray-700">
@@ -1453,12 +1417,6 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
         <div className="flex justify-between">
           <span>Volumen:</span>
           <span className="font-mono text-gray-900">{operation.volumen}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Apalancamiento:</span>
-          <span className="font-semibold text-gray-900">
-            1:{operation.apalancamiento || 1}
-          </span>
         </div>
         <div className="flex justify-between">
           <span>Precio de Entrada:</span>
@@ -1613,7 +1571,6 @@ const UserOperationsModal = ({
                 "P. Cierre",
                 "TP",
                 "SL",
-                "Apalanc.",
                 "Estado",
                 "G/P",
                 "Acción",
@@ -1701,17 +1658,6 @@ const UserOperationsModal = ({
                     value={op.stop_loss || ""}
                     onChange={(e) =>
                       handleInputChange(op.id, "stop_loss", e.target.value)
-                    }
-                    className="w-full p-1 bg-gray-50 rounded border border-gray-300"
-                  />
-                </td>
-                <td className="p-1">
-                  <input
-                    type="number"
-                    step="1"
-                    value={op.apalancamiento || 1}
-                    onChange={(e) =>
-                      handleInputChange(op.id, "apalancamiento", e.target.value)
                     }
                     className="w-full p-1 bg-gray-50 rounded border border-gray-300"
                   />
@@ -2913,7 +2859,7 @@ const DashboardPage = () => {
       );
     }, 0);
     const usedMargin = openOperations.reduce(
-      (total, op) => total + parseFloat(op.capital_invertido || 0),
+      (total, op) => total + op.precio_entrada * op.volumen,
       0
     );
     const equity = balance + pnl;
@@ -2953,11 +2899,18 @@ const DashboardPage = () => {
         });
         return;
       }
-      // La validación del margen libre se hará en el backend con el apalancamiento
+      const cost = currentPrice * volume;
+      if (cost > metrics.freeMargin) {
+        setAlert({
+          message: "Margen libre insuficiente para esta operación.",
+          type: "error",
+        });
+        return;
+      }
       setNewOpModalData({ type, volume, asset: selectedAsset });
       setIsNewOpModalOpen(true);
     },
-    [realTimePrices, selectedAsset]
+    [realTimePrices, selectedAsset, metrics]
   );
 
   const handleConfirmOperation = useCallback(
