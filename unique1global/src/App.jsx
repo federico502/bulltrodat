@@ -118,12 +118,6 @@ const Icons = {
       className={className}
     />
   ),
-  Newspaper: ({ className }) => (
-    <Icon
-      path="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 1V6a4 4 0 00-4-4H5a4 4 0 00-4 4v12a4 4 0 004 4h14a4 4 0 004-4v-3m-4-5l-4 4m0 0l-4-4m4 4V3"
-      className={className}
-    />
-  ),
   ShieldCheck: ({ className }) => (
     <Icon
       path="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286Zm-1.12 8.149a.75.75 0 1 0-1.06 1.06l2.12 2.12a.75.75 0 0 0 1.06 0l4.243-4.242a.75.75 0 0 0-1.06-1.06l-3.713 3.713-1.59-1.59Z"
@@ -836,7 +830,6 @@ const Header = ({
   onToggleSideMenu,
   onToggleMainSidebar,
   onOpenProfileModal,
-  onToggleInfoPanel, // Nueva prop
 }) => {
   const { user, logout, selectedAsset } = useContext(AppContext);
   const [volume, setVolume] = useState(0.01);
@@ -884,13 +877,6 @@ const Header = ({
         </p>
       </div>
       <div className="flex items-center space-x-4">
-        <button
-          onClick={onToggleInfoPanel} // Nuevo botón
-          className="bg-gray-100 cursor-pointer text-gray-600 p-2 rounded-full hover:bg-purple-500 hover:text-white transition-colors"
-          title="Noticias y Calendario"
-        >
-          <Icons.Newspaper className="h-6 w-6" />
-        </button>
         <ProfileMenu
           user={user}
           logout={logout}
@@ -1067,9 +1053,9 @@ const OperationsHistory = ({
             <span className="font-semibold text-gray-500">Vol:</span>{" "}
             {op.volumen}
           </div>
-           <div>
-            <span className="font-semibold text-gray-500">Apalanc:</span>{" "}
-            1:{op.apalancamiento || 1}
+          <div>
+            <span className="font-semibold text-gray-500">Apalanc:</span> 1:
+            {op.apalancamiento || 1}
           </div>
           <div>
             <span className="font-semibold text-gray-500">Entrada:</span>{" "}
@@ -1286,20 +1272,22 @@ const ModalLivePrice = React.memo(({ symbol }) => {
       ${price ? price.toFixed(4) : "Cargando..."}
     </span>
   );
-};
+});
 
 const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const { type, asset, volume } = operationData || {};
   const { realTimePrices } = useContext(AppContext);
   const normalizedAsset = asset?.toUpperCase().replace(/[-/]/g, "");
   const livePrice = realTimePrices[normalizedAsset];
-  
+
   const [tp, setTp] = useState("");
   const [sl, setSl] = useState("");
   const [leverage, setLeverage] = useState(1);
   const leverageOptions = [1, 5, 10, 25, 50, 100, 200];
-  
-  const requiredMargin = livePrice ? (livePrice * volume / leverage).toFixed(2) : "0.00";
+
+  const requiredMargin = livePrice
+    ? ((livePrice * volume) / leverage).toFixed(2)
+    : "0.00";
 
   useEffect(() => {
     if (!isOpen) {
@@ -1357,7 +1345,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           <span>Volumen:</span>
           <span className="font-mono text-gray-900">{volume}</span>
         </p>
-         <p className="flex justify-between">
+        <p className="flex justify-between">
           <span>Apalancamiento:</span>
           <span className="font-mono text-gray-900">1:{leverage}</span>
         </p>
@@ -1367,20 +1355,20 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
         </p>
       </div>
       <div className="mb-4">
-          <label className="block text-sm font-medium mb-2 text-gray-700">
-           Seleccionar Apalancamiento
-          </label>
-           <select
-                value={leverage}
-                onChange={(e) => setLeverage(parseInt(e.target.value))}
-                className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                {leverageOptions.map((opt) => (
-                  <option key={opt} value={opt}>
-                    1:{opt}
-                  </option>
-                ))}
-              </select>
+        <label className="block text-sm font-medium mb-2 text-gray-700">
+          Seleccionar Apalancamiento
+        </label>
+        <select
+          value={leverage}
+          onChange={(e) => setLeverage(parseInt(e.target.value))}
+          className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+        >
+          {leverageOptions.map((opt) => (
+            <option key={opt} value={opt}>
+              1:{opt}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="mb-4">
         <label className="block text-sm font-medium mb-2 text-gray-700">
@@ -1466,10 +1454,10 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
           <span>Volumen:</span>
           <span className="font-mono text-gray-900">{operation.volumen}</span>
         </div>
-         <div className="flex justify-between">
+        <div className="flex justify-between">
           <span>Apalancamiento:</span>
           <span className="font-semibold text-gray-900">
-           1:{operation.apalancamiento || 1}
+            1:{operation.apalancamiento || 1}
           </span>
         </div>
         <div className="flex justify-between">
@@ -2265,6 +2253,7 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
       Seleccione un Método de Depósito
     </h2>
     <div className="space-y-4">
+      {/* NUEVO: Botón para Tarjeta de Crédito/Débito */}
       <PaymentMethodButton
         icon={<Icons.CreditCard className="h-8 w-8 text-blue-500" />}
         text="Tarjeta de Crédito/Débito"
@@ -2296,6 +2285,7 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
       Seleccione un Método de Retiro
     </h2>
     <div className="space-y-4">
+      {/* NUEVO: Botón para Tarjeta de Crédito/Débito */}
       <PaymentMethodButton
         icon={<Icons.CreditCard className="h-8 w-8 text-blue-500" />}
         text="Tarjeta de Crédito/Débito"
@@ -2582,9 +2572,12 @@ const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => (
   </Modal>
 );
 
+// NUEVO: Modal para pagos con tarjeta
 const CardPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
+    // En una aplicación real, aquí se integraría una pasarela de pago como Stripe.
+    // Por ahora, solo simulamos el envío exitoso.
     onSubmitted();
   };
 
@@ -2688,165 +2681,6 @@ const SecurityView = React.memo(({ onBack }) => {
   );
 });
 
-const EconomicCalendar = () => {
-  const [events, setEvents] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    axios.get("/economic-calendar")
-      .then(res => {
-        setEvents(res.data);
-      })
-      .catch(err => console.error("Error fetching economic calendar", err))
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  const ImpactIndicator = ({ impact }) => {
-    const impactLevel = impact ? impact.toLowerCase() : 'low';
-    const color = {
-      high: 'bg-red-500',
-      medium: 'bg-yellow-500',
-      low: 'bg-green-500',
-    }[impactLevel];
-    return <span className={`inline-block h-2 w-2 rounded-full ${color}`} title={`Impacto: ${impact}`}></span>;
-  };
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4 p-4">
-        {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-2">
-      <ul className="space-y-3">
-        {events.map((event, index) => (
-          <li key={index} className="p-3 bg-gray-50 rounded-lg text-sm">
-            <div className="flex justify-between items-center mb-1">
-              <span className="font-bold text-gray-800">{event.event}</span>
-              <span className="text-xs text-gray-500">{new Date(event.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-            </div>
-            <div className="flex items-center gap-2 text-gray-600">
-              <ImpactIndicator impact={event.impact} />
-              <span>{event.country}</span>
-              <span className="font-mono text-xs">Actual: {event.actual ?? '-'}</span>
-              <span className="font-mono text-xs">Prev: {event.prev ?? '-'}</span>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};
-
-const NewsFeed = () => {
-  const [news, setNews] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    axios.get("/news")
-      .then(res => {
-        setNews(res.data.slice(0, 20)); // Limitar a 20 noticias
-      })
-      .catch(err => console.error("Error fetching news", err))
-      .finally(() => setIsLoading(false));
-  }, []);
-  
-  const timeSince = (date) => {
-    const seconds = Math.floor((new Date() - new Date(date * 1000)) / 1000);
-    let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + " años";
-    interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + " meses";
-    interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + " días";
-    interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + " horas";
-    interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + " minutos";
-    return Math.floor(seconds) + " segundos";
-  }
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4 p-4">
-        {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-2">
-      <ul className="space-y-2">
-        {news.map((item) => (
-          <li key={item.id}>
-            <a href={item.url} target="_blank" rel="noopener noreferrer" className="block p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors">
-              <p className="font-semibold text-sm text-gray-800 mb-1">{item.headline}</p>
-              <div className="flex justify-between items-center text-xs text-gray-500">
-                <span>{item.source}</span>
-                <span>Hace {timeSince(item.datetime)}</span>
-              </div>
-            </a>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-};
-
-const InfoPanel = ({ isOpen, onClose }) => {
-  const [activeTab, setActiveTab] = useState('news');
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/50 z-40 cursor-pointer lg:hidden"
-          />
-          <motion.div
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "tween", ease: "circOut", duration: 0.4 }}
-            className="fixed top-0 right-0 h-full w-80 md:w-96 bg-white shadow-2xl z-50 border-l border-gray-200 flex flex-col"
-          >
-            <div className="p-4 border-b border-gray-200 flex justify-between items-center flex-shrink-0">
-              <h2 className="text-xl font-bold text-gray-900">Mercado</h2>
-              <button onClick={onClose} className="lg:hidden text-gray-500 hover:text-gray-800">
-                <Icons.X />
-              </button>
-            </div>
-             <div className="flex-shrink-0 border-b border-gray-200">
-                <nav className="flex space-x-1 p-1" aria-label="Tabs">
-                    <button
-                        onClick={() => setActiveTab('news')}
-                        className={`w-1/2 px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'news' ? 'bg-purple-100 text-purple-700' : 'text-gray-500 hover:text-gray-700'}`}>
-                        Noticias
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('calendar')}
-                        className={`w-1/2 px-3 py-2 text-sm font-medium rounded-md ${activeTab === 'calendar' ? 'bg-purple-100 text-purple-700' : 'text-gray-500 hover:text-gray-700'}`}>
-                        Calendario
-                    </button>
-                </nav>
-            </div>
-            <div className="flex-grow overflow-y-auto">
-              {activeTab === 'news' ? <NewsFeed /> : <EconomicCalendar />}
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  )
-};
-
 const DashboardPage = () => {
   const {
     user,
@@ -2928,7 +2762,6 @@ const DashboardPage = () => {
     onConfirm: () => {},
   });
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false); // Nuevo estado
 
   const handleOpenPaymentModal = (method, type) => {
     setPaymentModalConfig({ isOpen: true, method, type });
@@ -3299,28 +3132,79 @@ const DashboardPage = () => {
         setAlert={setAlert}
         onSelectPaymentMethod={handleOpenPaymentModal}
       />
-      
-      <InfoPanel isOpen={isInfoPanelOpen} onClose={() => setIsInfoPanelOpen(false)} />
-
-      {paymentModalConfig.method === "crypto" && <CryptoPaymentModal isOpen={paymentModalConfig.isOpen} onClose={handleClosePaymentModal} type={paymentModalConfig.type} onSubmitted={handlePaymentSubmitted}/>}
-      {paymentModalConfig.method === "bank" && <BankTransferModal isOpen={paymentModalConfig.isOpen} onClose={handleClosePaymentModal} type={paymentModalConfig.type} onSubmitted={handlePaymentSubmitted} />}
-      {paymentModalConfig.method === "card" && <CardPaymentModal isOpen={paymentModalConfig.isOpen} onClose={handleClosePaymentModal} type={paymentModalConfig.type} onSubmitted={handlePaymentSubmitted} />}
-      
-      <ConfirmationModal isOpen={confirmationModal.isOpen} onClose={() => setConfirmationModal((prev) => ({ ...prev, isOpen: false }))} onConfirm={confirmationModal.onConfirm} title={confirmationModal.title}>
+      {paymentModalConfig.method === "crypto" && (
+        <CryptoPaymentModal
+          isOpen={paymentModalConfig.isOpen}
+          onClose={handleClosePaymentModal}
+          type={paymentModalConfig.type}
+          onSubmitted={handlePaymentSubmitted}
+        />
+      )}
+      {paymentModalConfig.method === "bank" && (
+        <BankTransferModal
+          isOpen={paymentModalConfig.isOpen}
+          onClose={handleClosePaymentModal}
+          type={paymentModalConfig.type}
+          onSubmitted={handlePaymentSubmitted}
+        />
+      )}
+      {/* NUEVO: Renderizado del modal de tarjeta */}
+      {paymentModalConfig.method === "card" && (
+        <CardPaymentModal
+          isOpen={paymentModalConfig.isOpen}
+          onClose={handleClosePaymentModal}
+          type={paymentModalConfig.type}
+          onSubmitted={handlePaymentSubmitted}
+        />
+      )}
+      <ConfirmationModal
+        isOpen={confirmationModal.isOpen}
+        onClose={() =>
+          setConfirmationModal((prev) => ({ ...prev, isOpen: false }))
+        }
+        onConfirm={confirmationModal.onConfirm}
+        title={confirmationModal.title}
+      >
         {confirmationModal.children}
       </ConfirmationModal>
 
       <AnimatePresence>
         {isSidebarVisible && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="fixed inset-0 bg-black/60 z-30 lg:hidden" onClick={() => setIsSidebarVisible(false)} />
-            <motion.aside initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }} transition={{ duration: 0.3, ease: "easeInOut" }} className="fixed top-0 left-0 h-full w-72 bg-white p-4 overflow-y-auto flex-shrink-0 border-r border-gray-200 flex flex-col z-40 lg:hidden" >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="fixed inset-0 bg-black/60 z-30 lg:hidden"
+              onClick={() => setIsSidebarVisible(false)}
+            />
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="fixed top-0 left-0 h-full w-72 bg-white p-4 overflow-y-auto flex-shrink-0 border-r border-gray-200 flex flex-col z-40 lg:hidden"
+            >
               <div className="flex-grow">
-                <img className="mb-4" src={platformLogo} width="220" alt="Logo" />
-                <AssetLists assets={userAssets} onAddAsset={handleAddAsset} onRemoveAsset={handleRemoveAsset} />
+                <img
+                  className="mb-4"
+                  src={platformLogo}
+                  width="220"
+                  alt="Logo"
+                />
+                <AssetLists
+                  assets={userAssets}
+                  onAddAsset={handleAddAsset}
+                  onRemoveAsset={handleRemoveAsset}
+                />
               </div>
               <div className="flex-shrink-0">
-                <StatisticsPanel stats={stats} performanceData={performanceData} isLoading={isLoadingData} />
+                <StatisticsPanel
+                  stats={stats}
+                  performanceData={performanceData}
+                  isLoading={isLoadingData}
+                />
               </div>
             </motion.aside>
           </>
@@ -3329,18 +3213,57 @@ const DashboardPage = () => {
       <aside className="hidden lg:flex lg:flex-col w-72 bg-white p-4 overflow-y-auto flex-shrink-0 border-r border-gray-200">
         <div className="flex-grow">
           <img className="mb-4" src={platformLogo} width="220" alt="Logo" />
-          <AssetLists assets={userAssets} onAddAsset={handleAddAsset} onRemoveAsset={handleRemoveAsset} />
+          <AssetLists
+            assets={userAssets}
+            onAddAsset={handleAddAsset}
+            onRemoveAsset={handleRemoveAsset}
+          />
         </div>
         <div className="flex-shrink-0">
-          <StatisticsPanel stats={stats} performanceData={performanceData} isLoading={isLoadingData} />
+          <StatisticsPanel
+            stats={stats}
+            performanceData={performanceData}
+            isLoading={isLoadingData}
+          />
         </div>
       </aside>
-      <NewOperationModal isOpen={isNewOpModalOpen} onClose={() => setIsNewOpModalOpen(false)} operationData={newOpModalData} onConfirm={handleConfirmOperation} />
-      <ManageUsersModal isOpen={isUsersModalOpen} onClose={() => setIsUsersModalOpen(false)} onViewUserOps={handleViewUserOps} setAlert={setAlert} onDeleteUser={handleDeleteUser} />
-      <UserOperationsModal isOpen={isUserOpsModalOpen} onClose={() => setIsUserOpsModalOpen(false)} user={currentUserForOps} onUpdateOperation={handleUpdateOperation} setAlert={setAlert} />
-      <OperationDetailsModal isOpen={isOpDetailsModalOpen} onClose={() => setIsOpDetailsModalOpen(false)} operation={currentOpDetails?.op} profit={currentOpDetails?.profit} />
-      <RegistrationCodeModal isOpen={isRegCodeModalOpen} onClose={() => setIsRegCodeModalOpen(false)} setAlert={setAlert} />
-      <ProfileModal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} user={user} stats={stats} />
+      <NewOperationModal
+        isOpen={isNewOpModalOpen}
+        onClose={() => setIsNewOpModalOpen(false)}
+        operationData={newOpModalData}
+        onConfirm={handleConfirmOperation}
+      />
+      <ManageUsersModal
+        isOpen={isUsersModalOpen}
+        onClose={() => setIsUsersModalOpen(false)}
+        onViewUserOps={handleViewUserOps}
+        setAlert={setAlert}
+        onDeleteUser={handleDeleteUser}
+      />
+      <UserOperationsModal
+        isOpen={isUserOpsModalOpen}
+        onClose={() => setIsUserOpsModalOpen(false)}
+        user={currentUserForOps}
+        onUpdateOperation={handleUpdateOperation}
+        setAlert={setAlert}
+      />
+      <OperationDetailsModal
+        isOpen={isOpDetailsModalOpen}
+        onClose={() => setIsOpDetailsModalOpen(false)}
+        operation={currentOpDetails?.op}
+        profit={currentOpDetails?.profit}
+      />
+      <RegistrationCodeModal
+        isOpen={isRegCodeModalOpen}
+        onClose={() => setIsRegCodeModalOpen(false)}
+        setAlert={setAlert}
+      />
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        user={user}
+        stats={stats}
+      />
 
       <main className="flex-1 flex flex-col bg-transparent overflow-hidden">
         <Header
@@ -3350,21 +3273,52 @@ const DashboardPage = () => {
           onToggleSideMenu={() => setIsSideMenuOpen(true)}
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
           onOpenProfileModal={() => setIsProfileModalOpen(true)}
-          onToggleInfoPanel={() => setIsInfoPanelOpen(!isInfoPanelOpen)} // Pasar la función
         />
         <div className="flex-1 flex flex-col p-2 sm:p-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
           <div className="flex-grow min-h-[300px] sm:min-h-[400px] bg-white rounded-xl shadow-lg border border-gray-200">
             <TradingViewWidget symbol={selectedAsset} />
           </div>
-          <FinancialMetrics metrics={displayMetrics} isLoading={isLoadingData} />
+          <FinancialMetrics
+            metrics={displayMetrics}
+            isLoading={isLoadingData}
+          />
           <div className="h-full flex flex-col">
-            <OperationsHistory operations={operations} setOperations={setOperations} filter={opHistoryFilter} setFilter={handleFilterChange} onRowClick={handleOpRowClick} isLoading={isLoadingData} pagination={pagination} onPageChange={handlePageChange} setAlert={setAlert} />
+            <OperationsHistory
+              operations={operations}
+              setOperations={setOperations}
+              filter={opHistoryFilter}
+              setFilter={handleFilterChange}
+              onRowClick={handleOpRowClick}
+              isLoading={isLoadingData}
+              pagination={pagination}
+              onPageChange={handlePageChange}
+              setAlert={setAlert}
+            />
           </div>
         </div>
         <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm p-3 border-t border-gray-200 flex justify-around items-center gap-2">
-          <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleOpenNewOpModal("sell", mobileVolume)} className="flex-1 bg-red-600 hover:bg-red-500 transition-all text-white px-4 py-3 text-sm font-bold rounded-md" > SELL </motion.button>
-          <input type="number" value={mobileVolume} onChange={(e) => setMobileVolume(parseFloat(e.target.value) || 0)} step="0.01" min="0.01" className="w-24 p-3 border border-gray-300 bg-gray-50 rounded-md text-gray-900 text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-          <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleOpenNewOpModal("buy", mobileVolume)} className="flex-1 bg-green-600 hover:bg-green-500 transition-all text-white px-4 py-3 text-sm font-bold rounded-md" > BUY </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => handleOpenNewOpModal("sell", mobileVolume)}
+            className="flex-1 bg-red-600 hover:bg-red-500 transition-all text-white px-4 py-3 text-sm font-bold rounded-md"
+          >
+            SELL
+          </motion.button>
+          <input
+            type="number"
+            value={mobileVolume}
+            onChange={(e) => setMobileVolume(parseFloat(e.target.value) || 0)}
+            step="0.01"
+            min="0.01"
+            className="w-24 p-3 border border-gray-300 bg-gray-50 rounded-md text-gray-900 text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          />
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => handleOpenNewOpModal("buy", mobileVolume)}
+            className="flex-1 bg-green-600 hover:bg-green-500 transition-all text-white px-4 py-3 text-sm font-bold rounded-md"
+          >
+            BUY
+          </motion.button>
         </div>
       </main>
     </div>
@@ -3385,6 +3339,7 @@ const ChangePasswordView = React.memo(({ onBack, setAlert }) => {
       });
       return;
     }
+    // Lógica para llamar a la API y cambiar la contraseña...
     setAlert({
       message: "Contraseña actualizada (simulación).",
       type: "success",
@@ -3509,6 +3464,7 @@ const ProfileModal = ({ isOpen, onClose, user, stats }) => {
   );
 };
 
+// --- LOGIN/REGISTER ADAPTADO PARA UNIQUE 1 GLOBAL ---
 const LoginPage = () => {
   const { setUser, setIsAuthenticated } = useContext(AppContext);
   const [isLogin, setIsLogin] = useState(true);
@@ -3571,6 +3527,8 @@ const LoginPage = () => {
     }
   };
 
+  // CAMBIO: Se actualiza la variable para usar un logo blanco específico para el login.
+  // Puedes cambiar "/unique1global-logo-white.png" por la ruta correcta de tu logo blanco.
   const platformLogo =
     import.meta.env.VITE_PLATFORM_LOGO_WHITE || "/unique1global-logo-white.png";
   const formVariants = {
@@ -3587,6 +3545,7 @@ const LoginPage = () => {
     <div
       className="min-h-screen bg-gray-100 flex items-center justify-center p-4 bg-cover bg-center"
       style={{
+        // CAMBIO: Nuevo fondo abstracto con blanco predominante y toques de color.
         backgroundImage:
           "url('https://images.unsplash.com/photo-1588345921523-c2dcdb7f1dcd?q=80&w=2070&auto=format&fit=crop')",
       }}
@@ -3760,4 +3719,3 @@ export default function Root() {
     </AppProvider>
   );
 }
-
