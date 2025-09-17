@@ -519,7 +519,27 @@ app.post("/operar", async (req, res) => {
   const usuario_id = req.session.userId;
   if (!usuario_id) return res.status(401).json({ error: "No autenticado" });
 
-  const leverage = parseInt(apalancamiento) || 1; // Usa el apalancamiento o 1 por defecto
+  // --- Validación de Entrada ---
+  const nVolumen = parseFloat(volumen);
+  const nPrecioEntrada = parseFloat(precio_entrada);
+  const nApalancamiento = parseInt(apalancamiento) || 1;
+
+  if (
+    !activo ||
+    typeof activo !== "string" ||
+    !tipo_operacion ||
+    !["buy", "sell", "compra", "venta"].includes(
+      tipo_operacion.toLowerCase()
+    ) ||
+    isNaN(nVolumen) ||
+    nVolumen <= 0 ||
+    isNaN(nPrecioEntrada) ||
+    nPrecioEntrada <= 0 ||
+    isNaN(nApalancamiento) ||
+    nApalancamiento <= 0
+  ) {
+    return res.status(400).json({ error: "Datos de operación inválidos." });
+  }
 
   const client = await pool.connect();
   try {
@@ -528,10 +548,15 @@ app.post("/operar", async (req, res) => {
       "SELECT balance FROM usuarios WHERE id = $1 FOR UPDATE",
       [usuario_id]
     );
+
+    if (userRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Usuario no encontrado." });
+    }
     const balanceActual = parseFloat(userRes.rows[0].balance);
 
     // Calcula el costo (margen requerido) usando el apalancamiento
-    const costo = (precio_entrada * volumen) / leverage;
+    const costo = (nPrecioEntrada * nVolumen) / nApalancamiento;
 
     if (balanceActual < costo) {
       await client.query("ROLLBACK");
@@ -545,19 +570,20 @@ app.post("/operar", async (req, res) => {
         usuario_id,
         activo,
         tipo_operacion,
-        volumen,
-        precio_entrada,
+        nVolumen,
+        nPrecioEntrada,
         costo, // Guarda el margen requerido como capital invertido
-        take_profit,
-        stop_loss,
-        leverage, // Guarda el apalancamiento en la BD
+        take_profit || null,
+        stop_loss || null,
+        nApalancamiento, // Guarda el apalancamiento en la BD
       ]
     );
     await client.query("COMMIT");
     res.json({ success: true });
   } catch (err) {
     await client.query("ROLLBACK");
-    res.status(500).json({ error: "Error al operar" });
+    console.error("Error en /operar:", err);
+    res.status(500).json({ error: "Error interno al procesar la operación." });
   } finally {
     client.release();
   }
