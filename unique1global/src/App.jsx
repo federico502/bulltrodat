@@ -1590,6 +1590,7 @@ const UserOperationsModal = ({
     currentPage: 1,
     totalPages: 1,
   });
+  const [showAll, setShowAll] = useState(false);
 
   const calculateProfit = (op) => {
     if (!op.cerrada || !op.precio_cierre) return 0;
@@ -1603,32 +1604,45 @@ const UserOperationsModal = ({
 
   const fetchUserOperations = useCallback(
     (page = 1) => {
-      if (isOpen && user) {
-        axios
-          .get(`/admin-operaciones/${user.id}?page=${page}&limit=10`)
-          .then((res) => {
-            setOperations(
-              res.data.operaciones.map((op) => ({
-                ...op,
-                ganancia: calculateProfit(op),
-              }))
-            );
+      if (!isOpen || !user) return;
+
+      const endpoint = showAll
+        ? `/admin-operaciones/${user.id}/all`
+        : `/admin-operaciones/${user.id}?page=${page}&limit=10`;
+
+      axios
+        .get(endpoint)
+        .then((res) => {
+          setOperations(
+            res.data.operaciones.map((op) => ({
+              ...op,
+              ganancia: calculateProfit(op),
+            }))
+          );
+          if (!showAll) {
             setPagination({
               currentPage: res.data.currentPage,
               totalPages: res.data.totalPages,
             });
-          })
-          .catch((err) =>
-            console.error("Error fetching user operations:", err)
-          );
-      }
+          }
+        })
+        .catch((err) => console.error("Error fetching user operations:", err));
     },
-    [isOpen, user]
+    [isOpen, user, showAll]
   );
 
   useEffect(() => {
+    if (isOpen) {
+      // Reset state when modal opens
+      setShowAll(false);
+      fetchUserOperations(1);
+    }
+  }, [isOpen, user]); // Depend only on isOpen and user to reset
+
+  useEffect(() => {
+    // This effect runs when showAll changes
     fetchUserOperations(1);
-  }, [isOpen, user, fetchUserOperations]);
+  }, [showAll]);
 
   const handleInputChange = (opId, field, value) => {
     setOperations((currentOps) =>
@@ -1662,6 +1676,12 @@ const UserOperationsModal = ({
     }
   };
 
+  const handlePageChange = (newPage) => {
+    if (!showAll) {
+      fetchUserOperations(newPage);
+    }
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -1669,6 +1689,14 @@ const UserOperationsModal = ({
       title={`Operaciones de ${user?.nombre}`}
       maxWidth="max-w-7xl"
     >
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => setShowAll((prev) => !prev)}
+          className="bg-blue-600 text-white px-3 py-1 text-xs rounded hover:bg-blue-500 cursor-pointer"
+        >
+          {showAll ? "Ver con Paginación" : "Ver Todas las Operaciones"}
+        </button>
+      </div>
       <div className="overflow-auto">
         <table className="w-full text-sm text-left border-collapse">
           <thead className="bg-gray-200 text-gray-600 sticky top-0">
@@ -1815,11 +1843,13 @@ const UserOperationsModal = ({
           </tbody>
         </table>
       </div>
-      <Pagination
-        currentPage={pagination.currentPage}
-        totalPages={pagination.totalPages}
-        onPageChange={(page) => fetchUserOperations(page)}
-      />
+      {!showAll && (
+        <Pagination
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          onPageChange={handlePageChange}
+        />
+      )}
     </Modal>
   );
 };
@@ -3535,7 +3565,7 @@ const ProfileModal = ({ isOpen, onClose, user, stats }) => {
 
 // --- LOGIN/REGISTER ADAPTADO PARA UNIQUE 1 GLOBAL ---
 const LoginPage = () => {
-  const { setUser, setIsAuthenticated, refreshUser } = useContext(AppContext);
+  const { setUser, setIsAuthenticated } = useContext(AppContext);
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -3560,8 +3590,9 @@ const LoginPage = () => {
           password: loginPassword,
           platform_id,
         });
-        if (data.success) {
-          await refreshUser();
+        if (data.success && data.user) {
+          setUser(data.user);
+          setIsAuthenticated(true);
         } else {
           setError(data.error || "Credenciales inválidas");
         }
