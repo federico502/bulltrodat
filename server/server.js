@@ -109,10 +109,11 @@ const sessionMiddleware = session({
     secure: NODE_ENV === "production",
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 días
-    // --- CORRECCIÓN PARA COMPATIBILIDAD MÓVIL ---
-    // 'lax' es más flexible que 'none' y evita problemas en iOS/Android
-    // donde las políticas de cookies entre sitios son más estrictas.
-    sameSite: "lax",
+    // --- CORRECCIÓN CLAVE PARA AUTENTICACIÓN CROSS-DOMAIN ---
+    // En producción (HTTPS), 'none' es necesario para que los navegadores
+    // envíen la cookie desde un dominio de frontend diferente.
+    // En desarrollo (HTTP), 'lax' es el estándar que funciona.
+    sameSite: NODE_ENV === "production" ? "none" : "lax",
   },
 });
 app.use(sessionMiddleware);
@@ -913,6 +914,41 @@ app.get("/admin-operaciones/:usuarioId", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Error al obtener operaciones" });
+  }
+});
+
+app.get("/admin-operaciones/:usuarioId/all", async (req, res) => {
+  if (!req.session.userId)
+    return res.status(401).json({ error: "No autenticado" });
+
+  try {
+    const adminResult = await pool.query(
+      "SELECT rol FROM usuarios WHERE id = $1",
+      [req.session.userId]
+    );
+    if (adminResult.rows.length === 0 || adminResult.rows[0].rol !== "admin")
+      return res.status(403).json({ error: "Acceso denegado" });
+
+    const { usuarioId } = req.params;
+
+    const [usuario, operaciones] = await Promise.all([
+      pool.query("SELECT nombre FROM usuarios WHERE id = $1", [usuarioId]),
+      pool.query(
+        "SELECT * FROM operaciones WHERE usuario_id = $1 ORDER BY fecha DESC",
+        [usuarioId]
+      ),
+    ]);
+
+    if (usuario.rows.length === 0)
+      return res.status(404).json({ error: "Usuario no encontrado" });
+
+    res.json({
+      nombre: usuario.rows[0].nombre,
+      operaciones: operaciones.rows,
+    });
+  } catch (err) {
+    console.error("Error al obtener todas las operaciones:", err);
+    res.status(500).json({ error: "Error al obtener todas las operaciones" });
   }
 });
 
