@@ -57,7 +57,7 @@ const pool = new Pool({
 
 // --- Configuración de Middlewares ---
 if (NODE_ENV === "production") {
-  app.set("trust proxy", 1);
+  app.set("trust proxy", 1); // Confía en el primer proxy
 }
 
 const allowedOrigins = FRONTEND_URLS.split(",").map((url) => url.trim());
@@ -109,7 +109,10 @@ const sessionMiddleware = session({
     secure: NODE_ENV === "production",
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 días
-    sameSite: NODE_ENV === "production" ? "none" : "lax",
+    // --- CORRECCIÓN PARA COMPATIBILIDAD MÓVIL ---
+    // 'lax' es más flexible que 'none' y evita problemas en iOS/Android
+    // donde las políticas de cookies entre sitios son más estrictas.
+    sameSite: "lax",
   },
 });
 app.use(sessionMiddleware);
@@ -362,21 +365,22 @@ async function getLatestPrice(symbol) {
 }
 
 async function cerrarOperacionesAutomáticamente() {
+  const client = await pool.connect();
   try {
-    const result = await pool.query(
+    const result = await client.query(
       "SELECT * FROM operaciones WHERE cerrada = false AND (take_profit IS NOT NULL OR stop_loss IS NOT NULL)"
     );
     const operaciones = result.rows;
     for (const op of operaciones) {
       const precioActual = await getLatestPrice(op.activo);
       if (!precioActual) continue;
+
       let cerrar = false;
-      let ganancia = 0;
-      const volumen = parseFloat(op.volumen);
       const entrada = parseFloat(op.precio_entrada);
       const tp = op.take_profit ? parseFloat(op.take_profit) : null;
       const sl = op.stop_loss ? parseFloat(op.stop_loss) : null;
       const tipo = op.tipo_operacion.toLowerCase();
+
       if (tipo === "buy" || tipo === "compra") {
         if ((tp && precioActual >= tp) || (sl && precioActual <= sl))
           cerrar = true;
@@ -384,32 +388,39 @@ async function cerrarOperacionesAutomáticamente() {
         if ((tp && precioActual <= tp) || (sl && precioActual >= sl))
           cerrar = true;
       }
+
       if (cerrar) {
-        if (tipo === "buy" || tipo === "compra")
+        const volumen = parseFloat(op.volumen);
+        const capitalInvertido = parseFloat(op.capital_invertido);
+        let ganancia = 0;
+
+        if (tipo === "buy" || tipo === "compra") {
           ganancia = (precioActual - entrada) * volumen;
-        else ganancia = (entrada - precioActual) * volumen;
-        const client = await pool.connect();
-        try {
-          await client.query("BEGIN");
-          await client.query(
-            "UPDATE operaciones SET cerrada = true, ganancia = $1, precio_cierre = $2 WHERE id = $3",
-            [ganancia, precioActual, op.id]
-          );
-          await client.query(
-            "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
-            [ganancia, op.usuario_id]
-          );
-          await client.query("COMMIT");
-        } catch (e) {
-          await client.query("ROLLBACK");
-          throw e;
-        } finally {
-          client.release();
+        } else {
+          ganancia = (entrada - precioActual) * volumen;
         }
+
+        // --- INICIO DE CORRECCIÓN DE LÓGICA DE BALANCE ---
+        const montoDevolver = capitalInvertido + ganancia;
+
+        await client.query("BEGIN");
+        await client.query(
+          "UPDATE operaciones SET cerrada = true, ganancia = $1, precio_cierre = $2 WHERE id = $3",
+          [ganancia, precioActual, op.id]
+        );
+        await client.query(
+          "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
+          [montoDevolver, op.usuario_id]
+        );
+        await client.query("COMMIT");
+        // --- FIN DE CORRECCIÓN DE LÓGICA DE BALANCE ---
       }
     }
   } catch (err) {
+    await client.query("ROLLBACK");
     console.error("❌ Error al cerrar operaciones automáticamente:", err);
+  } finally {
+    client.release();
   }
 }
 
@@ -482,8 +493,10 @@ app.post("/login", async (req, res) => {
 });
 
 app.get("/me", async (req, res) => {
-  if (!req.session.userId)
+  if (!req.session.userId) {
+    console.log("Acceso a /me denegado: No hay session.userId");
     return res.status(401).json({ error: "No autenticado" });
+  }
   try {
     const result = await pool.query(
       "SELECT id, nombre, email, balance, rol, identificacion, telefono, platform_id FROM usuarios WHERE id = $1",
@@ -641,13 +654,16 @@ app.post("/cerrar-operacion", async (req, res) => {
   const { operacion_id } = req.body;
   const usuario_id = req.session.userId;
   if (!usuario_id) return res.status(401).json({ error: "No autenticado" });
+
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+
     const { rows } = await client.query(
       "SELECT * FROM operaciones WHERE id = $1 AND usuario_id = $2 AND cerrada = false FOR UPDATE",
       [operacion_id, usuario_id]
     );
+
     if (rows.length === 0) {
       await client.query("ROLLBACK");
       return res
@@ -655,33 +671,49 @@ app.post("/cerrar-operacion", async (req, res) => {
         .json({ error: "Operación no encontrada o ya cerrada" });
     }
     const op = rows[0];
-    const { activo, tipo_operacion, volumen, precio_entrada } = op;
-    const precioActual = await getLatestPrice(activo);
+
+    const precioActual = await getLatestPrice(op.activo);
     if (precioActual === null) {
       await client.query("ROLLBACK");
       return res
         .status(500)
-        .json({ error: `Precio para ${activo} no disponible.` });
+        .json({ error: `Precio para ${op.activo} no disponible.` });
     }
-    const tipo = tipo_operacion.toLowerCase();
+
+    // --- INICIO DE CORRECCIÓN DE TIPOS Y LÓGICA ---
+    const tipo = op.tipo_operacion.toLowerCase();
+    const precio_entrada = parseFloat(op.precio_entrada);
+    const volumen = parseFloat(op.volumen);
+    const capital_invertido = parseFloat(op.capital_invertido);
     let gananciaFinal = 0;
-    if (tipo === "compra" || tipo === "buy")
+
+    if (tipo === "compra" || tipo === "buy") {
       gananciaFinal = (precioActual - precio_entrada) * volumen;
-    else if (tipo === "venta" || tipo === "sell")
+    } else if (tipo === "venta" || tipo === "sell") {
       gananciaFinal = (precio_entrada - precioActual) * volumen;
+    }
+
+    const montoADevolver = capital_invertido + gananciaFinal;
+
     await client.query(
       "UPDATE operaciones SET cerrada = true, ganancia = $1, precio_cierre = $2 WHERE id = $3",
       [gananciaFinal, precioActual, operacion_id]
     );
     await client.query(
       "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
-      [gananciaFinal, usuario_id]
+      [montoADevolver, usuario_id]
     );
+    // --- FIN DE CORRECCIÓN DE TIPOS Y LÓGICA ---
+
     await client.query("COMMIT");
     res.json({ success: true, gananciaFinal, precio_cierre: precioActual });
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error(err);
+    console.error("Error detallado en /cerrar-operacion:", {
+      message: err.message,
+      code: err.code,
+      detail: err.detail,
+    });
     res.status(500).json({ error: "Error interno al cerrar la operación." });
   } finally {
     client.release();
