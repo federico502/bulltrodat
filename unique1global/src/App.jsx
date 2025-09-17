@@ -1352,8 +1352,8 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const [tp, setTp] = useState("");
   const [sl, setSl] = useState("");
   const [leverage, setLeverage] = useState(1);
-  const leverageOptions = [1, 5, 10, 25, 50, 100, 200];
-
+  const leverageOptions = [50];
+  //const leverageOptions = [1, 5, 10, 25, 50, 100, 200];
   const requiredMargin = livePrice
     ? ((livePrice * volume) / leverage).toFixed(2)
     : "0.00";
