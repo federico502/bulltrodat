@@ -566,6 +566,15 @@ app.post("/operar", async (req, res) => {
         .status(400)
         .json({ success: false, error: "Fondos insuficientes" });
     }
+
+    // --- ¡CORRECCIÓN CRÍTICA! ---
+    // Deducir el costo (margen) del balance del usuario como parte de la transacción.
+    await client.query(
+      "UPDATE usuarios SET balance = balance - $1 WHERE id = $2",
+      [costo, usuario_id]
+    );
+
+    // Insertar la nueva operación en la base de datos.
     await client.query(
       "INSERT INTO operaciones (usuario_id, activo, tipo_operacion, volumen, precio_entrada, capital_invertido, take_profit, stop_loss, apalancamiento) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
       [
@@ -580,11 +589,18 @@ app.post("/operar", async (req, res) => {
         nApalancamiento, // Guarda el apalancamiento en la BD
       ]
     );
+
     await client.query("COMMIT");
     res.json({ success: true });
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error("Error en /operar:", err);
+    // Se mejora el log para obtener más detalles del error de base de datos.
+    console.error("Error detallado en /operar:", {
+      message: err.message,
+      code: err.code,
+      detail: err.detail,
+      stack: err.stack,
+    });
     res.status(500).json({ error: "Error interno al procesar la operación." });
   } finally {
     client.release();
