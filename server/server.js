@@ -519,10 +519,12 @@ app.post("/operar", async (req, res) => {
   const usuario_id = req.session.userId;
   if (!usuario_id) return res.status(401).json({ error: "No autenticado" });
 
-  // --- Validación de Entrada ---
+  // --- Validación y Parseo de Entrada ---
   const nVolumen = parseFloat(volumen);
   const nPrecioEntrada = parseFloat(precio_entrada);
   const nApalancamiento = parseInt(apalancamiento) || 1;
+  const nTakeProfit = parseFloat(take_profit); // Parsear, puede resultar en NaN
+  const nStopLoss = parseFloat(stop_loss); // Parsear, puede resultar en NaN
 
   if (
     !activo ||
@@ -573,8 +575,8 @@ app.post("/operar", async (req, res) => {
         nVolumen,
         nPrecioEntrada,
         costo, // Guarda el margen requerido como capital invertido
-        take_profit || null,
-        stop_loss || null,
+        !isNaN(nTakeProfit) ? nTakeProfit : null, // Si no es un número, inserta NULL
+        !isNaN(nStopLoss) ? nStopLoss : null, // Si no es un número, inserta NULL
         nApalancamiento, // Guarda el apalancamiento en la BD
       ]
     );
