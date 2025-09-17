@@ -1,17 +1,11 @@
 /*
-IMPORTANTE: Para que la nueva funcionalidad de noticias y calendario funcione,
-debe agregar su clave API de Finnhub a sus variables de entorno.
-Añada la siguiente línea a su archivo .env o a la configuración de su entorno:
-
-FINNHUB_API_KEY="SU_CLAVE_API_DE_FINNHUB"
-
-Puede obtener una clave gratuita en https://finnhub.io/
-
-Además, para que la funcionalidad de apalancamiento funcione,
+IMPORTANTE: Para que la nueva funcionalidad de apalancamiento funcione,
 es necesario modificar la base de datos. Ejecute el siguiente comando SQL
 en su base de datos PostgreSQL:
 
 ALTER TABLE operaciones ADD COLUMN apalancamiento INTEGER DEFAULT 1;
+
+Este comando añade la columna 'apalancamiento' a la tabla de operaciones.
 */
 import express from "express";
 import session from "express-session";
@@ -39,7 +33,6 @@ const {
   FRONTEND_URLS,
   NODE_ENV,
   PORT = 3000,
-  FINNHUB_API_KEY, // Nueva variable de entorno para Finnhub
 } = process.env;
 
 let REGISTRATION_CODE = process.env.REGISTRATION_CODE || "ADMIN2024";
@@ -120,13 +113,6 @@ const sessionMiddleware = session({
   },
 });
 app.use(sessionMiddleware);
-
-// --- CACHÉ SIMPLE EN MEMORIA ---
-const apiCache = {
-  news: { data: null, timestamp: 0 },
-  calendar: { data: null, timestamp: 0 },
-};
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutos
 
 // --- Lógica de WebSockets ---
 global.preciosEnTiempoReal = {};
@@ -700,92 +686,6 @@ app.get("/rendimiento", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Error al obtener rendimiento" });
-  }
-});
-
-// --- NUEVAS RUTAS PARA NOTICIAS Y CALENDARIO ---
-
-app.get("/news", async (req, res) => {
-  if (!FINNHUB_API_KEY) {
-    return res
-      .status(500)
-      .json({
-        error: "La clave API de noticias no está configurada en el servidor.",
-      });
-  }
-
-  // Verificar caché
-  if (
-    Date.now() - apiCache.news.timestamp < CACHE_DURATION &&
-    apiCache.news.data
-  ) {
-    return res.json(apiCache.news.data);
-  }
-
-  try {
-    const response = await fetch(
-      `https://finnhub.io/api/v1/news?category=general&token=${FINNHUB_API_KEY}`
-    );
-    if (!response.ok) {
-      throw new Error(`Finnhub API responded with status: ${response.status}`);
-    }
-    const newsData = await response.json();
-
-    // Guardar en caché
-    apiCache.news = { data: newsData, timestamp: Date.now() };
-
-    res.json(newsData);
-  } catch (err) {
-    console.error("Error fetching news from Finnhub:", err);
-    res.status(500).json({ error: "Error al obtener las noticias." });
-  }
-});
-
-app.get("/economic-calendar", async (req, res) => {
-  if (!FINNHUB_API_KEY) {
-    return res
-      .status(500)
-      .json({
-        error:
-          "La clave API del calendario no está configurada en el servidor.",
-      });
-  }
-
-  // Verificar caché
-  if (
-    Date.now() - apiCache.calendar.timestamp < CACHE_DURATION &&
-    apiCache.calendar.data
-  ) {
-    return res.json(apiCache.calendar.data);
-  }
-
-  try {
-    // Fechas para la semana actual
-    const today = new Date();
-    const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const fromDate = today.toISOString().split("T")[0];
-    const toDate = nextWeek.toISOString().split("T")[0];
-
-    const response = await fetch(
-      `https://finnhub.io/api/v1/calendar/economic?from=${fromDate}&to=${toDate}&token=${FINNHUB_API_KEY}`
-    );
-    if (!response.ok) {
-      throw new Error(`Finnhub API responded with status: ${response.status}`);
-    }
-    const calendarData = await response.json();
-
-    // Guardar en caché
-    apiCache.calendar = {
-      data: calendarData.economicCalendar || [],
-      timestamp: Date.now(),
-    };
-
-    res.json(calendarData.economicCalendar || []);
-  } catch (err) {
-    console.error("Error fetching economic calendar from Finnhub:", err);
-    res
-      .status(500)
-      .json({ error: "Error al obtener el calendario económico." });
   }
 });
 
