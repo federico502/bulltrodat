@@ -3535,7 +3535,7 @@ const ProfileModal = ({ isOpen, onClose, user, stats }) => {
 
 // --- LOGIN/REGISTER ADAPTADO PARA UNIQUE 1 GLOBAL ---
 const LoginPage = () => {
-  const { setUser, setIsAuthenticated } = useContext(AppContext);
+  const { setUser, setIsAuthenticated, refreshUser } = useContext(AppContext);
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -3561,8 +3561,7 @@ const LoginPage = () => {
           platform_id,
         });
         if (data.success) {
-          setUser(data.user);
-          setIsAuthenticated(true);
+          await refreshUser();
         } else {
           setError(data.error || "Credenciales inválidas");
         }
