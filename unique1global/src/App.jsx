@@ -126,58 +126,111 @@ const Icons = {
   ),
 };
 
-// Catálogo de activos para búsqueda y recomendaciones
+// --- Catálogo de Activos ---
+// Este catálogo es la fuente principal de activos para la UI.
 const ASSET_CATALOG = [
-  // Cryptos
+  // Forex
+  { symbol: "EUR/USD", name: "Euro / Dólar Estadounidense" },
+  { symbol: "GBP/USD", name: "Libra Esterlina / Dólar Estadounidense" },
+  { symbol: "EUR/JPY", name: "Euro / Yen Japonés" },
+  { symbol: "USD/JPY", name: "Dólar Estadounidense / Yen Japonés" },
+  { symbol: "AUD/USD", name: "Dólar Australiano / Dólar Estadounidense" },
+  { symbol: "USD/CHF", name: "Dólar Estadounidense / Franco Suizo" },
+  { symbol: "GBP/JPY", name: "Libra Esterlina / Yen Japonés" },
+  { symbol: "USD/CAD", name: "Dólar Estadounidense / Dólar Canadiense" },
+  { symbol: "EUR/GBP", name: "Euro / Libra Esterlina" },
+  { symbol: "EUR/CHF", name: "Euro / Franco Suizo" },
+  { symbol: "AUD/JPY", name: "Dólar Australiano / Yen Japonés" },
+  { symbol: "NZD/USD", name: "Dólar Neozelandés / Dólar Estadounidense" },
+  { symbol: "CHF/JPY", name: "Franco Suizo / Yen Japonés" },
+  { symbol: "EUR/AUD", name: "Euro / Dólar Australiano" },
+  { symbol: "CAD/JPY", name: "Dólar Canadiense / Yen Japonés" },
+  { symbol: "GBP/AUD", name: "Libra Esterlina / Dólar Australiano" },
+  { symbol: "EUR/CAD", name: "Euro / Dólar Canadiense" },
+  { symbol: "AUD/CAD", name: "Dólar Australiano / Dólar Canadiense" },
+  { symbol: "GBP/CAD", name: "Libra Esterlina / Dólar Canadiense" },
+  { symbol: "AUD/NZD", name: "Dólar Australiano / Dólar Neozelandés" },
+  { symbol: "NZD/JPY", name: "Dólar Neozelandés / Yen Japonés" },
+  { symbol: "AUD/CHF", name: "Dólar Australiano / Franco Suizo" },
+  { symbol: "USD/MXN", name: "Dólar Estadounidense / Peso Mexicano" },
+  { symbol: "GBP/NZD", name: "Libra Esterlina / Dólar Neozelandés" },
+  { symbol: "EUR/NZD", name: "Euro / Dólar Neozelandés" },
+  { symbol: "CAD/CHF", name: "Dólar Canadiense / Franco Suizo" },
+  { symbol: "NZD/CAD", name: "Dólar Neozelandés / Dólar Canadiense" },
+  { symbol: "NZD/CHF", name: "Dólar Neozelandés / Franco Suizo" },
+  { symbol: "GBP/CHF", name: "Libra Esterlina / Franco Suizo" },
+  { symbol: "USD/BRL", name: "Dólar Estadounidense / Real Brasileño" },
+
+  // Commodities
+  { symbol: "XAU/USD", name: "Oro (Gold)" },
+  { symbol: "XAG/USD", name: "Plata (Silver)" },
+  { symbol: "WTI/USD", name: "Petróleo Crudo WTI" },
+  { symbol: "BRENT/USD", name: "Petróleo Crudo Brent" }, // Normalizado de BRN/USD
+  { symbol: "XCU/USD", name: "Cobre (Copper)" },
+  { symbol: "NG/USD", name: "Gas Natural" }, // Normalizado de NGC/USD
+
+  // Criptomonedas (normalizadas a -USDT para compatibilidad con el feed)
   { symbol: "BTC-USDT", name: "Bitcoin" },
   { symbol: "ETH-USDT", name: "Ethereum" },
-  { symbol: "SOL-USDT", name: "Solana" },
-  { symbol: "XRP-USDT", name: "Ripple" },
-  { symbol: "DOGE-USDT", name: "Dogecoin" },
-  { symbol: "ADA-USDT", name: "Cardano" },
-  { symbol: "AVAX-USDT", name: "Avalanche" },
   { symbol: "LTC-USDT", name: "Litecoin" },
-  { symbol: "BCH-USDT", name: "Bitcoin Cash" },
+  { symbol: "XRP-USDT", name: "Ripple" },
+  { symbol: "BNB-USDT", name: "BNB" },
+  { symbol: "TRX-USDT", name: "TRON" },
+  { symbol: "ADA-USDT", name: "Cardano" },
+  { symbol: "DOGE-USDT", name: "Dogecoin" },
+  { symbol: "SOL-USDT", name: "Solana" },
+  { symbol: "DOT-USDT", name: "Polkadot" },
   { symbol: "LINK-USDT", name: "Chainlink" },
-  // Stocks
-  { symbol: "AAPL", name: "Apple" },
-  { symbol: "MSFT", name: "Microsoft" },
-  { symbol: "GOOGL", name: "Alphabet (Google)" },
-  { symbol: "AMZN", name: "Amazon" },
-  { symbol: "NVDA", name: "NVIDIA" },
-  { symbol: "TSLA", name: "Tesla" },
-  { symbol: "META", name: "Meta Platforms (Facebook)" },
-  { symbol: "JPM", name: "JPMorgan Chase" },
+  { symbol: "MATIC-USDT", name: "Polygon (MATIC)" }, // Normalizado de POL/USD
+  { symbol: "AVAX-USDT", name: "Avalanche" },
+  { symbol: "PEPE-USDT", name: "Pepe" },
+  { symbol: "SUI-USDT", name: "Sui" },
+  { symbol: "TON-USDT", name: "Toncoin" },
+
+  // Indices
+  { symbol: "DAX", name: "DAX 40 (Alemania)" },
+  { symbol: "FCHI", name: "CAC 40 (Francia)" },
+  { symbol: "FTSE", name: "FTSE 100 (Reino Unido)" },
+  { symbol: "SX5E", name: "EURO STOXX 50" },
+  { symbol: "IBEX", name: "IBEX 35 (España)" },
+  { symbol: "DJI", name: "Dow Jones Industrial Average" },
+  { symbol: "SPX", name: "S&P 500" },
+  { symbol: "NDX", name: "Nasdaq 100" },
+  { symbol: "NI225", name: "Nikkei 225" },
+
+  // Acciones
+  { symbol: "META", name: "Meta Platforms, Inc." },
   { symbol: "JNJ", name: "Johnson & Johnson" },
-  // Forex
-  { symbol: "EUR/USD", name: "Euro / US Dollar" },
-  { symbol: "GBP/USD", name: "British Pound / US Dollar" },
-  { symbol: "USD/JPY", name: "US Dollar / Japanese Yen" },
-  { symbol: "USD/CHF", name: "US Dollar / Swiss Franc" },
-  { symbol: "AUD/USD", name: "Australian Dollar / US Dollar" },
-  { symbol: "USD/CAD", name: "US Dollar / Canadian Dollar" },
-  { symbol: "NZD/USD", name: "New Zealand Dollar / US Dollar" },
-  { symbol: "EUR/GBP", name: "Euro / British Pound" },
-  { symbol: "EUR/JPY", name: "Euro / Japanese Yen" },
-  { symbol: "EUR/CHF", name: "Euro / Swiss Franc" },
-  { symbol: "GBP/JPY", name: "British Pound / Japanese Yen" },
-  { symbol: "GBP/CHF", name: "British Pound / Swiss Franc" },
-  { symbol: "AUD/JPY", name: "Australian Dollar / Japanese Yen" },
-  { symbol: "CAD/JPY", name: "Canadian Dollar / Japanese Yen" },
-  // Commodities
-  { symbol: "XAU/USD", name: "Gold (Oro)" },
-  { symbol: "XAG/USD", name: "Silver (Plata)" },
-  { symbol: "WTI/USD", name: "Crude Oil (Petróleo WTI)" },
-  { symbol: "BRENT/USD", name: "Brent Crude Oil (Petróleo Brent)" },
+  { symbol: "JPM", name: "JPMorgan Chase & Co." },
+  { symbol: "KO", name: "The Coca-Cola Company" },
+  { symbol: "MA", name: "Mastercard Incorporated" },
+  { symbol: "IBM", name: "IBM" },
+  { symbol: "DIS", name: "The Walt Disney Company" },
+  { symbol: "CVX", name: "Chevron Corporation" },
+  { symbol: "AAPL", name: "Apple Inc." },
+  { symbol: "AMZN", name: "Amazon.com, Inc." },
+  { symbol: "BA", name: "The Boeing Company" },
+  { symbol: "BAC", name: "Bank of America Corp" },
+  { symbol: "CSCO", name: "Cisco Systems, Inc." },
+  { symbol: "MCD", name: "McDonald's Corporation" },
+  { symbol: "NVDA", name: "NVIDIA Corporation" },
+  { symbol: "WMT", name: "Walmart Inc." },
+  { symbol: "MSFT", name: "Microsoft Corporation" },
+  { symbol: "NFLX", name: "Netflix, Inc." },
+  { symbol: "NKE", name: "NIKE, Inc." }, // Normalizado de NIKE
+  { symbol: "ORCL", name: "Oracle Corporation" },
+  { symbol: "PG", name: "Procter & Gamble Company" },
+  { symbol: "T", name: "AT&T Inc." },
+  { symbol: "TSLA", name: "Tesla, Inc." },
 ];
 
 const POPULAR_ASSETS = [
   ASSET_CATALOG.find((a) => a.symbol === "BTC-USDT"),
-  ASSET_CATALOG.find((a) => a.symbol === "ETH-USDT"),
-  ASSET_CATALOG.find((a) => a.symbol === "AAPL"),
-  ASSET_CATALOG.find((a) => a.symbol === "TSLA"),
   ASSET_CATALOG.find((a) => a.symbol === "EUR/USD"),
   ASSET_CATALOG.find((a) => a.symbol === "XAU/USD"),
+  ASSET_CATALOG.find((a) => a.symbol === "AAPL"),
+  ASSET_CATALOG.find((a) => a.symbol === "TSLA"),
+  ASSET_CATALOG.find((a) => a.symbol === "NVDA"),
 ].filter(Boolean); // Filter out any potential undefined if symbols change
 
 // --- Contexto de la App ---
@@ -361,11 +414,27 @@ const TradingViewWidget = React.memo(({ symbol }) => {
         "CADCHF",
         "NZDCAD",
         "NZDCHF",
+        "USDMXN",
+        "USDBRL",
       ];
       if (forexPairs.includes(sanitizedSymbol)) {
         return `OANDA:${sanitizedSymbol}`;
       }
     }
+    // Mapeo de índices a sus símbolos en TradingView
+    const indicesMap = {
+      DAX: "DEU40",
+      FCHI: "FRA40",
+      FTSE: "UK100",
+      SX5E: "STOXX50",
+      IBEX: "ESP35",
+      DJI: "US30",
+      SPX: "SPX500",
+      NDX: "NAS100",
+      NI225: "JPN225",
+    };
+    if (indicesMap[s]) return `OANDA:${indicesMap[s]}`;
+
     return `NASDAQ:${s}`;
   }, []);
 
