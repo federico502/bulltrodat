@@ -124,6 +124,12 @@ const Icons = {
       className={className}
     />
   ),
+  Adjustments: ({ className }) => (
+    <Icon
+      path="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM12 15a3 3 0 100-6 3 3 0 000 6z"
+      className={className}
+    />
+  ),
 };
 
 // --- Catálogo de Activos ---
@@ -806,7 +812,7 @@ const ProfileMenu = React.memo(
     logout,
     onToggleSideMenu,
     onManageUsers,
-    onManageRegCode,
+    onManageLeverage, // Nueva prop
     onOpenProfileModal,
   }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -873,6 +879,14 @@ const ProfileMenu = React.memo(
                       text="Gestionar Usuarios"
                       onClick={() => handleItemClick(onManageUsers)}
                     />
+                    {/* Nuevo Menú para Apalancamiento */}
+                    <MenuItem
+                      icon={
+                        <Icons.Adjustments className="h-5 w-5 text-gray-500" />
+                      }
+                      text="Gestionar Apalancamiento"
+                      onClick={() => handleItemClick(onManageLeverage)}
+                    />
                   </>
                 )}
                 <div className="my-1 h-px bg-gray-200" />
@@ -895,7 +909,7 @@ const ProfileMenu = React.memo(
 const Header = ({
   onOperation,
   onManageUsers,
-  onManageRegCode,
+  onManageLeverage, // Nueva prop
   onToggleSideMenu,
   onToggleMainSidebar,
   onOpenProfileModal,
@@ -951,7 +965,7 @@ const Header = ({
           logout={logout}
           onToggleSideMenu={onToggleSideMenu}
           onManageUsers={onManageUsers}
-          onManageRegCode={onManageRegCode}
+          onManageLeverage={onManageLeverage} // Pasar prop
           onOpenProfileModal={onOpenProfileModal}
         />
       </div>
@@ -1351,9 +1365,27 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
 
   const [tp, setTp] = useState("");
   const [sl, setSl] = useState("");
-  const [leverage, setLeverage] = useState(50);
-  const leverageOptions = [1, 5, 10, 25, 50, 100, 200];
-  //const leverageOptions = [1, 5, 10, 25, 50, 100, 200];
+  const [leverage, setLeverage] = useState(1);
+  const [leverageOptions, setLeverageOptions] = useState([1]); // Estado para opciones dinámicas
+
+  useEffect(() => {
+    // Cargar opciones de apalancamiento permitidas desde el backend
+    if (isOpen) {
+      axios
+        .get("/leverage-options")
+        .then((res) => {
+          if (res.data && res.data.length > 0) {
+            setLeverageOptions(res.data);
+            // Asegurarse que el apalancamiento seleccionado sea válido
+            if (!res.data.includes(leverage)) {
+              setLeverage(res.data[0]);
+            }
+          }
+        })
+        .catch((err) => console.error("Error fetching leverage options:", err));
+    }
+  }, [isOpen]);
+
   const requiredMargin = livePrice
     ? ((livePrice * volume) / leverage).toFixed(2)
     : "0.00";
@@ -1423,7 +1455,22 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           <span className="font-mono text-gray-900">${requiredMargin}</span>
         </p>
       </div>
-
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-2 text-gray-700">
+          Seleccionar Apalancamiento
+        </label>
+        <select
+          value={leverage}
+          onChange={(e) => setLeverage(parseInt(e.target.value))}
+          className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+        >
+          {leverageOptions.map((opt) => (
+            <option key={opt} value={opt}>
+              1:{opt}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="mb-4">
         <label className="block text-sm font-medium mb-2 text-gray-700">
           Take Profit (opcional):
@@ -2166,21 +2213,22 @@ const ManageUsersModal = ({
   );
 };
 
-const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
-  const [code, setCode] = useState("");
-  const [newCode, setNewCode] = useState("");
+// Nuevo Modal para Gestionar Apalancamiento
+const ManageLeverageModal = ({ isOpen, onClose, setAlert }) => {
+  const [currentLeverage, setCurrentLeverage] = useState(200);
+  const [newLeverage, setNewLeverage] = useState(200);
 
   useEffect(() => {
     if (isOpen) {
       axios
-        .get("/admin/registration-code")
+        .get("/admin/leverage")
         .then((res) => {
-          setCode(res.data.code);
-          setNewCode(res.data.code);
+          setCurrentLeverage(res.data.maxLeverage);
+          setNewLeverage(res.data.maxLeverage);
         })
-        .catch(() =>
+        .catch((err) =>
           setAlert({
-            message: "No se pudo cargar el código actual",
+            message: "No se pudo cargar el apalancamiento actual",
             type: "error",
           })
         );
@@ -2189,13 +2237,65 @@ const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
 
   const handleSave = async () => {
     try {
-      await axios.post("/admin/registration-code", { newCode });
-      setAlert({ message: "Código de registro actualizado", type: "success" });
+      await axios.post("/admin/leverage", {
+        newLeverage: parseInt(newLeverage),
+      });
+      setAlert({
+        message: "Apalancamiento máximo actualizado con éxito",
+        type: "success",
+      });
       onClose();
     } catch (error) {
-      setAlert({ message: "Error al actualizar el código", type: "error" });
+      setAlert({
+        message: "Error al actualizar el apalancamiento",
+        type: "error",
+      });
     }
   };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Gestionar Apalancamiento Máximo"
+      maxWidth="max-w-md"
+    >
+      <div className="space-y-4">
+        <p className="text-gray-600">
+          Apalancamiento máximo actual:{" "}
+          <span className="font-bold text-gray-900">1:{currentLeverage}</span>
+        </p>
+        <div>
+          <label
+            htmlFor="leverage-select"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Seleccionar nuevo apalancamiento máximo
+          </label>
+          <select
+            id="leverage-select"
+            value={newLeverage}
+            onChange={(e) => setNewLeverage(e.target.value)}
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          >
+            {[1, 5, 10, 25, 50, 100, 200].map((val) => (
+              <option key={val} value={val}>
+                1:{val}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex justify-end pt-4">
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-md hover:bg-indigo-500"
+          >
+            Guardar Cambios
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
 };
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => (
@@ -2828,7 +2928,7 @@ const DashboardPage = () => {
   const [isOpDetailsModalOpen, setIsOpDetailsModalOpen] = useState(false);
   const [currentUserForOps, setCurrentUserForOps] = useState(null);
   const [currentOpDetails, setCurrentOpDetails] = useState(null);
-  const [isRegCodeModalOpen, setIsRegCodeModalOpen] = useState(false);
+  const [isLeverageModalOpen, setIsLeverageModalOpen] = useState(false);
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -3337,9 +3437,9 @@ const DashboardPage = () => {
         operation={currentOpDetails?.op}
         profit={currentOpDetails?.profit}
       />
-      <RegistrationCodeModal
-        isOpen={isRegCodeModalOpen}
-        onClose={() => setIsRegCodeModalOpen(false)}
+      <ManageLeverageModal
+        isOpen={isLeverageModalOpen}
+        onClose={() => setIsLeverageModalOpen(false)}
         setAlert={setAlert}
       />
       <ProfileModal
@@ -3353,7 +3453,7 @@ const DashboardPage = () => {
         <Header
           onOperation={handleOpenNewOpModal}
           onManageUsers={() => setIsUsersModalOpen(true)}
-          onManageRegCode={() => setIsRegCodeModalOpen(true)}
+          onManageLeverage={() => setIsLeverageModalOpen(true)} // Nuevo handler
           onToggleSideMenu={() => setIsSideMenuOpen(true)}
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
           onOpenProfileModal={() => setIsProfileModalOpen(true)}
