@@ -1351,8 +1351,8 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
 
   const [tp, setTp] = useState("");
   const [sl, setSl] = useState("");
-  const [leverage, setLeverage] = useState(1);
-  const leverageOptions = [50];
+  const [leverage, setLeverage] = useState(50);
+  const leverageOptions = [1, 5, 10, 25, 50, 100, 200];
   //const leverageOptions = [1, 5, 10, 25, 50, 100, 200];
   const requiredMargin = livePrice
     ? ((livePrice * volume) / leverage).toFixed(2)
@@ -1416,29 +1416,14 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
         </p>
         <p className="flex justify-between">
           <span>Apalancamiento:</span>
-          <span className="font-mono text-gray-900">1:{50}</span>
+          <span className="font-mono text-gray-900">1:{leverage}</span>
         </p>
         <p className="flex justify-between">
           <span>Margen Requerido:</span>
           <span className="font-mono text-gray-900">${requiredMargin}</span>
         </p>
       </div>
-      <div className="mb-4">
-        <label className="block text-sm font-medium mb-2 text-gray-700">
-          Seleccionar Apalancamiento
-        </label>
-        <select
-          value={leverage}
-          onChange={(e) => setLeverage(parseInt(e.target.value))}
-          className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
-        >
-          {leverageOptions.map((opt) => (
-            <option key={opt} value={opt}>
-              1:{opt}
-            </option>
-          ))}
-        </select>
-      </div>
+
       <div className="mb-4">
         <label className="block text-sm font-medium mb-2 text-gray-700">
           Take Profit (opcional):
@@ -1526,7 +1511,7 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
         <div className="flex justify-between">
           <span>Apalancamiento:</span>
           <span className="font-semibold text-gray-900">
-            1:{operation.apalancamiento || 50}
+            1:{operation.apalancamiento || 1}
           </span>
         </div>
         <div className="flex justify-between">
