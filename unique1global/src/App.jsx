@@ -1416,7 +1416,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
         </p>
         <p className="flex justify-between">
           <span>Apalancamiento:</span>
-          <span className="font-mono text-gray-900">1:{leverage}</span>
+          <span className="font-mono text-gray-900">1:{50}</span>
         </p>
         <p className="flex justify-between">
           <span>Margen Requerido:</span>
@@ -1526,7 +1526,7 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
         <div className="flex justify-between">
           <span>Apalancamiento:</span>
           <span className="font-semibold text-gray-900">
-            1:{operation.apalancamiento || 1}
+            1:{operation.apalancamiento || 50}
           </span>
         </div>
         <div className="flex justify-between">
