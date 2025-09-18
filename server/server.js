@@ -36,6 +36,8 @@ const {
 } = process.env;
 
 let REGISTRATION_CODE = process.env.REGISTRATION_CODE || "ADMIN2024";
+// Variable global para el apalancamiento máximo
+let MAX_LEVERAGE = 200;
 
 // Validar que las variables críticas existan
 if (!DATABASE_URL || !SESSION_SECRET || !FRONTEND_URLS) {
@@ -109,10 +111,6 @@ const sessionMiddleware = session({
     secure: NODE_ENV === "production",
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 días
-    // --- CORRECCIÓN CLAVE PARA AUTENTICACIÓN CROSS-DOMAIN ---
-    // En producción (HTTPS), 'none' es necesario para que los navegadores
-    // envíen la cookie desde un dominio de frontend diferente.
-    // En desarrollo (HTTP), 'lax' es el estándar que funciona.
     sameSite: NODE_ENV === "production" ? "none" : "lax",
   },
 });
@@ -122,7 +120,6 @@ app.use(sessionMiddleware);
 global.preciosEnTiempoReal = {};
 
 // --- Listas de Activos para Suscripción a WebSockets ---
-// Nota: Las criptomonedas se han normalizado al formato 'SYMBOL-USDT' para ser compatibles con el feed de KuCoin.
 const initialCrypto = [
   "BTC-USDT",
   "ETH-USDT",
@@ -135,16 +132,14 @@ const initialCrypto = [
   "SOL-USDT",
   "DOT-USDT",
   "LINK-USDT",
-  "MATIC-USDT", // MATIC (Polygon) en lugar de POL
+  "MATIC-USDT",
   "AVAX-USDT",
   "PEPE-USDT",
   "SUI-USDT",
   "TON-USDT",
 ];
 
-// Se agrupan todos los activos de TwelveData (Forex, Commodities, Stocks, Indices)
 const initialTwelveDataAssets = [
-  // Forex
   "EUR/USD",
   "GBP/USD",
   "EUR/JPY",
@@ -175,14 +170,12 @@ const initialTwelveDataAssets = [
   "NZD/CHF",
   "GBP/CHF",
   "USD/BRL",
-  // Commodities
   "XAU/USD",
   "XAG/USD",
   "WTI/USD",
-  "BRENT/USD", // Se usa BRENT/USD en lugar de BRN/USD por compatibilidad
+  "BRENT/USD",
   "XCU/USD",
-  "NG/USD", // Se usa NG/USD para Natural Gas en lugar de NGC/USD
-  // Stocks
+  "NG/USD",
   "META",
   "JNJ",
   "JPM",
@@ -201,12 +194,11 @@ const initialTwelveDataAssets = [
   "WMT",
   "MSFT",
   "NFLX",
-  "NKE", // NIKE es NKE
+  "NKE",
   "ORCL",
   "PG",
   "T",
   "TSLA",
-  // Indices (símbolos normalizados para el proveedor de datos)
   "DAX",
   "FCHI",
   "FTSE",
@@ -221,7 +213,6 @@ const initialTwelveDataAssets = [
 let kuCoinWs = null;
 let twelveDataWs = null;
 const activeKuCoinSubscriptions = new Set(initialCrypto);
-// Se unifican todos los activos para TwelveData en un solo Set.
 const activeTwelveDataSubscriptions = new Set(initialTwelveDataAssets);
 
 function broadcast(data) {
@@ -395,7 +386,6 @@ async function cerrarOperacionesAutomáticamente() {
           ganancia = (entrada - precioActual) * volumen;
         }
 
-        // --- INICIO DE CORRECCIÓN DE LÓGICA DE BALANCE ---
         const montoDevolver = capitalInvertido + ganancia;
 
         await client.query("BEGIN");
@@ -408,7 +398,6 @@ async function cerrarOperacionesAutomáticamente() {
           [montoDevolver, op.usuario_id]
         );
         await client.query("COMMIT");
-        // --- FIN DE CORRECCIÓN DE LÓGICA DE BALANCE ---
       }
     }
   } catch (err) {
@@ -505,6 +494,23 @@ app.get("/me", async (req, res) => {
   }
 });
 
+app.put("/me/profile", async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ error: "No autenticado" });
+  }
+  const { identificacion, telefono } = req.body;
+  try {
+    await pool.query(
+      "UPDATE usuarios SET identificacion = $1, telefono = $2 WHERE id = $3",
+      [identificacion, telefono, req.session.userId]
+    );
+    res.json({ success: true, message: "Perfil actualizado correctamente." });
+  } catch (err) {
+    console.error("Error al actualizar perfil:", err);
+    res.status(500).json({ error: "Error interno al actualizar el perfil." });
+  }
+});
+
 app.post("/logout", (req, res) => {
   req.session.destroy((err) => {
     if (err)
@@ -522,17 +528,25 @@ app.post("/operar", async (req, res) => {
     precio_entrada,
     take_profit,
     stop_loss,
-    apalancamiento, // Recibe el apalancamiento
+    apalancamiento,
   } = req.body;
   const usuario_id = req.session.userId;
   if (!usuario_id) return res.status(401).json({ error: "No autenticado" });
 
-  // --- Validación y Parseo de Entrada ---
   const nVolumen = parseFloat(volumen);
   const nPrecioEntrada = parseFloat(precio_entrada);
   const nApalancamiento = parseInt(apalancamiento) || 1;
-  const nTakeProfit = parseFloat(take_profit); // Parsear, puede resultar en NaN
-  const nStopLoss = parseFloat(stop_loss); // Parsear, puede resultar en NaN
+  const nTakeProfit = parseFloat(take_profit);
+  const nStopLoss = parseFloat(stop_loss);
+
+  // Validar contra el apalancamiento máximo permitido
+  if (nApalancamiento > MAX_LEVERAGE) {
+    return res
+      .status(400)
+      .json({
+        error: `El apalancamiento no puede ser mayor a 1:${MAX_LEVERAGE}`,
+      });
+  }
 
   if (
     !activo ||
@@ -564,8 +578,6 @@ app.post("/operar", async (req, res) => {
       return res.status(404).json({ error: "Usuario no encontrado." });
     }
     const balanceActual = parseFloat(userRes.rows[0].balance);
-
-    // Calcula el costo (margen requerido) usando el apalancamiento
     const costo = (nPrecioEntrada * nVolumen) / nApalancamiento;
 
     if (balanceActual < costo) {
@@ -575,14 +587,11 @@ app.post("/operar", async (req, res) => {
         .json({ success: false, error: "Fondos insuficientes" });
     }
 
-    // --- ¡CORRECCIÓN CRÍTICA! ---
-    // Deducir el costo (margen) del balance del usuario como parte de la transacción.
     await client.query(
       "UPDATE usuarios SET balance = balance - $1 WHERE id = $2",
       [costo, usuario_id]
     );
 
-    // Insertar la nueva operación en la base de datos.
     await client.query(
       "INSERT INTO operaciones (usuario_id, activo, tipo_operacion, volumen, precio_entrada, capital_invertido, take_profit, stop_loss, apalancamiento) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
       [
@@ -591,10 +600,10 @@ app.post("/operar", async (req, res) => {
         tipo_operacion,
         nVolumen,
         nPrecioEntrada,
-        costo, // Guarda el margen requerido como capital invertido
-        !isNaN(nTakeProfit) ? nTakeProfit : null, // Si no es un número, inserta NULL
-        !isNaN(nStopLoss) ? nStopLoss : null, // Si no es un número, inserta NULL
-        nApalancamiento, // Guarda el apalancamiento en la BD
+        costo,
+        !isNaN(nTakeProfit) ? nTakeProfit : null,
+        !isNaN(nStopLoss) ? nStopLoss : null,
+        nApalancamiento,
       ]
     );
 
@@ -602,7 +611,6 @@ app.post("/operar", async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     await client.query("ROLLBACK");
-    // Se mejora el log para obtener más detalles del error de base de datos.
     console.error("Error detallado en /operar:", {
       message: err.message,
       code: err.code,
@@ -675,7 +683,6 @@ app.post("/cerrar-operacion", async (req, res) => {
         .json({ error: `Precio para ${op.activo} no disponible.` });
     }
 
-    // --- INICIO DE CORRECCIÓN DE TIPOS Y LÓGICA ---
     const tipo = op.tipo_operacion.toLowerCase();
     const precio_entrada = parseFloat(op.precio_entrada);
     const volumen = parseFloat(op.volumen);
@@ -698,7 +705,6 @@ app.post("/cerrar-operacion", async (req, res) => {
       "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
       [montoADevolver, usuario_id]
     );
-    // --- FIN DE CORRECCIÓN DE TIPOS Y LÓGICA ---
 
     await client.query("COMMIT");
     res.json({ success: true, gananciaFinal, precio_cierre: precioActual });
@@ -758,6 +764,13 @@ app.get("/rendimiento", async (req, res) => {
     console.error(err);
     res.status(500).json({ error: "Error al obtener rendimiento" });
   }
+});
+
+// Ruta para que los usuarios obtengan las opciones de apalancamiento permitidas
+app.get("/leverage-options", (req, res) => {
+  const allOptions = [1, 5, 10, 25, 50, 100, 200];
+  const allowedOptions = allOptions.filter((opt) => opt <= MAX_LEVERAGE);
+  res.json(allowedOptions);
 });
 
 app.get("/usuarios", async (req, res) => {
@@ -1108,6 +1121,28 @@ app.post("/admin/registration-code", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: "Error interno" });
   }
+});
+
+// Rutas para gestionar el apalancamiento
+app.get("/admin/leverage", async (req, res) => {
+  if (!req.session.userId || req.session.rol !== "admin") {
+    return res.status(403).json({ error: "No autorizado" });
+  }
+  res.json({ maxLeverage: MAX_LEVERAGE });
+});
+
+app.post("/admin/leverage", async (req, res) => {
+  if (!req.session.userId || req.session.rol !== "admin") {
+    return res.status(403).json({ error: "No autorizado" });
+  }
+  const { newLeverage } = req.body;
+  const nLeverage = parseInt(newLeverage);
+  if (isNaN(nLeverage) || nLeverage < 1) {
+    return res.status(400).json({ error: "Valor de apalancamiento inválido." });
+  }
+  MAX_LEVERAGE = nLeverage;
+  console.log(`✅ Apalancamiento máximo cambiado a: 1:${MAX_LEVERAGE}`);
+  res.json({ success: true, maxLeverage: MAX_LEVERAGE });
 });
 
 // --- Inicio del Servidor ---
