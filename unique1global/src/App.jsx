@@ -3942,7 +3942,7 @@ const LandingPage = ({ onNavigate }) => {
             transition={{ duration: 0.7 }}
             className="text-4xl md:text-6xl font-extrabold text-gray-900 mb-4"
           >
-            Opera en los Mercados Globales con Confianza
+            Tu Puerta de Acceso a los Mercados Financieros
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -3950,9 +3950,9 @@ const LandingPage = ({ onNavigate }) => {
             transition={{ duration: 0.7, delay: 0.2 }}
             className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-8"
           >
-            Accede a una plataforma de trading intuitiva, segura y potente.
-            Invierte en divisas, acciones, criptomonedas y más, todo en un solo
-            lugar.
+            Descubre una experiencia de trading superior. Opera con acciones,
+            Forex, criptomonedas y más, con herramientas avanzadas y una
+            ejecución ultra rápida.
           </motion.p>
           <motion.button
             initial={{ opacity: 0, scale: 0.8 }}
@@ -3965,6 +3965,26 @@ const LandingPage = ({ onNavigate }) => {
             Comienza a Operar Ahora{" "}
             <Icons.ArrowRight className="inline-block h-5 w-5 ml-2" />
           </motion.button>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.6 }}
+            className="mt-12 flex flex-col sm:flex-row justify-center items-center gap-8 text-gray-600"
+          >
+            <div className="flex items-center gap-2">
+              <Icons.ShieldCheck className="h-5 w-5 text-green-500" />
+              <span>Plataforma Segura</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Icons.Banknotes className="h-5 w-5 text-green-500" />
+              <span>Comisiones Bajas</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Icons.UserGroup className="h-5 w-5 text-green-500" />
+              <span>Soporte 24/7</span>
+            </div>
+          </motion.div>
         </div>
       </section>
 
