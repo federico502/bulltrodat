@@ -3991,38 +3991,51 @@ const LandingPage = ({ onNavigate }) => {
       {/* Sobre Nosotros Section */}
       <section id="nosotros" className="py-20">
         <div className="container mx-auto px-6">
-          <h2 className="text-3xl font-bold text-center mb-12">
-            ¿Por Qué Elegirnos?
-          </h2>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Diseñada para el Trader Moderno
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Combinamos tecnología de punta, seguridad robusta y una amplia
+              gama de mercados para ofrecerte la experiencia de trading
+              definitiva.
+            </p>
+          </div>
           <div className="grid md:grid-cols-3 gap-10">
-            <div className="text-center p-6 bg-gray-50 rounded-lg shadow-md">
+            <div className="text-center p-6 bg-gray-50 rounded-lg shadow-md transition-transform hover:-translate-y-2">
               <div className="inline-block p-4 bg-purple-100 rounded-full mb-4">
                 <Icons.ShieldCheck className="h-8 w-8 text-purple-600" />
               </div>
-              <h3 className="text-xl font-bold mb-2">Seguridad Primero</h3>
+              <h3 className="text-xl font-bold mb-2">
+                Seguridad Inquebrantable
+              </h3>
               <p className="text-gray-600">
-                Tu capital e información están protegidos con encriptación de
-                última generación y protocolos de seguridad robustos.
+                Operamos con los más altos estándares. Tus fondos e información
+                personal están protegidos por encriptación avanzada y protocolos
+                robustos.
               </p>
             </div>
-            <div className="text-center p-6 bg-gray-50 rounded-lg shadow-md">
+            <div className="text-center p-6 bg-gray-50 rounded-lg shadow-md transition-transform hover:-translate-y-2">
               <div className="inline-block p-4 bg-purple-100 rounded-full mb-4">
                 <Icons.CreditCard className="h-8 w-8 text-purple-600" />
               </div>
-              <h3 className="text-xl font-bold mb-2">Múltiples Activos</h3>
+              <h3 className="text-xl font-bold mb-2">Un Universo de Activos</h3>
               <p className="text-gray-600">
-                Diversifica tu portafolio operando con una amplia gama de
-                activos financieros de todo el mundo.
+                Desde divisas y acciones hasta las criptomonedas más volátiles.
+                Diversifica tu portafolio sin salir de nuestra plataforma.
               </p>
             </div>
-            <div className="text-center p-6 bg-gray-50 rounded-lg shadow-md">
+            <div className="text-center p-6 bg-gray-50 rounded-lg shadow-md transition-transform hover:-translate-y-2">
               <div className="inline-block p-4 bg-purple-100 rounded-full mb-4">
                 <Icons.Adjustments className="h-8 w-8 text-purple-600" />
               </div>
-              <h3 className="text-xl font-bold mb-2">Herramientas Potentes</h3>
+              <h3 className="text-xl font-bold mb-2">
+                Ejecución y Herramientas Pro
+              </h3>
               <p className="text-gray-600">
-                Utiliza gráficos avanzados, análisis técnico y una interfaz
-                rápida para tomar las mejores decisiones de trading.
+                Aprovecha nuestra ejecución de baja latencia, gráficos en tiempo
+                real y un conjunto completo de herramientas de análisis para
+                tomar decisiones informadas.
               </p>
             </div>
           </div>
