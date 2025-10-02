@@ -39,6 +39,12 @@ let REGISTRATION_CODE = process.env.REGISTRATION_CODE || "ADMIN2024";
 // Variable global para el apalancamiento máximo
 let MAX_LEVERAGE = 200;
 
+// --- NUEVAS VARIABLES GLOBALES PARA COMISIONES Y SPREADS ---
+// Spread base: 0.01% (0.0001) del precio de entrada (Spread)
+let SPREAD_PORCENTAJE = parseFloat(process.env.SPREAD_PORCENTAJE) || 0.01;
+// Comisión fija: 0.1% (0.001) del volumen total (Comisión por Volumen)
+let COMISION_PORCENTAJE = parseFloat(process.env.COMISION_PORCENTAJE) || 0.1;
+
 // Validar que las variables críticas existan
 if (!DATABASE_URL || !SESSION_SECRET || !FRONTEND_URLS) {
   console.error(
@@ -526,7 +532,7 @@ app.post("/logout", (req, res) => {
   });
 });
 
-// --- RUTA CLAVE: OPERAR (Lógica de Margen Corregida) ---
+// --- RUTA CLAVE: OPERAR (Lógica de Margen Corregida y Comisiones Añadidas) ---
 app.post("/operar", async (req, res) => {
   const {
     activo,
@@ -597,7 +603,6 @@ app.post("/operar", async (req, res) => {
     const margenRequerido = (nPrecioEntrada * nVolumen) / nApalancamiento;
 
     // Validación de margen simple: El nuevo Margen Usado no debe exceder el Balance actual (Equidad inicial)
-    // En un sistema real se calcularía la Equidad (Balance + PnL Flotante) para esta validación.
     if (balanceActual < margenUsadoActual + margenRequerido) {
       await client.query("ROLLBACK");
       return res
@@ -608,10 +613,46 @@ app.post("/operar", async (req, res) => {
         });
     }
 
-    // *** CAMBIO CLAVE: NO SE DESCUENTA DEL BALANCE AL ABRIR ***
-    // El margen requerido se guarda como capital_invertido (Margen Usado)
-    // y se controla a través del cálculo de Margen Libre en el frontend.
+    // --- APLICACIÓN DE COMISIONES Y SPREADS ---
 
+    let precioAperturaFinal = nPrecioEntrada;
+    let comisionCosto = 0;
+
+    // 1. Aplicar Spread (Afecta el precio de entrada)
+    const spreadMonto = nPrecioEntrada * (SPREAD_PORCENTAJE / 100);
+
+    if (tipo_operacion.toLowerCase().includes("buy")) {
+      // En una compra, el spread sube el precio de entrada (te hace comprar más caro)
+      precioAperturaFinal = nPrecioEntrada + spreadMonto;
+    } else {
+      // En una venta, el spread baja el precio de entrada (te hace vender más barato)
+      precioAperturaFinal = nPrecioEntrada - spreadMonto;
+    }
+
+    // 2. Aplicar Comisión (Afecta el balance)
+    // Se calcula sobre el volumen nocional (Volumen * Precio_Entrada)
+    const volumenNocional = nVolumen * nPrecioEntrada;
+    comisionCosto = volumenNocional * (COMISION_PORCENTAJE / 100);
+
+    // 3. Validar si el Balance restante puede cubrir la comisión
+    const balanceDespuesDeComision = balanceActual - comisionCosto;
+    if (balanceDespuesDeComision < margenUsadoActual + margenRequerido) {
+      await client.query("ROLLBACK");
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: "Fondos insuficientes para cubrir la comisión y el margen.",
+        });
+    }
+
+    // 4. Descontar la comisión del Balance (Esta sí es una pérdida inmediata)
+    await client.query(
+      "UPDATE usuarios SET balance = balance - $1 WHERE id = $2",
+      [comisionCosto, usuario_id]
+    );
+
+    // 5. Insertar la operación con el precio de apertura final y el margen requerido
     await client.query(
       "INSERT INTO operaciones (usuario_id, activo, tipo_operacion, volumen, precio_entrada, capital_invertido, take_profit, stop_loss, apalancamiento) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
       [
@@ -619,7 +660,7 @@ app.post("/operar", async (req, res) => {
         activo,
         tipo_operacion,
         nVolumen,
-        nPrecioEntrada,
+        precioAperturaFinal, // Usamos el precio con spread aplicado
         margenRequerido, // Usamos margenRequerido como capital_invertido (margen usado)
         !isNaN(nTakeProfit) ? nTakeProfit : null,
         !isNaN(nStopLoss) ? nStopLoss : null,
@@ -628,7 +669,12 @@ app.post("/operar", async (req, res) => {
     );
 
     await client.query("COMMIT");
-    res.json({ success: true });
+    // Opcional: devolver la comisión aplicada para feedback al usuario
+    res.json({
+      success: true,
+      comision: comisionCosto,
+      precio_final: precioAperturaFinal,
+    });
   } catch (err) {
     await client.query("ROLLBACK");
     console.error("Error detallado en /operar:", {
@@ -705,7 +751,7 @@ app.post("/cerrar-operacion", async (req, res) => {
     }
 
     const tipo = op.tipo_operacion.toLowerCase();
-    const precio_entrada = parseFloat(op.precio_entrada);
+    const precio_entrada = parseFloat(op.precio_entrada); // Ahora incluye el spread
     const volumen = parseFloat(op.volumen);
     // const capital_invertido = parseFloat(op.capital_invertido); // Ya no se necesita el capital invertido aquí
 
@@ -718,7 +764,6 @@ app.post("/cerrar-operacion", async (req, res) => {
     }
 
     // *** CAMBIO CLAVE: SOLO SE APLICA LA GANANCIA/PÉRDIDA AL BALANCE ***
-    // El capital_invertido (margen) ya no se devuelve porque nunca se descontó.
     const montoADevolver = gananciaFinal;
 
     await client.query(
@@ -795,6 +840,14 @@ app.get("/leverage-options", (req, res) => {
   const allOptions = [1, 5, 10, 25, 50, 100, 200];
   const allowedOptions = allOptions.filter((opt) => opt <= MAX_LEVERAGE);
   res.json(allowedOptions);
+});
+
+// --- NUEVA RUTA: OBTENER COMISIONES Y SPREAD ---
+app.get("/commissions", (req, res) => {
+  res.json({
+    spreadPercentage: SPREAD_PORCENTAJE,
+    commissionPercentage: COMISION_PORCENTAJE,
+  });
 });
 
 app.get("/usuarios", async (req, res) => {
@@ -1176,6 +1229,54 @@ app.post("/admin/leverage", async (req, res) => {
   MAX_LEVERAGE = nLeverage;
   console.log(`✅ Apalancamiento máximo cambiado a: 1:${MAX_LEVERAGE}`);
   res.json({ success: true, maxLeverage: MAX_LEVERAGE });
+});
+
+// --- NUEVA RUTA ADMIN: GESTIONAR COMISIONES ---
+app.get("/admin/commissions", async (req, res) => {
+  if (!req.session.userId || req.session.rol !== "admin") {
+    return res.status(403).json({ error: "No autorizado" });
+  }
+  res.json({
+    spreadPercentage: SPREAD_PORCENTAJE,
+    commissionPercentage: COMISION_PORCENTAJE,
+  });
+});
+
+app.post("/admin/commissions", async (req, res) => {
+  if (!req.session.userId || req.session.rol !== "admin") {
+    return res.status(403).json({ error: "No autorizado" });
+  }
+  const { newSpread, newCommission } = req.body;
+  let nSpread, nCommission;
+
+  if (newSpread !== undefined) {
+    nSpread = parseFloat(newSpread);
+    if (isNaN(nSpread) || nSpread < 0) {
+      return res
+        .status(400)
+        .json({ error: "Valor de Spread inválido (debe ser >= 0)." });
+    }
+    SPREAD_PORCENTAJE = nSpread;
+  }
+
+  if (newCommission !== undefined) {
+    nCommission = parseFloat(newCommission);
+    if (isNaN(nCommission) || nCommission < 0) {
+      return res
+        .status(400)
+        .json({ error: "Valor de Comisión inválido (debe ser >= 0)." });
+    }
+    COMISION_PORCENTAJE = nCommission;
+  }
+
+  console.log(
+    `✅ Comisiones actualizadas. Spread: ${SPREAD_PORCENTAJE}%, Comisión: ${COMISION_PORCENTAJE}%`
+  );
+  res.json({
+    success: true,
+    spreadPercentage: SPREAD_PORCENTAJE,
+    commissionPercentage: COMISION_PORCENTAJE,
+  });
 });
 
 // --- Inicio del Servidor ---

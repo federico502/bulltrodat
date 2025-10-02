@@ -133,6 +133,12 @@ const Icons = {
   ArrowRight: ({ className }) => (
     <Icon path="M17 8l4 4m0 0l-4 4m4-4H3" className={className} />
   ),
+  CurrencyDollar: ({ className }) => (
+    <Icon
+      path="M12 6v12M12 6c-2.828 0-4.5 1.172-4.5 4.5S9.172 15 12 15s4.5-1.172 4.5-4.5S14.828 6 12 6ZM12 6c2.828 0 4.5 1.172 4.5 4.5S14.828 15 12 15s-4.5-1.172-4.5-4.5S9.172 6 12 6Z"
+      className={className}
+    />
+  ),
 };
 
 // --- Catálogo de Activos ---
@@ -251,6 +257,11 @@ const AppProvider = ({ children }) => {
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [realTimePrices, setRealTimePrices] = useState({});
   const [selectedAsset, setSelectedAsset] = useState("BTC-USDT");
+  // NUEVO: Estado para las comisiones y spreads
+  const [commissions, setCommissions] = useState({
+    spreadPercentage: 0.01,
+    commissionPercentage: 0.1,
+  });
 
   const checkUser = useCallback(async () => {
     setIsAppLoading(true);
@@ -258,6 +269,16 @@ const AppProvider = ({ children }) => {
       const { data } = await axios.get("/me");
       setUser(data);
       setIsAuthenticated(true);
+
+      // Intentar cargar comisiones si es administrador o usuario regular
+      if (data) {
+        try {
+          const commRes = await axios.get("/commissions");
+          setCommissions(commRes.data);
+        } catch (e) {
+          console.warn("Failed to fetch commissions, using defaults.");
+        }
+      }
     } catch (error) {
       console.log("No authenticated user found.");
       setIsAuthenticated(false);
@@ -295,6 +316,8 @@ const AppProvider = ({ children }) => {
       selectedAsset,
       setSelectedAsset,
       refreshUser: checkUser,
+      commissions, // Exponer comisiones
+      setCommissions, // Exponer setCommissions
     }),
     [
       user,
@@ -304,6 +327,7 @@ const AppProvider = ({ children }) => {
       realTimePrices,
       selectedAsset,
       checkUser,
+      commissions,
     ]
   );
 
@@ -815,7 +839,8 @@ const ProfileMenu = React.memo(
     logout,
     onToggleSideMenu,
     onManageUsers,
-    onManageLeverage, // Nueva prop
+    onManageLeverage,
+    onManageCommissions, // NUEVA prop
     onOpenProfileModal,
   }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -882,13 +907,20 @@ const ProfileMenu = React.memo(
                       text="Gestionar Usuarios"
                       onClick={() => handleItemClick(onManageUsers)}
                     />
-                    {/* Nuevo Menú para Apalancamiento */}
                     <MenuItem
                       icon={
                         <Icons.Adjustments className="h-5 w-5 text-gray-500" />
                       }
                       text="Gestionar Apalancamiento"
                       onClick={() => handleItemClick(onManageLeverage)}
+                    />
+                    {/* NUEVO ITEM DE MENÚ PARA COMISIONES */}
+                    <MenuItem
+                      icon={
+                        <Icons.CurrencyDollar className="h-5 w-5 text-gray-500" />
+                      }
+                      text="Gestionar Comisiones"
+                      onClick={() => handleItemClick(onManageCommissions)}
                     />
                   </>
                 )}
@@ -912,7 +944,8 @@ const ProfileMenu = React.memo(
 const Header = ({
   onOperation,
   onManageUsers,
-  onManageLeverage, // Nueva prop
+  onManageLeverage,
+  onManageCommissions, // NUEVA prop
   onToggleSideMenu,
   onToggleMainSidebar,
   onOpenProfileModal,
@@ -949,6 +982,7 @@ const Header = ({
             whileTap={{ scale: 0.95 }}
             onClick={() => onOperation("buy", volume)}
             className="bg-green-600 hover:bg-green-500 transition-all text-white px-5 py-2 text-sm font-bold rounded-md shadow-lg shadow-green-500/20 hover:shadow-green-500/40 cursor-pointer"
+            style={{ backgroundColor: "#410093" }}
           >
             BUY
           </motion.button>
@@ -968,7 +1002,8 @@ const Header = ({
           logout={logout}
           onToggleSideMenu={onToggleSideMenu}
           onManageUsers={onManageUsers}
-          onManageLeverage={onManageLeverage} // Pasar prop
+          onManageLeverage={onManageLeverage}
+          onManageCommissions={onManageCommissions} // Pasar prop
           onOpenProfileModal={onOpenProfileModal}
         />
       </div>
@@ -1360,16 +1395,32 @@ const ModalLivePrice = React.memo(({ symbol }) => {
   );
 });
 
+// Helper para calcular la comisión de forma local para el modal
+const calculateCommissionCost = (
+  price,
+  volume,
+  commissionPercentage,
+  leverage
+) => {
+  if (!price || !volume || !commissionPercentage) return 0;
+  // Margen requerido: (price * volume) / leverage -- Se mantiene en el backend
+
+  // Comisión: Volumen Nocional * Porcentaje de Comisión
+  const volumenNocional = price * volume;
+  const commissionCost = volumenNocional * (commissionPercentage / 100);
+  return commissionCost;
+};
+
 const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const { type, asset, volume } = operationData || {};
-  const { realTimePrices } = useContext(AppContext);
+  const { realTimePrices, commissions } = useContext(AppContext);
   const normalizedAsset = asset?.toUpperCase().replace(/[-/]/g, "");
   const livePrice = realTimePrices[normalizedAsset];
 
   const [tp, setTp] = useState("");
   const [sl, setSl] = useState("");
   const [leverage, setLeverage] = useState(1);
-  const [leverageOptions, setLeverageOptions] = useState([1]); // Estado para opciones dinámicas
+  const [leverageOptions, setLeverageOptions] = useState([1]);
 
   useEffect(() => {
     // Cargar opciones de apalancamiento permitidas desde el backend
@@ -1389,6 +1440,16 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
     }
   }, [isOpen]);
 
+  const commissionCost = useMemo(() => {
+    if (!livePrice || !volume || !commissions) return 0;
+    return calculateCommissionCost(
+      livePrice,
+      volume,
+      commissions.commissionPercentage,
+      leverage
+    );
+  }, [livePrice, volume, commissions, leverage]);
+
   const requiredMargin = livePrice
     ? ((livePrice * volume) / leverage).toFixed(2)
     : "0.00";
@@ -1407,14 +1468,16 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
     if (isNaN(targetPrice)) return null;
 
     if (targetType === "tp") {
+      // Nota: El cálculo real en el backend usa el precio de entrada ajustado por spread.
+      // Aquí usamos el livePrice para una estimación.
       return type === "buy"
-        ? (targetPrice - livePrice) * volume
-        : (livePrice - targetPrice) * volume;
+        ? (targetPrice - livePrice) * volume - commissionCost // Restamos comisión para estimación
+        : (livePrice - targetPrice) * volume - commissionCost;
     }
     if (targetType === "sl") {
       return type === "buy"
-        ? (targetPrice - livePrice) * volume
-        : (livePrice - targetPrice) * volume;
+        ? (targetPrice - livePrice) * volume - commissionCost // Restamos comisión para estimación
+        : (livePrice - targetPrice) * volume - commissionCost;
     }
     return null;
   };
@@ -1449,14 +1512,18 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           <span>Volumen:</span>
           <span className="font-mono text-gray-900">{volume}</span>
         </p>
-        <p className="flex justify-between">
-          <span>Apalancamiento:</span>
-          <span className="font-mono text-gray-900">1:{leverage}</span>
-        </p>
-        <p className="flex justify-between">
-          <span>Margen Requerido:</span>
-          <span className="font-mono text-gray-900">${requiredMargin}</span>
-        </p>
+        <div className="py-2 border-t border-gray-200">
+          <p className="flex justify-between">
+            <span>Margen Requerido:</span>
+            <span className="font-mono text-gray-900">${requiredMargin}</span>
+          </p>
+          <p className="flex justify-between text-red-600 font-semibold">
+            <span>
+              Comisión de Apertura ({commissions.commissionPercentage}%):
+            </span>
+            <span className="font-mono">${commissionCost.toFixed(2)}</span>
+          </p>
+        </div>
       </div>
       <div className="mb-4">
         <label className="block text-sm font-medium mb-2 text-gray-700">
@@ -1487,7 +1554,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
         />
         {potentialTpProfit !== null && (
           <p className="text-xs mt-1 text-green-600">
-            Ganancia Potencial: ${potentialTpProfit.toFixed(2)}
+            Ganancia Potencial Estimada: ${potentialTpProfit.toFixed(2)}
           </p>
         )}
       </div>
@@ -1504,7 +1571,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
         />
         {potentialSlProfit !== null && (
           <p className="text-xs mt-1 text-red-500">
-            Pérdida Potencial: ${potentialSlProfit.toFixed(2)}
+            Pérdida Potencial Estimada: ${potentialSlProfit.toFixed(2)}
           </p>
         )}
       </div>
@@ -2216,7 +2283,7 @@ const ManageUsersModal = ({
   );
 };
 
-// Nuevo Modal para Gestionar Apalancamiento
+// Modal para Gestionar Apalancamiento
 const ManageLeverageModal = ({ isOpen, onClose, setAlert }) => {
   const [currentLeverage, setCurrentLeverage] = useState(200);
   const [newLeverage, setNewLeverage] = useState(200);
@@ -2294,6 +2361,137 @@ const ManageLeverageModal = ({ isOpen, onClose, setAlert }) => {
             className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-md hover:bg-indigo-500"
           >
             Guardar Cambios
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+// NUEVO MODAL: Gestionar Comisiones y Spreads
+const ManageCommissionsModal = ({ isOpen, onClose, setAlert }) => {
+  const { commissions, setCommissions } = useContext(AppContext);
+  const [spread, setSpread] = useState(commissions.spreadPercentage);
+  const [commission, setCommission] = useState(
+    commissions.commissionPercentage
+  );
+
+  // Sincronizar estado local al abrir o si el estado global cambia
+  useEffect(() => {
+    setSpread(commissions.spreadPercentage);
+    setCommission(commissions.commissionPercentage);
+  }, [commissions]);
+
+  const handleSave = async () => {
+    const newSpread = parseFloat(spread);
+    const newCommission = parseFloat(commission);
+
+    if (
+      isNaN(newSpread) ||
+      newSpread < 0 ||
+      isNaN(newCommission) ||
+      newCommission < 0
+    ) {
+      setAlert({
+        message: "Valores de comisión/spread inválidos.",
+        type: "error",
+      });
+      return;
+    }
+
+    try {
+      const res = await axios.post("/admin/commissions", {
+        newSpread: newSpread,
+        newCommission: newCommission,
+      });
+
+      // Actualizar estado global en el Context
+      setCommissions({
+        spreadPercentage: res.data.spreadPercentage,
+        commissionPercentage: res.data.commissionPercentage,
+      });
+
+      setAlert({
+        message: "Comisiones actualizadas con éxito",
+        type: "success",
+      });
+      onClose();
+    } catch (error) {
+      setAlert({
+        message:
+          error.response?.data?.error || "Error al actualizar comisiones.",
+        type: "error",
+      });
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Gestionar Comisiones y Spread"
+      maxWidth="max-w-md"
+    >
+      <div className="space-y-4">
+        <p className="text-gray-600">
+          Define el % de Spread y la Comisión por Volumen que se aplicará a
+          todas las operaciones.
+        </p>
+
+        {/* Campo de Spread */}
+        <div>
+          <label
+            htmlFor="spread-input"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Spread de Mercado (en %)
+          </label>
+          <input
+            id="spread-input"
+            type="number"
+            step="0.001"
+            min="0"
+            value={spread}
+            onChange={(e) => setSpread(e.target.value)}
+            placeholder="Ej: 0.01"
+            className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            El Spread se resta/suma al precio de entrada (Buy/Sell) para simular
+            el diferencial.
+          </p>
+        </div>
+
+        {/* Campo de Comisión */}
+        <div>
+          <label
+            htmlFor="commission-input"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Comisión por Volumen (en %)
+          </label>
+          <input
+            id="commission-input"
+            type="number"
+            step="0.01"
+            min="0"
+            value={commission}
+            onChange={(e) => setCommission(e.target.value)}
+            placeholder="Ej: 0.1"
+            className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            La Comisión se resta del balance al abrir la operación (se calcula
+            sobre el volumen nocional).
+          </p>
+        </div>
+
+        <div className="flex justify-end pt-4">
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-md hover:bg-indigo-500"
+          >
+            Guardar Comisiones
           </button>
         </div>
       </div>
@@ -2759,7 +2957,7 @@ const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => (
   </Modal>
 );
 
-// NUEVO: Modal para pagos con tarjeta
+// Modal para pagos con tarjeta
 const CardPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -2932,6 +3130,7 @@ const DashboardPage = () => {
   const [currentUserForOps, setCurrentUserForOps] = useState(null);
   const [currentOpDetails, setCurrentOpDetails] = useState(null);
   const [isLeverageModalOpen, setIsLeverageModalOpen] = useState(false);
+  const [isCommissionsModalOpen, setIsCommissionsModalOpen] = useState(false); // NUEVO
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -3167,7 +3366,9 @@ const DashboardPage = () => {
         const { data } = await axios.post("/operar", payload);
         if (data.success) {
           setAlert({
-            message: "Operación realizada con éxito",
+            message: `Operación realizada con éxito. Comisión: $${data.comision.toFixed(
+              2
+            )}`,
             type: "success",
           });
           fetchData(1, opHistoryFilter);
@@ -3445,6 +3646,12 @@ const DashboardPage = () => {
         onClose={() => setIsLeverageModalOpen(false)}
         setAlert={setAlert}
       />
+      {/* NUEVO: Renderizado del modal de comisiones */}
+      <ManageCommissionsModal
+        isOpen={isCommissionsModalOpen}
+        onClose={() => setIsCommissionsModalOpen(false)}
+        setAlert={setAlert}
+      />
       <ProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
@@ -3456,7 +3663,8 @@ const DashboardPage = () => {
         <Header
           onOperation={handleOpenNewOpModal}
           onManageUsers={() => setIsUsersModalOpen(true)}
-          onManageLeverage={() => setIsLeverageModalOpen(true)} // Nuevo handler
+          onManageLeverage={() => setIsLeverageModalOpen(true)}
+          onManageCommissions={() => setIsCommissionsModalOpen(true)} // Nuevo handler
           onToggleSideMenu={() => setIsSideMenuOpen(true)}
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
           onOpenProfileModal={() => setIsProfileModalOpen(true)}
@@ -3790,6 +3998,11 @@ const LoginPage = ({ onNavigate }) => {
                 {error && (
                   <p className="text-red-500 text-center text-sm mb-4">
                     {error}
+                  </p>
+                )}
+                {success && (
+                  <p className="text-green-500 text-center text-sm mb-4">
+                    {success}
                   </p>
                 )}
                 <form
