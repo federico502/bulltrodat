@@ -377,7 +377,8 @@ async function cerrarOperacionesAutomáticamente() {
 
       if (cerrar) {
         const volumen = parseFloat(op.volumen);
-        const capitalInvertido = parseFloat(op.capital_invertido);
+        // const capitalInvertido = parseFloat(op.capital_invertido); // Ya no se necesita el capital invertido aquí
+
         let ganancia = 0;
 
         if (tipo === "buy" || tipo === "compra") {
@@ -386,16 +387,21 @@ async function cerrarOperacionesAutomáticamente() {
           ganancia = (entrada - precioActual) * volumen;
         }
 
-        const montoDevolver = capitalInvertido + ganancia;
+        // El monto a devolver era (capital_invertido + ganancia).
+        // Al corregir el balance, solo devolvemos la ganancia (positiva o negativa).
+        const montoADevolver = ganancia;
 
         await client.query("BEGIN");
         await client.query(
           "UPDATE operaciones SET cerrada = true, ganancia = $1, precio_cierre = $2 WHERE id = $3",
           [ganancia, precioActual, op.id]
         );
+        // CORRECCIÓN: Al cerrar la operación, solo modificamos el balance con la ganancia/pérdida.
+        // El margen usado (capital_invertido) se libera de facto porque la operación está cerrada,
+        // y el balance nunca fue tocado al abrir.
         await client.query(
           "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
-          [montoDevolver, op.usuario_id]
+          [montoADevolver, op.usuario_id]
         );
         await client.query("COMMIT");
       }
@@ -520,6 +526,7 @@ app.post("/logout", (req, res) => {
   });
 });
 
+// --- RUTA CLAVE: OPERAR (Lógica de Margen Corregida) ---
 app.post("/operar", async (req, res) => {
   const {
     activo,
@@ -541,11 +548,9 @@ app.post("/operar", async (req, res) => {
 
   // Validar contra el apalancamiento máximo permitido
   if (nApalancamiento > MAX_LEVERAGE) {
-    return res
-      .status(400)
-      .json({
-        error: `El apalancamiento no puede ser mayor a 1:${MAX_LEVERAGE}`,
-      });
+    return res.status(400).json({
+      error: `El apalancamiento no puede ser mayor a 1:${MAX_LEVERAGE}`,
+    });
   }
 
   if (
@@ -568,6 +573,8 @@ app.post("/operar", async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+
+    // Obtener balance actual del usuario
     const userRes = await client.query(
       "SELECT balance FROM usuarios WHERE id = $1 FOR UPDATE",
       [usuario_id]
@@ -578,19 +585,32 @@ app.post("/operar", async (req, res) => {
       return res.status(404).json({ error: "Usuario no encontrado." });
     }
     const balanceActual = parseFloat(userRes.rows[0].balance);
-    const costo = (nPrecioEntrada * nVolumen) / nApalancamiento;
 
-    if (balanceActual < costo) {
+    // Obtener el margen usado actual (suma de capital_invertido de operaciones abiertas)
+    const margenUsadoRes = await client.query(
+      "SELECT COALESCE(SUM(capital_invertido), 0) AS used_margin FROM operaciones WHERE usuario_id = $1 AND cerrada = false",
+      [usuario_id]
+    );
+    const margenUsadoActual = parseFloat(margenUsadoRes.rows[0].used_margin);
+
+    // Calcular el Margen Requerido para la nueva operación
+    const margenRequerido = (nPrecioEntrada * nVolumen) / nApalancamiento;
+
+    // Validación de margen simple: El nuevo Margen Usado no debe exceder el Balance actual (Equidad inicial)
+    // En un sistema real se calcularía la Equidad (Balance + PnL Flotante) para esta validación.
+    if (balanceActual < margenUsadoActual + margenRequerido) {
       await client.query("ROLLBACK");
       return res
         .status(400)
-        .json({ success: false, error: "Fondos insuficientes" });
+        .json({
+          success: false,
+          error: "Fondos insuficientes (Margen Libre bajo).",
+        });
     }
 
-    await client.query(
-      "UPDATE usuarios SET balance = balance - $1 WHERE id = $2",
-      [costo, usuario_id]
-    );
+    // *** CAMBIO CLAVE: NO SE DESCUENTA DEL BALANCE AL ABRIR ***
+    // El margen requerido se guarda como capital_invertido (Margen Usado)
+    // y se controla a través del cálculo de Margen Libre en el frontend.
 
     await client.query(
       "INSERT INTO operaciones (usuario_id, activo, tipo_operacion, volumen, precio_entrada, capital_invertido, take_profit, stop_loss, apalancamiento) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
@@ -600,7 +620,7 @@ app.post("/operar", async (req, res) => {
         tipo_operacion,
         nVolumen,
         nPrecioEntrada,
-        costo,
+        margenRequerido, // Usamos margenRequerido como capital_invertido (margen usado)
         !isNaN(nTakeProfit) ? nTakeProfit : null,
         !isNaN(nStopLoss) ? nStopLoss : null,
         nApalancamiento,
@@ -653,6 +673,7 @@ app.get("/historial", async (req, res) => {
   }
 });
 
+// --- RUTA CLAVE: CERRAR OPERACION (Lógica de Margen Corregida) ---
 app.post("/cerrar-operacion", async (req, res) => {
   const { operacion_id } = req.body;
   const usuario_id = req.session.userId;
@@ -686,7 +707,8 @@ app.post("/cerrar-operacion", async (req, res) => {
     const tipo = op.tipo_operacion.toLowerCase();
     const precio_entrada = parseFloat(op.precio_entrada);
     const volumen = parseFloat(op.volumen);
-    const capital_invertido = parseFloat(op.capital_invertido);
+    // const capital_invertido = parseFloat(op.capital_invertido); // Ya no se necesita el capital invertido aquí
+
     let gananciaFinal = 0;
 
     if (tipo === "compra" || tipo === "buy") {
@@ -695,7 +717,9 @@ app.post("/cerrar-operacion", async (req, res) => {
       gananciaFinal = (precio_entrada - precioActual) * volumen;
     }
 
-    const montoADevolver = capital_invertido + gananciaFinal;
+    // *** CAMBIO CLAVE: SOLO SE APLICA LA GANANCIA/PÉRDIDA AL BALANCE ***
+    // El capital_invertido (margen) ya no se devuelve porque nunca se descontó.
+    const montoADevolver = gananciaFinal;
 
     await client.query(
       "UPDATE operaciones SET cerrada = true, ganancia = $1, precio_cierre = $2 WHERE id = $3",
@@ -1002,17 +1026,22 @@ app.post("/admin/actualizar-operacion", async (req, res) => {
     }
     const opOriginal = opOriginalRes.rows[0];
     const usuario_id = opOriginal.usuario_id;
-    const gananciaOriginal = parseFloat(opOriginal.ganancia || 0);
 
     await client.query("BEGIN");
 
-    if (opOriginal.cerrada) {
+    // 1. Revertir impacto anterior de la operación (si estaba cerrada)
+    const fueCerradaOriginalmente = opOriginal.cerrada;
+    const gananciaOriginal = parseFloat(opOriginal.ganancia || 0);
+
+    if (fueCerradaOriginalmente) {
+      // CORRECCIÓN: Si estaba cerrada, revertimos el impacto de la ganancia anterior
       await client.query(
         "UPDATE usuarios SET balance = balance - $1 WHERE id = $2",
         [gananciaOriginal, usuario_id]
       );
     }
 
+    // 2. Calcular nueva ganancia y estado
     let nuevaGanancia = 0;
     const esCerrada = cerrada === true || cerrada === "true";
 
@@ -1032,10 +1061,12 @@ app.post("/admin/actualizar-operacion", async (req, res) => {
       }
     }
 
+    // 3. Recalcular el capital_invertido (margen)
     const leverage = parseInt(apalancamiento) || 1;
     const capitalInvertido =
       (parseFloat(precio_entrada) * parseFloat(volumen)) / leverage;
 
+    // 4. Actualizar la operación
     await client.query(
       `UPDATE operaciones SET 
                 activo = $1, 
@@ -1066,7 +1097,9 @@ app.post("/admin/actualizar-operacion", async (req, res) => {
       ]
     );
 
+    // 5. Aplicar nuevo impacto al balance si ahora está cerrada
     if (esCerrada) {
+      // CORRECCIÓN: Aplicar solo la nueva ganancia/pérdida
       await client.query(
         "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
         [nuevaGanancia, usuario_id]
