@@ -257,10 +257,11 @@ const AppProvider = ({ children }) => {
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [realTimePrices, setRealTimePrices] = useState({});
   const [selectedAsset, setSelectedAsset] = useState("BTC-USDT");
-  // NUEVO: Estado para las comisiones y spreads
+  // ACTUALIZADO: Estado para las comisiones, spreads y swap
   const [commissions, setCommissions] = useState({
     spreadPercentage: 0.01,
     commissionPercentage: 0.1,
+    swapDailyPercentage: 0.05, // AÑADIDO: Swap diario por defecto
   });
 
   const checkUser = useCallback(async () => {
@@ -1396,19 +1397,29 @@ const ModalLivePrice = React.memo(({ symbol }) => {
 });
 
 // Helper para calcular la comisión de forma local para el modal
-const calculateCommissionCost = (
-  price,
-  volume,
-  commissionPercentage,
-  leverage
-) => {
+const calculateCommissionCost = (price, volume, commissionPercentage) => {
   if (!price || !volume || !commissionPercentage) return 0;
-  // Margen requerido: (price * volume) / leverage -- Se mantiene en el backend
-
   // Comisión: Volumen Nocional * Porcentaje de Comisión
   const volumenNocional = price * volume;
   const commissionCost = volumenNocional * (commissionPercentage / 100);
   return commissionCost;
+};
+
+// NUEVO Helper para estimar el costo de Swap diario
+const calculateSwapDailyCost = (
+  price,
+  volume,
+  swapDailyPercentage,
+  leverage
+) => {
+  if (!price || !volume || !swapDailyPercentage || !leverage || leverage === 0)
+    return 0;
+
+  // El swap se aplica sobre el margen requerido (capital invertido).
+  const margen = (price * volume) / leverage;
+  // Swap se aplica sobre el margen requerido. Usamos valor absoluto.
+  const swapCost = margen * (swapDailyPercentage / 100);
+  return swapCost;
 };
 
 const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
@@ -1445,7 +1456,17 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
     return calculateCommissionCost(
       livePrice,
       volume,
-      commissions.commissionPercentage,
+      commissions.commissionPercentage
+    );
+  }, [livePrice, volume, commissions]);
+
+  // NUEVO: Cálculo del costo de Swap diario
+  const swapDailyCost = useMemo(() => {
+    if (!livePrice || !volume || !commissions || !leverage) return 0;
+    return calculateSwapDailyCost(
+      livePrice,
+      volume,
+      commissions.swapDailyPercentage,
       leverage
     );
   }, [livePrice, volume, commissions, leverage]);
@@ -1468,15 +1489,15 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
     if (isNaN(targetPrice)) return null;
 
     if (targetType === "tp") {
-      // Nota: El cálculo real en el backend usa el precio de entrada ajustado por spread.
-      // Aquí usamos el livePrice para una estimación.
+      // Nota: La comisión ya está aplicada en el balance, por lo que solo la restamos
+      // para la estimación de PnL en el modal.
       return type === "buy"
-        ? (targetPrice - livePrice) * volume - commissionCost // Restamos comisión para estimación
+        ? (targetPrice - livePrice) * volume - commissionCost
         : (livePrice - targetPrice) * volume - commissionCost;
     }
     if (targetType === "sl") {
       return type === "buy"
-        ? (targetPrice - livePrice) * volume - commissionCost // Restamos comisión para estimación
+        ? (targetPrice - livePrice) * volume - commissionCost
         : (livePrice - targetPrice) * volume - commissionCost;
     }
     return null;
@@ -1522,6 +1543,15 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
               Comisión de Apertura ({commissions.commissionPercentage}%):
             </span>
             <span className="font-mono">${commissionCost.toFixed(2)}</span>
+          </p>
+          {/* NUEVO: Costo de Swap Diario */}
+          <p className="flex justify-between text-gray-600 text-sm">
+            <span>
+              Swap Diario Estimado ({commissions.swapDailyPercentage}%):
+            </span>
+            <span className="font-mono text-sm">
+              ${swapDailyCost.toFixed(4)}
+            </span>
           </p>
         </div>
       </div>
@@ -2375,25 +2405,30 @@ const ManageCommissionsModal = ({ isOpen, onClose, setAlert }) => {
   const [commission, setCommission] = useState(
     commissions.commissionPercentage
   );
+  const [swap, setSwap] = useState(commissions.swapDailyPercentage); // AÑADIDO: Swap
 
   // Sincronizar estado local al abrir o si el estado global cambia
   useEffect(() => {
     setSpread(commissions.spreadPercentage);
     setCommission(commissions.commissionPercentage);
+    setSwap(commissions.swapDailyPercentage); // AÑADIDO: Swap
   }, [commissions]);
 
   const handleSave = async () => {
     const newSpread = parseFloat(spread);
     const newCommission = parseFloat(commission);
+    const newSwap = parseFloat(swap); // AÑADIDO: Swap
 
     if (
       isNaN(newSpread) ||
       newSpread < 0 ||
       isNaN(newCommission) ||
-      newCommission < 0
+      newCommission < 0 ||
+      isNaN(newSwap) ||
+      newSwap < 0
     ) {
       setAlert({
-        message: "Valores de comisión/spread inválidos.",
+        message: "Valores de Spread/Comisión/Swap inválidos.",
         type: "error",
       });
       return;
@@ -2401,25 +2436,28 @@ const ManageCommissionsModal = ({ isOpen, onClose, setAlert }) => {
 
     try {
       const res = await axios.post("/admin/commissions", {
+        // La ruta del backend debe aceptar newSwap
         newSpread: newSpread,
         newCommission: newCommission,
+        newSwap: newSwap, // AÑADIDO: Swap
       });
 
       // Actualizar estado global en el Context
       setCommissions({
         spreadPercentage: res.data.spreadPercentage,
         commissionPercentage: res.data.commissionPercentage,
+        swapDailyPercentage: res.data.swapDailyPercentage, // ACTUALIZADO: Swap
       });
 
       setAlert({
-        message: "Comisiones actualizadas con éxito",
+        message: "Comisiones y Swap actualizados con éxito",
         type: "success",
       });
       onClose();
     } catch (error) {
       setAlert({
         message:
-          error.response?.data?.error || "Error al actualizar comisiones.",
+          error.response?.data?.error || "Error al actualizar comisiones/swap.",
         type: "error",
       });
     }
@@ -2434,8 +2472,8 @@ const ManageCommissionsModal = ({ isOpen, onClose, setAlert }) => {
     >
       <div className="space-y-4">
         <p className="text-gray-600">
-          Define el % de Spread y la Comisión por Volumen que se aplicará a
-          todas las operaciones.
+          Define las tasas de Spread, Comisión y Swap diario para todas las
+          operaciones.
         </p>
 
         {/* Campo de Spread */}
@@ -2486,12 +2524,36 @@ const ManageCommissionsModal = ({ isOpen, onClose, setAlert }) => {
           </p>
         </div>
 
+        {/* NUEVO: Campo de Swap */}
+        <div>
+          <label
+            htmlFor="swap-input"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Swap Diario (en %)
+          </label>
+          <input
+            id="swap-input"
+            type="number"
+            step="0.001"
+            min="0"
+            value={swap}
+            onChange={(e) => setSwap(e.target.value)}
+            placeholder="Ej: 0.05"
+            className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            El Swap (interés nocturno) se aplica diariamente sobre el margen
+            usado.
+          </p>
+        </div>
+
         <div className="flex justify-end pt-4">
           <button
             onClick={handleSave}
             className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-md hover:bg-indigo-500"
           >
-            Guardar Comisiones
+            Guardar Cambios
           </button>
         </div>
       </div>

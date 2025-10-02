@@ -39,11 +39,14 @@ let REGISTRATION_CODE = process.env.REGISTRATION_CODE || "ADMIN2024";
 // Variable global para el apalancamiento máximo
 let MAX_LEVERAGE = 200;
 
-// --- NUEVAS VARIABLES GLOBALES PARA COMISIONES Y SPREADS ---
+// --- VARIABLES GLOBALES PARA COMISIONES, SPREADS Y SWAP ---
 // Spread base: 0.01% (0.0001) del precio de entrada (Spread)
 let SPREAD_PORCENTAJE = parseFloat(process.env.SPREAD_PORCENTAJE) || 0.01;
 // Comisión fija: 0.1% (0.001) del volumen total (Comisión por Volumen)
 let COMISION_PORCENTAJE = parseFloat(process.env.COMISION_PORCENTAJE) || 0.1;
+// NUEVO: Swap diario (Interés nocturno)
+let SWAP_DAILY_PORCENTAJE =
+  parseFloat(process.env.SWAP_DAILY_PORCENTAJE) || 0.05;
 
 // Validar que las variables críticas existan
 if (!DATABASE_URL || !SESSION_SECRET || !FRONTEND_URLS) {
@@ -264,91 +267,6 @@ function subscribeToTwelveData(symbols) {
   }
 }
 
-async function iniciarWebSocketKuCoin() {
-  try {
-    const tokenResponse = await fetch(
-      "https://api.kucoin.com/api/v1/bullet-public",
-      { method: "POST" }
-    );
-    if (!tokenResponse.ok)
-      throw new Error(
-        `Failed to get KuCoin token: ${tokenResponse.statusText}`
-      );
-    const tokenData = await tokenResponse.json();
-    const { token, instanceServers } = tokenData.data;
-    if (!token || !instanceServers || instanceServers.length === 0)
-      throw new Error("Invalid token or server data from KuCoin");
-    const endpoint = instanceServers[0].endpoint;
-    const wsUrl = `${endpoint}?token=${token}`;
-    kuCoinWs = new WebSocket(wsUrl);
-    kuCoinWs.on("open", () => {
-      if (activeKuCoinSubscriptions.size > 0)
-        subscribeToKuCoin(Array.from(activeKuCoinSubscriptions));
-      setInterval(() => {
-        if (kuCoinWs.readyState === WebSocket.OPEN)
-          kuCoinWs.send(JSON.stringify({ id: Date.now(), type: "ping" }));
-      }, 15000);
-    });
-    kuCoinWs.on("message", (data) => {
-      try {
-        const message = JSON.parse(data);
-        if (message.type === "message" && message.subject === "trade.ticker") {
-          const symbolWithDash = message.topic.split(":")[1];
-          const symbol = symbolWithDash.replace("-", "");
-          const price = parseFloat(message.data.price);
-          global.preciosEnTiempoReal[symbol] = price;
-          broadcast({ type: "price_update", prices: { [symbol]: price } });
-        }
-      } catch (err) {
-        console.error("❌ Error procesando mensaje de KuCoin:", err);
-      }
-    });
-    kuCoinWs.on("close", () => setTimeout(iniciarWebSocketKuCoin, 5000));
-    kuCoinWs.on("error", (err) => kuCoinWs.close());
-  } catch (error) {
-    setTimeout(iniciarWebSocketKuCoin, 10000);
-  }
-}
-
-function iniciarWebSocketTwelveData() {
-  if (!TWELVE_DATA_API_KEY) return;
-  let twelveDataRetryTimeout = 5000;
-  const MAX_RETRY_TIMEOUT = 60000;
-  twelveDataWs = new WebSocket(
-    `wss://ws.twelvedata.com/v1/quotes/price?apikey=${TWELVE_DATA_API_KEY}`
-  );
-  twelveDataWs.on("open", () => {
-    twelveDataRetryTimeout = 5000;
-    if (activeTwelveDataSubscriptions.size > 0) {
-      subscribeToTwelveData(Array.from(activeTwelveDataSubscriptions));
-    }
-  });
-  twelveDataWs.on("message", (data) => {
-    try {
-      const message = JSON.parse(data);
-      if (message.event === "price") {
-        const internalSymbol = message.symbol.replace("/", "").toUpperCase();
-        const price = parseFloat(message.price);
-        global.preciosEnTiempoReal[internalSymbol] = price;
-        broadcast({
-          type: "price_update",
-          prices: { [internalSymbol]: price },
-        });
-      }
-    } catch (err) {
-      console.error("❌ Error processing message from Twelve Data:", err);
-    }
-  });
-  twelveDataWs.on("close", () => {
-    setTimeout(iniciarWebSocketTwelveData, twelveDataRetryTimeout);
-    twelveDataRetryTimeout = Math.min(
-      twelveDataRetryTimeout * 2,
-      MAX_RETRY_TIMEOUT
-    );
-  });
-  twelveDataWs.on("error", (err) => twelveDataWs.close());
-}
-
 async function getLatestPrice(symbol) {
   return (
     global.preciosEnTiempoReal[symbol.toUpperCase().replace(/[-/]/g, "")] ||
@@ -359,6 +277,7 @@ async function getLatestPrice(symbol) {
 async function cerrarOperacionesAutomáticamente() {
   const client = await pool.connect();
   try {
+    // 1. Lógica de cierre por TP/SL (manteniendo la lógica de la versión anterior)
     const result = await client.query(
       "SELECT * FROM operaciones WHERE cerrada = false AND (take_profit IS NOT NULL OR stop_loss IS NOT NULL)"
     );
@@ -383,8 +302,6 @@ async function cerrarOperacionesAutomáticamente() {
 
       if (cerrar) {
         const volumen = parseFloat(op.volumen);
-        // const capitalInvertido = parseFloat(op.capital_invertido); // Ya no se necesita el capital invertido aquí
-
         let ganancia = 0;
 
         if (tipo === "buy" || tipo === "compra") {
@@ -393,18 +310,13 @@ async function cerrarOperacionesAutomáticamente() {
           ganancia = (entrada - precioActual) * volumen;
         }
 
-        // El monto a devolver era (capital_invertido + ganancia).
-        // Al corregir el balance, solo devolvemos la ganancia (positiva o negativa).
-        const montoADevolver = ganancia;
+        const montoADevolver = ganancia; // Solo la ganancia/pérdida
 
         await client.query("BEGIN");
         await client.query(
           "UPDATE operaciones SET cerrada = true, ganancia = $1, precio_cierre = $2 WHERE id = $3",
           [ganancia, precioActual, op.id]
         );
-        // CORRECCIÓN: Al cerrar la operación, solo modificamos el balance con la ganancia/pérdida.
-        // El margen usado (capital_invertido) se libera de facto porque la operación está cerrada,
-        // y el balance nunca fue tocado al abrir.
         await client.query(
           "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
           [montoADevolver, op.usuario_id]
@@ -412,9 +324,54 @@ async function cerrarOperacionesAutomáticamente() {
         await client.query("COMMIT");
       }
     }
+
+    // 2. NUEVA LÓGICA: Cobro de Swap Diario
+    const openOpsResult = await client.query(
+      "SELECT id, usuario_id, capital_invertido FROM operaciones WHERE cerrada = false"
+    );
+    const operacionesAbiertas = openOpsResult.rows;
+
+    if (operacionesAbiertas.length > 0 && SWAP_DAILY_PORCENTAJE > 0) {
+      const swapRate = SWAP_DAILY_PORCENTAJE / 100; // Convertir a decimal
+
+      // Calcular el costo total de Swap para cada usuario
+      const swapCostByUser = {};
+
+      for (const op of operacionesAbiertas) {
+        const margen = parseFloat(op.capital_invertido);
+        const costoSwap = margen * swapRate;
+
+        if (!swapCostByUser[op.usuario_id]) {
+          swapCostByUser[op.usuario_id] = 0;
+        }
+        swapCostByUser[op.usuario_id] += costoSwap;
+      }
+
+      await client.query("BEGIN");
+
+      // Descontar el costo de Swap del balance de cada usuario
+      for (const userId in swapCostByUser) {
+        const totalSwapCost = swapCostByUser[userId];
+
+        if (totalSwapCost > 0) {
+          // Descontar el Swap del balance
+          await client.query(
+            "UPDATE usuarios SET balance = balance - $1 WHERE id = $2",
+            [totalSwapCost, userId]
+          );
+        }
+      }
+
+      await client.query("COMMIT");
+      console.log(
+        `✅ Swap diario cobrado a ${
+          Object.keys(swapCostByUser).length
+        } usuarios.`
+      );
+    }
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error("❌ Error al cerrar operaciones automáticamente:", err);
+    console.error("❌ Error al procesar Swap o cerrar operaciones:", err);
   } finally {
     client.release();
   }
@@ -523,6 +480,58 @@ app.put("/me/profile", async (req, res) => {
   }
 });
 
+// --- NUEVA RUTA: CAMBIAR CONTRASEÑA ---
+app.post("/me/change-password", async (req, res) => {
+  const usuario_id = req.session.userId;
+  if (!usuario_id) return res.status(401).json({ error: "No autenticado" });
+
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: "Faltan campos de contraseña." });
+  }
+
+  if (newPassword.length < 6) {
+    return res
+      .status(400)
+      .json({ error: "La nueva contraseña debe tener al menos 6 caracteres." });
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT password FROM usuarios WHERE id = $1",
+      [usuario_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado." });
+    }
+
+    const storedHash = result.rows[0].password;
+
+    // 1. Verificar la contraseña actual
+    if (!(await bcrypt.compare(currentPassword, storedHash))) {
+      return res
+        .status(401)
+        .json({ error: "La contraseña actual es incorrecta." });
+    }
+
+    // 2. Hashear la nueva contraseña
+    const newHash = await bcrypt.hash(newPassword, 10);
+
+    // 3. Actualizar la base de datos
+    await pool.query("UPDATE usuarios SET password = $1 WHERE id = $2", [
+      newHash,
+      usuario_id,
+    ]);
+
+    res.json({ success: true, message: "Contraseña actualizada con éxito." });
+  } catch (err) {
+    console.error("Error al cambiar contraseña:", err);
+    res.status(500).json({ error: "Error interno al cambiar la contraseña." });
+  }
+});
+
 app.post("/logout", (req, res) => {
   req.session.destroy((err) => {
     if (err)
@@ -602,17 +611,6 @@ app.post("/operar", async (req, res) => {
     // Calcular el Margen Requerido para la nueva operación
     const margenRequerido = (nPrecioEntrada * nVolumen) / nApalancamiento;
 
-    // Validación de margen simple: El nuevo Margen Usado no debe exceder el Balance actual (Equidad inicial)
-    if (balanceActual < margenUsadoActual + margenRequerido) {
-      await client.query("ROLLBACK");
-      return res
-        .status(400)
-        .json({
-          success: false,
-          error: "Fondos insuficientes (Margen Libre bajo).",
-        });
-    }
-
     // --- APLICACIÓN DE COMISIONES Y SPREADS ---
 
     let precioAperturaFinal = nPrecioEntrada;
@@ -634,15 +632,16 @@ app.post("/operar", async (req, res) => {
     const volumenNocional = nVolumen * nPrecioEntrada;
     comisionCosto = volumenNocional * (COMISION_PORCENTAJE / 100);
 
-    // 3. Validar si el Balance restante puede cubrir la comisión
-    const balanceDespuesDeComision = balanceActual - comisionCosto;
-    if (balanceDespuesDeComision < margenUsadoActual + margenRequerido) {
+    // 3. Validación de margen y comisión
+    // La equidad mínima necesaria es: Margen Usado Actual + Margen Requerido + Costo de Comisión
+    if (balanceActual < margenUsadoActual + margenRequerido + comisionCosto) {
       await client.query("ROLLBACK");
       return res
         .status(400)
         .json({
           success: false,
-          error: "Fondos insuficientes para cubrir la comisión y el margen.",
+          error:
+            "Fondos insuficientes (Margen Libre bajo o insuficiente para cubrir la comisión).",
         });
     }
 
@@ -842,11 +841,12 @@ app.get("/leverage-options", (req, res) => {
   res.json(allowedOptions);
 });
 
-// --- NUEVA RUTA: OBTENER COMISIONES Y SPREAD ---
+// --- RUTA: OBTENER COMISIONES, SPREAD Y SWAP ---
 app.get("/commissions", (req, res) => {
   res.json({
     spreadPercentage: SPREAD_PORCENTAJE,
     commissionPercentage: COMISION_PORCENTAJE,
+    swapDailyPercentage: SWAP_DAILY_PORCENTAJE, // NUEVO
   });
 });
 
@@ -1231,7 +1231,7 @@ app.post("/admin/leverage", async (req, res) => {
   res.json({ success: true, maxLeverage: MAX_LEVERAGE });
 });
 
-// --- NUEVA RUTA ADMIN: GESTIONAR COMISIONES ---
+// --- NUEVA RUTA ADMIN: GESTIONAR COMISIONES Y SWAP ---
 app.get("/admin/commissions", async (req, res) => {
   if (!req.session.userId || req.session.rol !== "admin") {
     return res.status(403).json({ error: "No autorizado" });
@@ -1239,6 +1239,7 @@ app.get("/admin/commissions", async (req, res) => {
   res.json({
     spreadPercentage: SPREAD_PORCENTAJE,
     commissionPercentage: COMISION_PORCENTAJE,
+    swapDailyPercentage: SWAP_DAILY_PORCENTAJE, // NUEVO
   });
 });
 
@@ -1246,8 +1247,8 @@ app.post("/admin/commissions", async (req, res) => {
   if (!req.session.userId || req.session.rol !== "admin") {
     return res.status(403).json({ error: "No autorizado" });
   }
-  const { newSpread, newCommission } = req.body;
-  let nSpread, nCommission;
+  const { newSpread, newCommission, newSwap } = req.body; // Recibe newSwap
+  let nSpread, nCommission, nSwap;
 
   if (newSpread !== undefined) {
     nSpread = parseFloat(newSpread);
@@ -1269,13 +1270,25 @@ app.post("/admin/commissions", async (req, res) => {
     COMISION_PORCENTAJE = nCommission;
   }
 
+  if (newSwap !== undefined) {
+    // Procesa el nuevo valor de Swap
+    nSwap = parseFloat(newSwap);
+    if (isNaN(nSwap) || nSwap < 0) {
+      return res
+        .status(400)
+        .json({ error: "Valor de Swap inválido (debe ser >= 0)." });
+    }
+    SWAP_DAILY_PORCENTAJE = nSwap;
+  }
+
   console.log(
-    `✅ Comisiones actualizadas. Spread: ${SPREAD_PORCENTAJE}%, Comisión: ${COMISION_PORCENTAJE}%`
+    `✅ Comisiones y Swap actualizados. Spread: ${SPREAD_PORCENTAJE}%, Comisión: ${COMISION_PORCENTAJE}%, Swap: ${SWAP_DAILY_PORCENTAJE}%`
   );
   res.json({
     success: true,
     spreadPercentage: SPREAD_PORCENTAJE,
     commissionPercentage: COMISION_PORCENTAJE,
+    swapDailyPercentage: SWAP_DAILY_PORCENTAJE, // NUEVO
   });
 });
 
@@ -1296,7 +1309,9 @@ const startServer = async () => {
       console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
       iniciarWebSocketKuCoin();
       iniciarWebSocketTwelveData();
-      setInterval(() => cerrarOperacionesAutomáticamente(), 1500);
+      // El Swap se aplica cada 24 horas (86400000 ms) para simular el cobro nocturno,
+      // pero lo establecemos a 5 segundos para fines de prueba en el Canvas.
+      setInterval(() => cerrarOperacionesAutomáticamente(), 5000); // 5 segundos para prueba
     });
 
     server.on("upgrade", (request, socket, head) => {
