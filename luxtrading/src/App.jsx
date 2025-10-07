@@ -189,8 +189,36 @@ const AppProvider = ({ children }) => {
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [realTimePrices, setRealTimePrices] = useState({});
   const [selectedAsset, setSelectedAsset] = useState("BTC-USDT");
-  // Nuevo estado para las opciones de apalancamiento
-  const [leverageOptions, setLeverageOptions] = useState([1, 50, 100, 200]);
+
+  // ESTADO ACTUALIZADO: Opciones de apalancamiento y Comisiones
+  const [leverageOptions, setLeverageOptions] = useState([
+    1, 5, 10, 50, 100, 200,
+  ]);
+  const [commissions, setCommissions] = useState({
+    spreadPercentage: 0.01,
+    commissionPercentage: 0.1,
+    swapDailyPercentage: 0.05,
+  });
+
+  const fetchCommissions = useCallback(async () => {
+    try {
+      const { data } = await axios.get("/commissions");
+      setCommissions(data);
+    } catch (error) {
+      console.error("Error fetching commissions/swap:", error);
+    }
+  }, []);
+
+  const fetchLeverageOptions = useCallback(async () => {
+    try {
+      const { data } = await axios.get("/leverage-options");
+      if (data && data.length > 0) {
+        setLeverageOptions(data);
+      }
+    } catch (error) {
+      console.error("Error fetching leverage options:", error);
+    }
+  }, []);
 
   const checkUser = useCallback(async () => {
     setIsAppLoading(true);
@@ -207,19 +235,11 @@ const AppProvider = ({ children }) => {
     }
   }, []);
 
-  const fetchLeverageOptions = useCallback(async () => {
-    try {
-      const { data } = await axios.get("/leverage-options");
-      setLeverageOptions(data);
-    } catch (error) {
-      console.error("Error fetching leverage options:", error);
-    }
-  }, []);
-
   useEffect(() => {
     checkUser();
     fetchLeverageOptions();
-  }, [checkUser, fetchLeverageOptions]);
+    fetchCommissions();
+  }, [checkUser, fetchLeverageOptions, fetchCommissions]);
 
   const logout = useCallback(async () => {
     try {
@@ -245,8 +265,10 @@ const AppProvider = ({ children }) => {
       selectedAsset,
       setSelectedAsset,
       refreshUser: checkUser,
-      leverageOptions, // Añadir leverageOptions al contexto
-      fetchLeverageOptions,
+      leverageOptions, // Añadido
+      fetchLeverageOptions, // Añadido
+      commissions, // Añadido
+      fetchCommissions, // Añadido
     }),
     [
       user,
@@ -258,6 +280,8 @@ const AppProvider = ({ children }) => {
       checkUser,
       leverageOptions,
       fetchLeverageOptions,
+      commissions,
+      fetchCommissions,
     ]
   );
 
@@ -398,7 +422,7 @@ const TradingViewWidget = React.memo(({ symbol }) => {
         symbol: tvSymbol,
         interval: "D",
         timezone: "Etc/UTC",
-        theme: "dark",
+        theme: "dark", // Cambiado a dark para estética moderna
         style: "1",
         locale: "es",
         enable_publishing: false,
@@ -1285,7 +1309,9 @@ const ModalLivePrice = React.memo(({ symbol }) => {
 
 const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const { type, asset, volume } = operationData || {};
-  const { realTimePrices, leverageOptions } = useContext(AppContext);
+  // Desestructuración de datos del contexto
+  const { realTimePrices, leverageOptions, commissions } =
+    useContext(AppContext);
   const normalizedAsset = asset?.toUpperCase().replace(/[-/]/g, "");
   const livePrice = realTimePrices[normalizedAsset];
   const defaultLeverage = leverageOptions[leverageOptions.length - 1] || 1;
@@ -1307,6 +1333,13 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
     if (!livePrice || !volume || !leverage) return "0.00";
     return ((livePrice * volume) / leverage).toFixed(2);
   }, [livePrice, volume, leverage]);
+
+  // Cálculo de la comisión de apertura
+  const commissionCost = useMemo(() => {
+    if (!livePrice || !volume || !commissions) return 0;
+    const volumenNocional = livePrice * volume;
+    return volumenNocional * (commissions.commissionPercentage / 100);
+  }, [livePrice, volume, commissions]);
 
   const calculatePotentialProfit = useCallback(
     (value, targetType) => {
@@ -1359,8 +1392,16 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           <span>Volumen:</span>
           <span className="font-mono text-white">{volume}</span>
         </p>
-        <div>
-          <label className="block text-sm font-medium mb-1 text-neutral-300">
+        <div className="pt-2">
+          <p className="text-neutral-300 flex justify-between">
+            <span>
+              Comisión de Apertura ({commissions.commissionPercentage}%):
+            </span>
+            <span className="font-mono text-red-400">
+              ${commissionCost.toFixed(2)}
+            </span>
+          </p>
+          <label className="block text-sm font-medium mb-1 mt-2 text-neutral-300">
             Apalancamiento:
           </label>
           <select
@@ -1528,7 +1569,13 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
   </Modal>
 );
 
-const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
+const UserOperationsModal = ({
+  isOpen,
+  onClose,
+  user,
+  setAlert,
+  onUpdatePrice,
+}) => {
   const [operations, setOperations] = useState([]);
   const [editingData, setEditingData] = useState({});
   const [pagination, setPagination] = useState({
@@ -1575,6 +1622,7 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
       [opId]: { ...prev[opId], [field]: value },
     }));
 
+  // MODIFICADO: Ahora el Save utiliza la estructura del backend
   const handleSaveOperation = async (op) => {
     const dataToSave = editingData[op.id] || {};
     const payload = {
@@ -1582,23 +1630,25 @@ const UserOperationsModal = ({ isOpen, onClose, user, onUpdatePrice }) => {
       activo: op.activo,
       tipo_operacion: op.tipo_operacion,
       volumen: op.volumen,
+      // Los campos de abajo son editables en la fila, usar valores del estado
+      precio_entrada: dataToSave.precio_entrada || op.precio_entrada,
+      apalancamiento:
+        parseInt(dataToSave.apalancamiento) || op.apalancamiento || 1,
+      // Usar los valores originales de la operación para estos campos
+      // ya que no están siendo editados en este modal de forma completa.
       precio_cierre: op.precio_cierre,
       take_profit: op.take_profit,
       stop_loss: op.stop_loss,
       cerrada: op.cerrada,
-      // Usar los valores editados o los originales si no se tocaron
-      precio_entrada: dataToSave.precio_entrada || op.precio_entrada,
-      apalancamiento:
-        parseInt(dataToSave.apalancamiento) || op.apalancamiento || 1,
     };
 
     try {
       await axios.post("/admin/actualizar-operacion", payload);
-      alert("Operación actualizada con éxito", "success");
+      setAlert({ message: "Operación actualizada con éxito", type: "success" });
       fetchUserOperations(pagination.currentPage);
     } catch (error) {
       console.error("Error updating operation:", error);
-      alert("Error al actualizar la operación", "error");
+      setAlert({ message: "Error al actualizar la operación", type: "error" });
     }
   };
 
@@ -2087,42 +2137,32 @@ const CommissionSettingsModal = ({
   onClose,
   setAlert,
   fetchLeverageOptions,
+  fetchCommissions,
 }) => {
+  const { commissions } = useContext(AppContext);
   const [settings, setSettings] = useState({
-    spread: 0,
-    commission: 0,
-    swap: 0,
+    spread: commissions.spreadPercentage,
+    commission: commissions.commissionPercentage,
+    swap: commissions.swapDailyPercentage,
     maxLeverage: 100,
   });
   const [leverageInput, setLeverageInput] = useState(100);
 
+  // Cargar apalancamiento al abrir
   useEffect(() => {
     if (isOpen) {
-      axios
-        .get("/admin/commissions")
-        .then((res) => {
-          setSettings((prev) => ({
-            ...prev,
-            spread: res.data.spreadPercentage,
-            commission: res.data.commissionPercentage,
-            swap: res.data.swapDailyPercentage,
-          }));
-        })
-        .catch(() =>
-          setAlert({
-            message: "No se pudieron cargar las comisiones",
-            type: "error",
-          })
-        );
       axios.get("/admin/leverage").then((res) => {
         setSettings((prev) => ({
           ...prev,
           maxLeverage: res.data.maxLeverage,
+          spread: commissions.spreadPercentage,
+          commission: commissions.commissionPercentage,
+          swap: commissions.swapDailyPercentage,
         }));
         setLeverageInput(res.data.maxLeverage);
       });
     }
-  }, [isOpen, setAlert]);
+  }, [isOpen, setAlert, commissions]);
 
   const handleCommissionsSave = async () => {
     try {
@@ -2135,6 +2175,7 @@ const CommissionSettingsModal = ({
         message: "Comisiones y Swap actualizados",
         type: "success",
       });
+      fetchCommissions(); // Refrescar contexto global
     } catch (error) {
       setAlert({
         message:
@@ -2852,7 +2893,8 @@ const DashboardPage = () => {
     setSelectedAsset,
     realTimePrices,
     setRealTimePrices,
-    fetchLeverageOptions,
+    fetchLeverageOptions, // USADO
+    fetchCommissions, // USADO
   } = useContext(AppContext);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [mobileVolume, setMobileVolume] = useState(0.01);
@@ -3442,6 +3484,7 @@ const DashboardPage = () => {
         onClose={() => setIsUserOpsModalOpen(false)}
         user={currentUserForOps}
         onUpdatePrice={handleUpdatePrice}
+        setAlert={setAlert} // Pasar setAlert
       />
       <OperationDetailsModal
         isOpen={isOpDetailsModalOpen}
@@ -3459,6 +3502,7 @@ const DashboardPage = () => {
         onClose={() => setIsCommissionsModalOpen(false)}
         setAlert={setAlert}
         fetchLeverageOptions={fetchLeverageOptions}
+        fetchCommissions={fetchCommissions} // Pasar prop
       />
 
       <main className="flex-1 flex flex-col bg-transparent overflow-hidden">
