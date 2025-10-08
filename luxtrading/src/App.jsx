@@ -23,8 +23,16 @@ import {
 } from "chart.js";
 import { motion, AnimatePresence } from "framer-motion";
 
+// --- FIX CRÍTICO: Configuración de Entorno Segura (Prevención de Pantalla Blanca) ---
+// Accede a las variables de entorno de forma segura, usando valores por defecto.
+const env = typeof import.meta.env !== "undefined" ? import.meta.env : {};
+const VITE_API_URL = env.VITE_API_URL || "";
+const VITE_WSS_URL = env.VITE_WSS_URL || "";
+const VITE_PLATFORM_LOGO = env.VITE_PLATFORM_LOGO || "/luxtrading-logo.png";
+const VITE_PLATFORM_ID = env.VITE_PLATFORM_ID || "luxtrading";
+
 // --- Configuración de Axios ---
-axios.defaults.baseURL = import.meta.env.VITE_API_URL;
+axios.defaults.baseURL = VITE_API_URL;
 axios.defaults.withCredentials = true;
 
 // --- Registro de Chart.js ---
@@ -118,18 +126,18 @@ const Icons = {
       className={className}
     />
   ),
+  Settings: ({ className }) => (
+    <Icon
+      path="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75M10.5 18a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 18H7.5m9-12h3.75m-3.75 0a1.5 1.5 0 013 0m-3 0a1.5 1.5 0 003 0m-9 6h3.75m-3.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M12 12H3.75"
+      className={className}
+    />
+  ),
   Eye: ({ className }) => (
     <Icon path="M15 12a3 3 0 11-6 0 3 3 0 016 0z" className={className} />
   ),
   EyeOff: ({ className }) => (
     <Icon
       path="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a9.97 9.97 0 01-2.14 3.354m-4.243-4.243l-4.242-4.242"
-      className={className}
-    />
-  ),
-  Settings: ({ className }) => (
-    <Icon
-      path="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75M10.5 18a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 18H7.5m9-12h3.75m-3.75 0a1.5 1.5 0 013 0m-3 0a1.5 1.5 0 003 0m-9 6h3.75m-3.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M12 12H3.75"
       className={className}
     />
   ),
@@ -642,16 +650,21 @@ const AssetPrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
   // CRÍTICO: Normalizar el símbolo para la búsqueda
   const normalizedSymbol = symbol.toUpperCase().replace(/[-/]/g, "");
-  const price = realTimePrices[normalizedSymbol];
+  const priceString = realTimePrices[normalizedSymbol];
+
+  // FIX: Convertir explícitamente a número y manejar NaN
+  const price = parseFloat(priceString);
+
   const flashClass = useFlashOnUpdate(price);
-  const baseColor = price ? "text-white" : "text-neutral-500";
+  const baseColor = !isNaN(price) ? "text-white" : "text-neutral-500";
   const finalColorClass = flashClass || baseColor;
+
   return (
     <div className="px-2 py-1 rounded-md">
       <span
         className={`font-mono text-xs transition-colors duration-300 ${finalColorClass}`}
       >
-        {price ? parseFloat(price).toFixed(4) : "---"}
+        {!isNaN(price) ? price.toFixed(4) : "---"}
       </span>
     </div>
   );
@@ -1080,17 +1093,26 @@ const LiveProfitCell = ({ operation }) => {
     const normalizedSymbol = operation.activo
       .toUpperCase()
       .replace(/[-/]/g, "");
-    const currentPrice = realTimePrices[normalizedSymbol];
-    if (typeof currentPrice !== "number") return 0;
+
+    // FIX: Asegurar que el precio sea un número
+    const currentPrice = parseFloat(realTimePrices[normalizedSymbol]);
+
+    if (isNaN(currentPrice)) return 0;
+
     // Cálculo P&L basado en el precio de entrada (que ya incluye el spread)
     return operation.tipo_operacion.toLowerCase().includes("sell")
       ? (operation.precio_entrada - currentPrice) * operation.volumen
       : (currentPrice - operation.precio_entrada) * operation.volumen;
   }, [realTimePrices, operation]);
+
   const profit = calculateProfit();
-  const profitColor = profit >= 0 ? "text-green-400" : "text-red-500";
+  const profitNum = parseFloat(profit);
+
+  if (isNaN(profitNum)) return <span className="text-neutral-500">---</span>;
+
+  const profitColor = profitNum >= 0 ? "text-green-400" : "text-red-500";
   return (
-    <span className={`font-mono ${profitColor}`}>{profit.toFixed(2)}</span>
+    <span className={`font-mono ${profitColor}`}>{profitNum.toFixed(2)}</span>
   );
 };
 
@@ -1396,15 +1418,19 @@ const Modal = ({
 const ModalLivePrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
   const normalizedSymbol = symbol?.toUpperCase().replace(/[-/]/g, "");
-  const price = realTimePrices[normalizedSymbol];
+  const priceString = realTimePrices[normalizedSymbol];
+
+  // FIX: Convertir explícitamente a número y manejar NaN
+  const price = parseFloat(priceString);
+
   const flashClass = useFlashOnUpdate(price);
-  const baseColor = price ? "text-white" : "text-yellow-400";
+  const baseColor = !isNaN(price) ? "text-white" : "text-yellow-400";
   const finalColorClass = flashClass || baseColor;
   return (
     <span
       className={`font-mono transition-colors duration-300 ${finalColorClass}`}
     >
-      ${price ? parseFloat(price).toFixed(4) : "Cargando..."}
+      {!isNaN(price) ? `$${price.toFixed(4)}` : "Cargando..."}
     </span>
   );
 });
@@ -1415,7 +1441,9 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const { realTimePrices, leverageOptions, commissions } =
     useContext(AppContext);
   const normalizedAsset = asset?.toUpperCase().replace(/[-/]/g, "");
-  const livePrice = realTimePrices[normalizedAsset];
+  const livePriceString = realTimePrices[normalizedAsset]; // Es un string
+  const livePrice = parseFloat(livePriceString); // Es un número
+
   const defaultLeverage = leverageOptions[leverageOptions.length - 1] || 1;
   const [leverage, setLeverage] = useState(defaultLeverage);
   const [tp, setTp] = useState("");
@@ -1430,22 +1458,22 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
     }
   }, [isOpen, defaultLeverage]);
 
-  // Calcular el margen requerido usando el apalancamiento seleccionado
-  const requiredMargin = useMemo(() => {
-    if (!livePrice || !volume || !leverage) return "0.00";
-    return ((livePrice * volume) / leverage).toFixed(2);
-  }, [livePrice, volume, leverage]);
-
   // Cálculo de la comisión de apertura
   const commissionCost = useMemo(() => {
-    if (!livePrice || !volume || !commissions) return 0;
+    if (isNaN(livePrice) || !volume || !commissions) return 0;
     const volumenNocional = livePrice * volume;
     return volumenNocional * (commissions.commissionPercentage / 100);
   }, [livePrice, volume, commissions]);
 
+  // Calcular el margen requerido usando el apalancamiento seleccionado
+  const requiredMargin = useMemo(() => {
+    if (isNaN(livePrice) || !volume || !leverage) return "0.00";
+    return ((livePrice * volume) / leverage).toFixed(2);
+  }, [livePrice, volume, leverage]);
+
   const calculatePotentialProfit = useCallback(
     (value, targetType) => {
-      if (!value || !livePrice || !volume) return null;
+      if (!value || isNaN(livePrice) || !volume) return null;
       const targetPrice = parseFloat(value);
       if (isNaN(targetPrice)) return null;
 
@@ -1565,9 +1593,9 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
       <div className="flex justify-end mt-4">
         <button
           onClick={handleConfirm}
-          disabled={!livePrice}
+          disabled={isNaN(livePrice)}
           className={`px-5 py-2 rounded-md text-white font-bold transition-colors cursor-pointer ${
-            !livePrice
+            isNaN(livePrice)
               ? "bg-gray-500 cursor-not-allowed"
               : type === "buy"
               ? "bg-green-600 hover:bg-green-500"
@@ -1671,86 +1699,154 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
   </Modal>
 );
 
+// MODIFICADO: Ahora este modal permite la edición de todas las columnas.
 const UserOperationsModal = ({
   isOpen,
   onClose,
   user,
   setAlert,
-  onUpdatePrice,
+  onUpdateOperation, // Recibe la función de actualización del dashboard
 }) => {
   const [operations, setOperations] = useState([]);
-  const [editingData, setEditingData] = useState({});
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
   });
+  const [showAll, setShowAll] = useState(false); // Estado para mostrar todas las ops
+
+  // Función local para calcular la ganancia (necesario para la edición en línea)
+  const calculateProfit = (op) => {
+    const p_cierre = parseFloat(op.precio_cierre);
+    const p_entrada = parseFloat(op.precio_entrada);
+    const volumen = parseFloat(op.volumen);
+    const tipo = op.tipo_operacion.toLowerCase();
+
+    if (
+      op.cerrada &&
+      !isNaN(p_cierre) &&
+      !isNaN(p_entrada) &&
+      !isNaN(volumen)
+    ) {
+      if (tipo === "buy") {
+        return (p_cierre - p_entrada) * volumen;
+      } else if (tipo === "sell") {
+        return (p_entrada - p_cierre) * volumen;
+      }
+    }
+    // Si está abierta, la ganancia mostrada en este modal de administración es 0 hasta que se guarde el cierre.
+    // Usamos el valor original de ganancia si la operación estaba cerrada y la editamos sin cerrar/abrirla.
+    return parseFloat(op.ganancia || 0);
+  };
 
   const fetchUserOperations = useCallback(
     (page = 1) => {
-      if (isOpen && user) {
-        axios
-          .get(`/admin-operaciones/${user.id}?page=${page}&limit=10`)
-          .then((res) => {
-            setOperations(res.data.operaciones);
+      if (!isOpen || !user) return;
+
+      const endpoint = showAll
+        ? `/admin-operaciones/${user.id}/all`
+        : `/admin-operaciones/${user.id}?page=${page}&limit=10`;
+
+      axios
+        .get(endpoint)
+        .then((res) => {
+          setOperations(
+            res.data.operaciones.map((op) => ({
+              ...op,
+              // Aseguramos que los números sean tratados como strings en los inputs por defecto
+              precio_entrada: op.precio_entrada,
+              precio_cierre: op.precio_cierre || "",
+              take_profit: op.take_profit || "",
+              stop_loss: op.stop_loss || "",
+              // Recalculamos la ganancia solo para consistencia visual si está cerrada
+              ganancia: parseFloat(op.ganancia || 0),
+            }))
+          );
+          if (!showAll) {
             setPagination({
               currentPage: res.data.currentPage,
               totalPages: res.data.totalPages,
             });
-            // Inicializar datos de edición
-            const initialData = {};
-            res.data.operaciones.forEach((op) => {
-              initialData[op.id] = {
-                precio_entrada: op.precio_entrada,
-                apalancamiento: op.apalancamiento || 1,
-              };
-            });
-            setEditingData(initialData);
-          })
-          .catch((err) =>
-            console.error("Error fetching user operations:", err)
-          );
-      }
+          }
+        })
+        .catch((err) => console.error("Error fetching user operations:", err));
     },
-    [isOpen, user]
+    [isOpen, user, showAll]
   );
 
   useEffect(() => {
+    if (isOpen) {
+      setShowAll(false); // Resetear a paginación al abrir
+      fetchUserOperations(1);
+    }
+  }, [isOpen, user]);
+
+  useEffect(() => {
     fetchUserOperations(1);
-  }, [isOpen, user, fetchUserOperations]);
+  }, [showAll]);
 
-  const handleDataChange = (opId, field, value) =>
-    setEditingData((prev) => ({
-      ...prev,
-      [opId]: { ...prev[opId], [field]: value },
-    }));
+  const handleInputChange = (opId, field, value) => {
+    setOperations((currentOps) =>
+      currentOps.map((op) => {
+        if (op.id === opId) {
+          const updatedOp = { ...op, [field]: value };
 
-  // MODIFICADO: Ahora el Save utiliza la estructura del backend
-  const handleSaveOperation = async (op) => {
-    const dataToSave = editingData[op.id] || {};
+          // Si el campo modificado es el checkbox de cerrada, ajustamos el tipo
+          if (field === "cerrada" && !value) {
+            // Si se abre una operación cerrada, limpiamos precio_cierre
+            updatedOp.precio_cierre = "";
+          } else if (
+            field === "cerrada" &&
+            value &&
+            updatedOp.precio_cierre === ""
+          ) {
+            // Si se marca como cerrada, pero no hay precio de cierre, ponemos el precio de entrada como placeholder (opcional)
+            updatedOp.precio_cierre = updatedOp.precio_entrada;
+          }
+
+          // Recalcular la ganancia después del cambio (el backend hará el cálculo final)
+          updatedOp.ganancia = calculateProfit(updatedOp);
+          return updatedOp;
+        }
+        return op;
+      })
+    );
+  };
+
+  const handleSave = async (op) => {
     const payload = {
       id: op.id,
       activo: op.activo,
       tipo_operacion: op.tipo_operacion,
-      volumen: op.volumen,
-      // Los campos de abajo son editables en la fila, usar valores del estado
-      precio_entrada: dataToSave.precio_entrada || op.precio_entrada,
-      apalancamiento:
-        parseInt(dataToSave.apalancamiento) || op.apalancamiento || 1,
-      // Usar los valores originales de la operación para estos campos
-      // ya que no están siendo editados en este modal de forma completa.
-      precio_cierre: op.precio_cierre,
-      take_profit: op.take_profit,
-      stop_loss: op.stop_loss,
+      volumen: parseFloat(op.volumen),
+      precio_entrada: parseFloat(op.precio_entrada),
+      precio_cierre: op.precio_cierre ? parseFloat(op.precio_cierre) : null,
+      take_profit: op.take_profit ? parseFloat(op.take_profit) : null,
+      stop_loss: op.stop_loss ? parseFloat(op.stop_loss) : null,
       cerrada: op.cerrada,
+      apalancamiento: parseInt(op.apalancamiento) || 1,
     };
 
+    // Validación básica
+    if (
+      isNaN(payload.volumen) ||
+      isNaN(payload.precio_entrada) ||
+      payload.volumen <= 0
+    ) {
+      setAlert({
+        message: "Volumen o Precio de Entrada inválido.",
+        type: "error",
+      });
+      return;
+    }
+
+    // Llamada a la función de actualización del dashboard (que llama al backend)
     try {
-      await axios.post("/admin/actualizar-operacion", payload);
-      setAlert({ message: "Operación actualizada con éxito", type: "success" });
-      fetchUserOperations(pagination.currentPage);
+      await onUpdateOperation(payload);
+      setAlert({ message: "Operación guardada con éxito.", type: "success" });
+      fetchUserOperations(pagination.currentPage); // Refrescar la lista
     } catch (error) {
-      console.error("Error updating operation:", error);
-      setAlert({ message: "Error al actualizar la operación", type: "error" });
+      // La función onUpdateOperation ya debería haber establecido un alert de error
+      // pero lo reforzamos aquí si es necesario
     }
   };
 
@@ -1761,7 +1857,17 @@ const UserOperationsModal = ({
       title={`Operaciones de ${user?.nombre}`}
       maxWidth="max-w-7xl"
     >
-      <div className="overflow-auto">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-bold">Listado de Operaciones</h3>
+        <button
+          onClick={() => setShowAll((prev) => !prev)}
+          className="bg-cyan-600 text-white px-3 py-1 text-xs rounded hover:bg-cyan-500 cursor-pointer"
+        >
+          {showAll ? "Ver con Paginación" : "Ver Todas las Operaciones"}
+        </button>
+      </div>
+
+      <div className="overflow-auto max-h-[70vh]">
         <table className="w-full text-sm text-left border-collapse">
           <thead className="bg-neutral-700 text-neutral-300 sticky top-0">
             <tr>
@@ -1770,13 +1876,16 @@ const UserOperationsModal = ({
                 "Activo",
                 "Tipo",
                 "Volumen",
-                "Entrada",
-                "Ap",
-                "Estado",
-                "G-P",
+                "P. Entrada",
+                "P. Cierre",
+                "TP",
+                "SL",
+                "Apalanc.",
+                "Cerrada",
+                "G/P (Calc.)",
                 "Acción",
               ].map((h) => (
-                <th key={h} className="p-2 font-medium">
+                <th key={h} className="p-2 font-medium whitespace-nowrap">
                   {h}
                 </th>
               ))}
@@ -1785,19 +1894,83 @@ const UserOperationsModal = ({
           <tbody className="bg-neutral-800">
             {operations.map((op) => (
               <tr key={op.id} className="border-b border-white/10">
-                <td className="p-2">{op.id}</td>
-                <td className="p-2">{op.activo}</td>
-                <td className="p-2">{op.tipo_operacion}</td>
-                <td className="p-2">{op.volumen}</td>
+                <td className="p-2 text-xs">{op.id}</td>
+                <td className="p-2">
+                  <input
+                    type="text"
+                    value={op.activo}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "activo", e.target.value)
+                    }
+                    className="w-16 p-1 bg-white/5 rounded border border-white/10 text-xs"
+                  />
+                </td>
+                <td className="p-2">
+                  <select
+                    value={op.tipo_operacion}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "tipo_operacion", e.target.value)
+                    }
+                    className="w-14 p-1 bg-white/5 rounded border border-white/10 text-xs cursor-pointer"
+                  >
+                    <option value="buy">BUY</option>
+                    <option value="sell">SELL</option>
+                  </select>
+                </td>
+                <td className="p-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={op.volumen}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "volumen", e.target.value)
+                    }
+                    className="w-16 p-1 bg-white/5 rounded border border-white/10 text-xs"
+                  />
+                </td>
                 <td className="p-2">
                   <input
                     type="number"
                     step="any"
-                    defaultValue={op.precio_entrada}
+                    value={op.precio_entrada}
                     onChange={(e) =>
-                      handleDataChange(op.id, "precio_entrada", e.target.value)
+                      handleInputChange(op.id, "precio_entrada", e.target.value)
                     }
-                    className="w-20 p-1 bg-white/5 rounded border border-white/10"
+                    className="w-20 p-1 bg-white/5 rounded border border-white/10 text-xs"
+                  />
+                </td>
+                <td className="p-2">
+                  <input
+                    type="number"
+                    step="any"
+                    value={op.precio_cierre}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "precio_cierre", e.target.value)
+                    }
+                    className="w-20 p-1 bg-white/5 rounded border border-white/10 text-xs"
+                    disabled={!op.cerrada} // Solo editable si está cerrada
+                  />
+                </td>
+                <td className="p-2">
+                  <input
+                    type="number"
+                    step="any"
+                    value={op.take_profit}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "take_profit", e.target.value)
+                    }
+                    className="w-16 p-1 bg-white/5 rounded border border-white/10 text-xs"
+                  />
+                </td>
+                <td className="p-2">
+                  <input
+                    type="number"
+                    step="any"
+                    value={op.stop_loss}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "stop_loss", e.target.value)
+                    }
+                    className="w-16 p-1 bg-white/5 rounded border border-white/10 text-xs"
                   />
                 </td>
                 <td className="p-2">
@@ -1805,20 +1978,34 @@ const UserOperationsModal = ({
                     type="number"
                     step="1"
                     min="1"
-                    defaultValue={op.apalancamiento || 1}
+                    value={op.apalancamiento || 1}
                     onChange={(e) =>
-                      handleDataChange(op.id, "apalancamiento", e.target.value)
+                      handleInputChange(op.id, "apalancamiento", e.target.value)
                     }
-                    className="w-16 p-1 bg-white/5 rounded border border-white/10"
+                    className="w-14 p-1 bg-white/5 rounded border border-white/10 text-xs"
                   />
                 </td>
-                <td className="p-2">{op.cerrada ? "Cerrada" : "Abierta"}</td>
-                <td className="p-2 font-mono text-green-400">
-                  {parseFloat(op.ganancia || 0).toFixed(2)}
+                <td className="p-2 text-center">
+                  <input
+                    type="checkbox"
+                    checked={op.cerrada}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "cerrada", e.target.checked)
+                    }
+                    className="form-checkbox h-5 w-5 text-cyan-600 bg-neutral-700 border-neutral-600 rounded focus:ring-cyan-500 cursor-pointer"
+                  />
+                </td>
+                <td
+                  className={`p-2 font-mono text-xs ${
+                    op.ganancia >= 0 ? "text-green-400" : "text-red-400"
+                  }`}
+                >
+                  {/* Muestra la ganancia recalculada localmente */}
+                  {op.ganancia.toFixed(2)}
                 </td>
                 <td className="p-2">
                   <button
-                    onClick={() => handleSaveOperation(op)}
+                    onClick={() => handleSave(op)}
                     className="bg-cyan-600 text-white px-3 py-1 text-xs rounded hover:bg-cyan-500 cursor-pointer"
                   >
                     Guardar
@@ -1829,11 +2016,13 @@ const UserOperationsModal = ({
           </tbody>
         </table>
       </div>
-      <Pagination
-        currentPage={pagination.currentPage}
-        totalPages={pagination.totalPages}
-        onPageChange={(page) => fetchUserOperations(page)}
-      />
+      {!showAll && (
+        <Pagination
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          onPageChange={(page) => fetchUserOperations(page)}
+        />
+      )}
     </Modal>
   );
 };
@@ -3155,17 +3344,22 @@ const DashboardPage = () => {
         try {
           const data = JSON.parse(event.data);
           if (data.type === "price_update" && data.prices) {
-            // AÑADIDO: Log de depuración para ver los datos crudos entrantes
-            console.log("-> RECEIVED RAW PRICE UPDATE:", data.prices);
-
             // FIX CRÍTICO: Normalizar claves de precios entrantes para coincidir con AssetPrice
             const normalizedPrices = {};
             for (const key in data.prices) {
+              const priceValue = data.prices[key];
               const normalizedKey = key.toUpperCase().replace(/[-/]/g, "");
-              normalizedPrices[normalizedKey] = data.prices[key];
+
+              // Guardamos como string para consistencia, los componentes lo parsearán a float.
+              if (
+                typeof priceValue === "number" ||
+                typeof priceValue === "string"
+              ) {
+                normalizedPrices[normalizedKey] = String(priceValue);
+              } else {
+                normalizedPrices[normalizedKey] = "0.0000";
+              }
             }
-            // AÑADIDO: Log de depuración para ver los datos normalizados
-            console.log("-> NORMALIZED PRICES:", normalizedPrices);
 
             setRealTimePrices((prev) => ({ ...prev, ...normalizedPrices }));
           } else if (data.tipo === "operacion_cerrada") {
@@ -3230,8 +3424,10 @@ const DashboardPage = () => {
     // 1. Calcular P&L
     const pnl = openOperations.reduce((total, op) => {
       const normalizedSymbol = op.activo.toUpperCase().replace(/[-/]/g, "");
-      const currentPrice = realTimePrices[normalizedSymbol];
-      if (typeof currentPrice !== "number") return total;
+      const currentPrice = parseFloat(realTimePrices[normalizedSymbol]); // FIX: Parse float
+
+      if (isNaN(currentPrice)) return total;
+
       // Usar precio_entrada que ya incluye spread
       return (
         total +
@@ -3282,8 +3478,9 @@ const DashboardPage = () => {
         return;
       }
       const normalizedAsset = selectedAsset.toUpperCase().replace(/[-/]/g, "");
-      const currentPrice = realTimePrices[normalizedAsset];
-      if (!currentPrice) {
+      const currentPrice = parseFloat(realTimePrices[normalizedAsset]); // FIX: Parse float
+
+      if (isNaN(currentPrice)) {
         setAlert({
           message: "Precio del activo no disponible. Intente de nuevo.",
           type: "error",
@@ -3302,8 +3499,9 @@ const DashboardPage = () => {
   const handleConfirmOperation = useCallback(
     async (opDetails) => {
       const normalizedAsset = selectedAsset.toUpperCase().replace(/[-/]/g, "");
-      const livePrice = realTimePrices[normalizedAsset];
-      if (!livePrice) {
+      const livePrice = parseFloat(realTimePrices[normalizedAsset]); // FIX: Parse float
+
+      if (isNaN(livePrice)) {
         setAlert({
           message: "No se pudo confirmar, el precio no está disponible.",
           type: "error",
@@ -3384,36 +3582,35 @@ const DashboardPage = () => {
   const handleOpRowClick = useCallback(
     (op) => {
       const normalizedSymbol = op.activo.toUpperCase().replace(/[-/]/g, "");
-      const currentPrice = realTimePrices[normalizedSymbol];
+      const currentPrice = parseFloat(realTimePrices[normalizedSymbol]); // FIX: Parse float
+
       const profit = op.cerrada
         ? parseFloat(op.ganancia || 0)
-        : typeof currentPrice === "number"
-        ? op.tipo_operacion.toLowerCase().includes("sell")
-          ? (op.precio_entrada - currentPrice) * op.volumen
-          : (currentPrice - op.precio_entrada) * op.volumen
-        : 0;
+        : isNaN(currentPrice)
+        ? 0
+        : op.tipo_operacion.toLowerCase().includes("sell")
+        ? (op.precio_entrada - currentPrice) * op.volumen
+        : (currentPrice - op.precio_entrada) * op.volumen;
+
       setCurrentOpDetails({ op, profit });
       setIsOpDetailsModalOpen(true);
     },
     [realTimePrices]
   );
 
-  const handleUpdatePrice = useCallback(
-    async (opId, newPrice) => {
-      // Esta función necesita ser ajustada en caso de que se quiera actualizar
-      // el precio_entrada de una operación abierta por el administrador
-      // Aquí se mantiene la lógica anterior (asumiendo que era para un precio de cierre)
-      // pero para el admin-ops modal ahora solo se usa para guardar la operación completa.
-      // Se mantiene aquí por si se necesita en el futuro.
+  const handleUpdateOperation = useCallback(
+    async (operationData) => {
       try {
-        await axios.post("/admin/actualizar-operacion", {
-          id: opId,
-          precio_cierre: parseFloat(newPrice),
-        });
-        setAlert({ message: "Precio de cierre actualizado", type: "success" });
-        fetchData(pagination.currentPage, opHistoryFilter);
+        await axios.post("/admin/actualizar-operacion", operationData);
+        setAlert({ message: "Operación actualizada", type: "success" });
+        fetchData(pagination.currentPage, opHistoryFilter); // Recargar datos del usuario
       } catch (error) {
-        setAlert({ message: "Error al actualizar el precio", type: "error" });
+        setAlert({
+          message:
+            error.response?.data?.error || "Error al actualizar la operación",
+          type: "error",
+        });
+        throw error; // Re-throw para que el modal sepa que falló
       }
     },
     [fetchData, pagination.currentPage, opHistoryFilter]
@@ -3599,7 +3796,7 @@ const DashboardPage = () => {
         isOpen={isUserOpsModalOpen}
         onClose={() => setIsUserOpsModalOpen(false)}
         user={currentUserForOps}
-        onUpdatePrice={handleUpdatePrice}
+        onUpdateOperation={handleUpdateOperation} // Pasamos la función de actualización
         setAlert={setAlert} // Pasar setAlert
       />
       <OperationDetailsModal
@@ -3745,7 +3942,6 @@ const LoginPage = () => {
           telefono: `${countryCode}${regPhone}`,
           platform_id,
         };
-        // Dependiendo de la plataforma (si existe VITE_REGISTRATION_CODE), se podría añadir.
         // Aquí asumimos que la validación la hace el backend con el platform_id.
         const { data } = await axios.post("/register", payload);
         if (data.success) {
