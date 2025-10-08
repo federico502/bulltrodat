@@ -135,50 +135,105 @@ const Icons = {
   ),
 };
 
-// Lista de todos los activos disponibles para las recomendaciones
-const ALL_AVAILABLE_ASSETS = [
-  // Cryptos
-  "BTC-USDT",
-  "ETH-USDT",
-  "SOL-USDT",
-  "XRP-USDT",
-  "DOGE-USDT",
-  "ADA-USDT",
-  "AVAX-USDT",
-  "LTC-USDT",
-  "BCH-USDT",
-  "LINK-USDT",
-  // Stocks
-  "AAPL",
-  "MSFT",
-  "GOOGL",
-  "AMZN",
-  "NVDA",
-  "TSLA",
-  "META",
-  "JPM",
-  "JNJ",
+// --- Catálogo de Activos para Búsqueda y Mapeo ---
+const ASSET_CATALOG = [
   // Forex
-  "EUR/USD",
-  "GBP/USD",
-  "USD/JPY",
-  "USD/CHF",
-  "AUD/USD",
-  "USD/CAD",
-  "NZD/USD",
-  "EUR/GBP",
-  "EUR/JPY",
-  "EUR/CHF",
-  "GBP/JPY",
-  "GBP/CHF",
-  "AUD/JPY",
-  "CAD/JPY",
+  { symbol: "EUR/USD", name: "Euro / Dólar Estadounidense" },
+  { symbol: "GBP/USD", name: "Libra Esterlina / Dólar Estadounidense" },
+  { symbol: "EUR/JPY", name: "Euro / Yen Japonés" },
+  { symbol: "USD/JPY", name: "Dólar Estadounidense / Yen Japonés" },
+  { symbol: "AUD/USD", name: "Dólar Australiano / Dólar Estadounidense" },
+  { symbol: "USD/CHF", name: "Dólar Estadounidense / Franco Suizo" },
+  { symbol: "GBP/JPY", name: "Libra Esterlina / Yen Japonés" },
+  { symbol: "USD/CAD", name: "Dólar Estadounidense / Dólar Canadiense" },
+  { symbol: "EUR/GBP", name: "Euro / Libra Esterlina" },
+  { symbol: "EUR/CHF", name: "Euro / Franco Suizo" },
+  { symbol: "AUD/JPY", name: "Dólar Australiano / Yen Japonés" },
+  { symbol: "NZD/USD", name: "Dólar Neozelandés / Dólar Estadounidense" },
+  { symbol: "CHF/JPY", name: "Franco Suizo / Yen Japonés" },
+  { symbol: "EUR/AUD", name: "Euro / Dólar Australiano" },
+  { symbol: "CAD/JPY", name: "Dólar Canadiense / Yen Japonés" },
+  { symbol: "GBP/AUD", name: "Libra Esterlina / Dólar Australiano" },
+  { symbol: "EUR/CAD", name: "Euro / Dólar Canadiense" },
+  { symbol: "AUD/CAD", name: "Dólar Australiano / Dólar Canadiense" },
+  { symbol: "GBP/CAD", name: "Libra Esterlina / Dólar Canadiense" },
+  { symbol: "AUD/NZD", name: "Dólar Australiano / Dólar Neozelandés" },
+  { symbol: "NZD/JPY", name: "Dólar Neozelandés / Yen Japonés" },
+  { symbol: "AUD/CHF", name: "Dólar Australiano / Franco Suizo" },
+  { symbol: "USD/MXN", name: "Dólar Estadounidense / Peso Mexicano" },
+  { symbol: "GBP/NZD", name: "Libra Esterlina / Dólar Neozelandés" },
+  { symbol: "EUR/NZD", name: "Euro / Dólar Neozelandés" },
+  { symbol: "CAD/CHF", name: "Dólar Canadiense / Franco Suizo" },
+  { symbol: "NZD/CAD", name: "Dólar Neozelandés / Dólar Canadiense" },
+  { symbol: "NZD/CHF", name: "Dólar Neozelandés / Franco Suizo" },
+  { symbol: "GBP/CHF", name: "Libra Esterlina / Franco Suizo" },
+  { symbol: "USD/BRL", name: "Dólar Estadounidense / Real Brasileño" },
+
   // Commodities
-  "XAU/USD",
-  "XAG/USD",
-  "WTI/USD",
-  "BRENT/USD",
+  { symbol: "XAU/USD", name: "Oro (Gold)" },
+  { symbol: "XAG/USD", name: "Plata (Silver)" },
+  { symbol: "WTI/USD", name: "Petróleo Crudo WTI" },
+  { symbol: "BRENT/USD", name: "Petróleo Crudo Brent" },
+  { symbol: "XCU/USD", name: "Cobre (Copper)" },
+  { symbol: "NG/USD", name: "Gas Natural" },
+
+  // Criptomonedas (normalizadas a -USDT)
+  { symbol: "BTC-USDT", name: "Bitcoin" },
+  { symbol: "ETH-USDT", name: "Ethereum" },
+  { symbol: "LTC-USDT", name: "Litecoin" },
+  { symbol: "XRP-USDT", name: "Ripple" },
+  { symbol: "BNB-USDT", name: "BNB" },
+  { symbol: "TRX-USDT", name: "TRON" },
+  { symbol: "ADA-USDT", name: "Cardano" },
+  { symbol: "DOGE-USDT", name: "Dogecoin" },
+  { symbol: "SOL-USDT", name: "Solana" },
+  { symbol: "DOT-USDT", name: "Polkadot" },
+  { symbol: "LINK-USDT", name: "Chainlink" },
+  { symbol: "MATIC-USDT", name: "Polygon (MATIC)" },
+  { symbol: "AVAX-USDT", name: "Avalanche" },
+  { symbol: "PEPE-USDT", name: "Pepe" },
+  { symbol: "SUI-USDT", name: "Sui" },
+  { symbol: "TON-USDT", name: "Toncoin" },
+
+  // Indices
+  { symbol: "DAX", name: "DAX 40 (Alemania)" },
+  { symbol: "FCHI", name: "CAC 40 (Francia)" },
+  { symbol: "FTSE", name: "FTSE 100 (Reino Unido)" },
+  { symbol: "SX5E", name: "EURO STOXX 50" },
+  { symbol: "IBEX", name: "IBEX 35 (España)" },
+  { symbol: "DJI", name: "Dow Jones Industrial Average" },
+  { symbol: "SPX", name: "S&P 500" },
+  { symbol: "NDX", name: "Nasdaq 100" },
+  { symbol: "NI225", name: "Nikkei 225" },
+
+  // Acciones
+  { symbol: "META", name: "Meta Platforms, Inc." },
+  { symbol: "JNJ", name: "Johnson & Johnson" },
+  { symbol: "JPM", name: "JPMorgan Chase & Co." },
+  { symbol: "KO", name: "The Coca-Cola Company" },
+  { symbol: "MA", name: "Mastercard Incorporated" },
+  { symbol: "IBM", name: "IBM" },
+  { symbol: "DIS", name: "The Walt Disney Company" },
+  { symbol: "CVX", name: "Chevron Corporation" },
+  { symbol: "AAPL", name: "Apple Inc." },
+  { symbol: "AMZN", name: "Amazon.com, Inc." },
+  { symbol: "BA", name: "The Boeing Company" },
+  { symbol: "BAC", name: "Bank of America Corp" },
+  { symbol: "CSCO", name: "Cisco Systems, Inc." },
+  { symbol: "MCD", name: "McDonald's Corporation" },
+  { symbol: "NVDA", name: "NVIDIA Corporation" },
+  { symbol: "WMT", name: "Walmart Inc." },
+  { symbol: "MSFT", name: "Microsoft Corporation" },
+  { symbol: "NFLX", name: "Netflix, Inc." },
+  { symbol: "NKE", name: "NIKE, Inc." },
+  { symbol: "ORCL", name: "Oracle Corporation" },
+  { symbol: "PG", name: "Procter & Gamble Company" },
+  { symbol: "T", name: "AT&T Inc." },
+  { symbol: "TSLA", name: "Tesla, Inc." },
 ];
+
+// Obtener solo los símbolos para compatibilidad con el código anterior
+const ALL_AVAILABLE_ASSETS = ASSET_CATALOG.map((asset) => asset.symbol);
 
 // --- Contexto de la App ---
 const AppContext = createContext();
@@ -585,6 +640,8 @@ const StatisticsPanel = ({ stats, performanceData, isLoading }) => (
 
 const AssetPrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
+  // CORRECCIÓN: Normalizar el símbolo para la búsqueda en realTimePrices
+  // El backend normaliza eliminando todos los caracteres no alfanuméricos como '-' y '/'
   const normalizedSymbol = symbol.toUpperCase().replace(/[-/]/g, "");
   const price = realTimePrices[normalizedSymbol];
   const flashClass = useFlashOnUpdate(price);
@@ -595,43 +652,50 @@ const AssetPrice = React.memo(({ symbol }) => {
       <span
         className={`font-mono text-xs transition-colors duration-300 ${finalColorClass}`}
       >
-        {price ? price.toFixed(4) : "---"}
+        {price ? parseFloat(price).toFixed(4) : "---"}
       </span>
     </div>
   );
 });
 
-const AssetRow = React.memo(({ symbol, isSelected, onClick, onRemove }) => (
-  <motion.li
-    layout
-    initial={{ opacity: 0, y: -10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, x: -20 }}
-    whileHover={{ scale: 1.03 }}
-    whileTap={{ scale: 0.98 }}
-    onClick={() => onClick(symbol)}
-    className={`cursor-pointer transition-all duration-200 rounded-md flex justify-between items-center p-2 group ${
-      isSelected
-        ? "bg-cyan-500/20 text-white"
-        : "hover:bg-white/10 text-neutral-300"
-    }`}
-  >
-    <span className="font-semibold">{symbol}</span>
-    <div className="flex items-center gap-2">
-      <AssetPrice symbol={symbol} />
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove(symbol);
-        }}
-        className="text-neutral-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-        title={`Eliminar ${symbol}`}
-      >
-        <Icons.X className="h-4 w-4" />
-      </button>
-    </div>
-  </motion.li>
-));
+const AssetRow = React.memo(
+  ({ symbol, name, isSelected, onClick, onRemove }) => (
+    <motion.li
+      layout
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => onClick(symbol)}
+      className={`cursor-pointer transition-all duration-200 rounded-md flex justify-between items-center p-2 group ${
+        isSelected
+          ? "bg-cyan-500/20 text-white"
+          : "hover:bg-white/10 text-neutral-300"
+      }`}
+    >
+      <div>
+        <span className="font-semibold">{symbol}</span>
+        <span className="text-xs text-neutral-500 ml-2 hidden sm:inline-block truncate">
+          {name}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <AssetPrice symbol={symbol} />
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(symbol);
+          }}
+          className="text-neutral-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+          title={`Eliminar ${symbol}`}
+        >
+          <Icons.X className="h-4 w-4" />
+        </button>
+      </div>
+    </motion.li>
+  )
+);
 
 const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
   const { setSelectedAsset, selectedAsset } = useContext(AppContext);
@@ -639,6 +703,9 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
   const [recommendations, setRecommendations] = useState([]);
   const [showRecommendations, setShowRecommendations] = useState(false);
   const searchContainerRef = useRef(null);
+
+  // Lista de activos populares para mostrar al hacer clic
+  const POPULAR_ASSETS_LIST = useMemo(() => ASSET_CATALOG.slice(0, 8), []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -656,22 +723,40 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
   }, []);
 
   const handleInputChange = (e) => {
-    const value = e.target.value.toUpperCase();
+    const value = e.target.value;
     setNewSymbol(value);
-    if (value) {
-      const filtered = ALL_AVAILABLE_ASSETS.filter((asset) =>
-        asset.toUpperCase().includes(value)
-      );
+
+    if (value.trim()) {
+      const searchValue = value.toUpperCase();
+      // BÚSQUEDA MEJORADA: por símbolo o nombre
+      const filtered = ASSET_CATALOG.filter(
+        (asset) =>
+          asset.symbol.toUpperCase().includes(searchValue) ||
+          asset.name.toUpperCase().includes(searchValue)
+      ).slice(0, 10); // Limitar a 10 resultados
+
       setRecommendations(filtered);
       setShowRecommendations(true);
     } else {
-      setShowRecommendations(false);
+      setRecommendations(POPULAR_ASSETS_LIST); // Mostrar populares si está vacío
+      setShowRecommendations(true);
     }
+  };
+
+  const handleFocus = () => {
+    if (!newSymbol) {
+      setRecommendations(POPULAR_ASSETS_LIST);
+    }
+    setShowRecommendations(true);
   };
 
   const handleRecommendationClick = (symbol) => {
     setNewSymbol(symbol);
     setShowRecommendations(false);
+    // Añadir activo a la lista del usuario inmediatamente si es una recomendación
+    if (!assets.includes(symbol)) {
+      onAddAsset(symbol);
+    }
   };
 
   const handleAssetClick = useCallback(
@@ -680,10 +765,19 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
     },
     [setSelectedAsset]
   );
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (newSymbol) {
-      onAddAsset(newSymbol);
+      // Intentar encontrar el símbolo por nombre o símbolo exacto antes de añadir
+      const assetToAdd =
+        ASSET_CATALOG.find(
+          (asset) =>
+            asset.symbol.toUpperCase() === newSymbol.toUpperCase() ||
+            asset.name.toUpperCase() === newSymbol.toUpperCase()
+        )?.symbol || newSymbol.toUpperCase(); // Usa el símbolo si no se encuentra
+
+      onAddAsset(assetToAdd);
       setNewSymbol("");
       setShowRecommendations(false);
     }
@@ -697,8 +791,8 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
             type="text"
             value={newSymbol}
             onChange={handleInputChange}
-            onFocus={() => newSymbol && setShowRecommendations(true)}
-            placeholder="Ej: EUR/USD, TSLA"
+            onFocus={handleFocus}
+            placeholder="Buscar por símbolo o nombre (Ej: Bitcoin, TSLA)"
             className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
             autoComplete="off"
           />
@@ -714,15 +808,20 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="absolute w-full bg-neutral-900 border border-white/10 rounded-md mt-1 max-h-40 overflow-y-auto z-20"
+            className="absolute w-full bg-neutral-900 border border-white/10 rounded-md mt-1 max-h-40 overflow-y-auto z-20 shadow-lg"
           >
             {recommendations.map((rec) => (
               <li
-                key={rec}
-                onClick={() => handleRecommendationClick(rec)}
-                className="px-3 py-2 text-sm text-neutral-300 hover:bg-cyan-500/50 cursor-pointer"
+                key={rec.symbol}
+                onClick={() => handleRecommendationClick(rec.symbol)}
+                className="px-3 py-2 text-sm text-neutral-300 hover:bg-cyan-500/50 cursor-pointer flex justify-between items-center"
               >
-                {rec}
+                <div>
+                  <span className="font-semibold">{rec.symbol}</span>
+                  <span className="ml-2 text-neutral-500 text-xs truncate">
+                    {rec.name}
+                  </span>
+                </div>
               </li>
             ))}
           </motion.ul>
@@ -733,15 +832,19 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
       </h2>
       <ul className="space-y-1 max-h-48 overflow-y-auto">
         <AnimatePresence>
-          {assets.map((symbol) => (
-            <AssetRow
-              key={symbol}
-              symbol={symbol}
-              isSelected={selectedAsset === symbol}
-              onClick={handleAssetClick}
-              onRemove={onRemoveAsset}
-            />
-          ))}
+          {assets.map((symbol) => {
+            const assetInfo = ASSET_CATALOG.find((a) => a.symbol === symbol);
+            return (
+              <AssetRow
+                key={symbol}
+                symbol={symbol}
+                name={assetInfo ? assetInfo.name : ""}
+                isSelected={selectedAsset === symbol}
+                onClick={handleAssetClick}
+                onRemove={onRemoveAsset}
+              />
+            );
+          })}
         </AnimatePresence>
       </ul>
     </div>
@@ -1302,7 +1405,7 @@ const ModalLivePrice = React.memo(({ symbol }) => {
     <span
       className={`font-mono transition-colors duration-300 ${finalColorClass}`}
     >
-      ${price ? price.toFixed(4) : "Cargando..."}
+      ${price ? parseFloat(price).toFixed(4) : "Cargando..."}
     </span>
   );
 });
