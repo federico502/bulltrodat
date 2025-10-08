@@ -23,8 +23,18 @@ import {
 } from "chart.js";
 import { motion, AnimatePresence } from "framer-motion";
 
+// --- FIX CRÍTICO: Configuración de Entorno Segura (Prevención de Pantalla Blanca) ---
+// Accede a las variables de entorno de forma segura, usando valores por defecto.
+const env = typeof import.meta.env !== "undefined" ? import.meta.env : {};
+const VITE_API_URL = env.VITE_API_URL || "";
+const VITE_WSS_URL = env.VITE_WSS_URL || "";
+const VITE_PLATFORM_LOGO = env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
+const VITE_PLATFORM_LOGO_WHITE =
+  env.VITE_PLATFORM_LOGO_WHITE || "/unique1global-logo-white.png";
+const VITE_PLATFORM_ID = env.VITE_PLATFORM_ID || "unique1global";
+
 // --- Configuración de Axios ---
-axios.defaults.baseURL = import.meta.env.VITE_API_URL;
+axios.defaults.baseURL = VITE_API_URL;
 axios.defaults.withCredentials = true;
 
 // --- Registro de Chart.js ---
@@ -647,6 +657,7 @@ const StatisticsPanel = ({ stats, performanceData, isLoading }) => (
 
 const AssetPrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
+  // CRÍTICO: Normalizar el símbolo para la búsqueda
   const normalizedSymbol = symbol.toUpperCase().replace(/[-/]/g, "");
   const price = realTimePrices[normalizedSymbol];
   const flashClass = useFlashOnUpdate(price);
@@ -754,7 +765,15 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (inputValue) {
-      onAddAsset(inputValue);
+      // Find the correct symbol even if the user searched by name
+      const assetToUse =
+        ASSET_CATALOG.find(
+          (asset) =>
+            asset.symbol.toUpperCase() === inputValue.toUpperCase() ||
+            asset.name.toUpperCase() === inputValue.toUpperCase()
+        )?.symbol || inputValue.toUpperCase();
+
+      onAddAsset(assetToUse);
       setInputValue("");
       setIsSuggestionVisible(false);
     }
@@ -1004,7 +1023,7 @@ const Header = ({
           onToggleSideMenu={onToggleSideMenu}
           onManageUsers={onManageUsers}
           onManageLeverage={onManageLeverage}
-          onManageCommissions={onManageCommissions} // Pasar prop
+          onManageCommissions={onManageCommissions} // Pasa el nuevo handler
           onOpenProfileModal={onOpenProfileModal}
         />
       </div>
@@ -1069,7 +1088,7 @@ const LiveProfitCell = ({ operation }) => {
       .replace(/[-/]/g, "");
     const currentPrice = realTimePrices[normalizedSymbol];
     if (typeof currentPrice !== "number") return 0;
-    return operation.tipo_operacion.toLowerCase() === "sell"
+    return operation.tipo_operacion.toLowerCase().includes("sell")
       ? (operation.precio_entrada - currentPrice) * operation.volumen
       : (currentPrice - operation.precio_entrada) * operation.volumen;
   }, [realTimePrices, operation]);
@@ -2794,10 +2813,7 @@ const SideMenu = React.memo(
               <div className="p-4 border-b border-gray-200 flex-shrink-0">
                 <img
                   className="mb-2"
-                  src={
-                    import.meta.env.VITE_PLATFORM_LOGO ||
-                    "/unique1global-logo.png"
-                  }
+                  src={VITE_PLATFORM_LOGO || "/unique1global-logo.png"}
                   width="220"
                   alt="Logo"
                 />
@@ -2886,7 +2902,13 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
   const depositAddress = "TQmZ1fA2gB4iC3dE5fG6h7J8k9L0mN1oP2q"; // Dirección de ejemplo
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(depositAddress);
+    // Usar execCommand ya que clipboard.writeText puede fallar en iframes
+    const el = document.createElement("textarea");
+    el.value = depositAddress;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand("copy");
+    document.body.removeChild(el);
     onSubmitted();
   };
 
@@ -3273,7 +3295,7 @@ const DashboardPage = () => {
     if (!user || !userAssets.length) return;
 
     const connectWebSocket = () => {
-      const wsUrl = import.meta.env.VITE_WSS_URL;
+      const wsUrl = VITE_WSS_URL;
       if (!wsUrl) {
         console.error("WebSocket URL is not defined.");
         return;
@@ -3289,8 +3311,15 @@ const DashboardPage = () => {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.type === "price_update") {
-            setRealTimePrices((prev) => ({ ...prev, ...data.prices }));
+          if (data.type === "price_update" && data.prices) {
+            // FIX CRÍTICO: Normalizar claves de precios entrantes para coincidir con AssetPrice
+            const normalizedPrices = {};
+            for (const key in data.prices) {
+              const normalizedKey = key.toUpperCase().replace(/[-/]/g, "");
+              normalizedPrices[normalizedKey] = data.prices[key];
+            }
+
+            setRealTimePrices((prev) => ({ ...prev, ...normalizedPrices }));
           } else if (data.tipo === "operacion_cerrada") {
             setAlert({
               message: `Operación #${data.operacion_id} (${
@@ -3453,6 +3482,7 @@ const DashboardPage = () => {
       if (upperSymbol.endsWith("USDT") && !upperSymbol.includes("-")) {
         upperSymbol = `${upperSymbol.slice(0, -4)}-USDT`;
       }
+
       if (upperSymbol && !userAssets.includes(upperSymbol)) {
         const newAssets = [...userAssets, upperSymbol];
         setUserAssets(newAssets);
@@ -3562,8 +3592,7 @@ const DashboardPage = () => {
     marginLevel: metrics.marginLevel.toFixed(2),
   };
 
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
+  const platformLogo = VITE_PLATFORM_LOGO;
 
   return (
     <div className="flex h-screen bg-gray-50 text-gray-800 font-sans overflow-hidden">
@@ -3939,7 +3968,7 @@ const LoginPage = ({ onNavigate }) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    const platform_id = import.meta.env.VITE_PLATFORM_ID || "unique1global";
+    const platform_id = VITE_PLATFORM_ID;
 
     if (action === "login") {
       try {
@@ -3986,8 +4015,7 @@ const LoginPage = ({ onNavigate }) => {
 
   // CAMBIO: Se actualiza la variable para usar un logo blanco específico para el login.
   // Puedes cambiar "/unique1global-logo-white.png" por la ruta correcta de tu logo blanco.
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO_WHITE || "/unique1global-logo-white.png";
+  const platformLogo = VITE_PLATFORM_LOGO_WHITE;
   const formVariants = {
     hidden: { opacity: 0, x: 300 },
     visible: {
@@ -4165,8 +4193,7 @@ const LoginPage = ({ onNavigate }) => {
 
 // --- NUEVO: Página de Inicio (Landing Page) ---
 const LandingPage = ({ onNavigate }) => {
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
+  const platformLogo = VITE_PLATFORM_LOGO;
 
   const scrollToSection = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -4354,8 +4381,7 @@ const App = () => {
   const { isAppLoading, isAuthenticated } = useContext(AppContext);
   const [currentView, setCurrentView] = useState("landing");
 
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
+  const platformLogo = VITE_PLATFORM_LOGO;
 
   if (isAppLoading) {
     return (
