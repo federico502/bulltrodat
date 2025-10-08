@@ -128,101 +128,9 @@ app.use(sessionMiddleware);
 // --- Lógica de WebSockets ---
 global.preciosEnTiempoReal = {};
 
-// --- Listas de Activos para Suscripción a WebSockets ---
-const initialCrypto = [
-  "BTC-USDT",
-  "ETH-USDT",
-  "LTC-USDT",
-  "XRP-USDT",
-  "BNB-USDT",
-  "TRX-USDT",
-  "ADA-USDT",
-  "DOGE-USDT",
-  "SOL-USDT",
-  "DOT-USDT",
-  "LINK-USDT",
-  "MATIC-USDT",
-  "AVAX-USDT",
-  "PEPE-USDT",
-  "SUI-USDT",
-  "TON-USDT",
-];
-
-const initialTwelveDataAssets = [
-  "EUR/USD",
-  "GBP/USD",
-  "EUR/JPY",
-  "USD/JPY",
-  "AUD/USD",
-  "USD/CHF",
-  "GBP/JPY",
-  "USD/CAD",
-  "EUR/GBP",
-  "EUR/CHF",
-  "AUD/JPY",
-  "NZD/USD",
-  "CHF/JPY",
-  "EUR/AUD",
-  "CAD/JPY",
-  "GBP/AUD",
-  "EUR/CAD",
-  "AUD/CAD",
-  "GBP/CAD",
-  "AUD/NZD",
-  "NZD/JPY",
-  "AUD/CHF",
-  "USD/MXN",
-  "GBP/NZD",
-  "EUR/NZD",
-  "CAD/CHF",
-  "NZD/CAD",
-  "NZD/CHF",
-  "GBP/CHF",
-  "USD/BRL",
-  "XAU/USD",
-  "XAG/USD",
-  "WTI/USD",
-  "BRENT/USD",
-  "XCU/USD",
-  "NG/USD",
-  "META",
-  "JNJ",
-  "JPM",
-  "KO",
-  "MA",
-  "IBM",
-  "DIS",
-  "CVX",
-  "AAPL",
-  "AMZN",
-  "BA",
-  "BAC",
-  "CSCO",
-  "MCD",
-  "NVDA",
-  "WMT",
-  "MSFT",
-  "NFLX",
-  "NKE",
-  "ORCL",
-  "PG",
-  "T",
-  "TSLA",
-  "DAX",
-  "FCHI",
-  "FTSE",
-  "SX5E",
-  "IBEX",
-  "DJI",
-  "SPX",
-  "NDX",
-  "NI225",
-];
-
-let kuCoinWs = null;
-let twelveDataWs = null;
-const activeKuCoinSubscriptions = new Set(initialCrypto);
-const activeTwelveDataSubscriptions = new Set(initialTwelveDataAssets);
+// Almacena los símbolos a los que el frontend se ha suscrito.
+// Key: Normalized Symbol (ej: 'BTCUSDT'), Value: Initial/Base Price
+const subscribedAssets = new Map();
 
 function broadcast(data) {
   wss.clients.forEach((client) => {
@@ -232,50 +140,158 @@ function broadcast(data) {
   });
 }
 
-function subscribeToKuCoin(symbols) {
-  if (kuCoinWs && kuCoinWs.readyState === WebSocket.OPEN) {
-    const topic = `/market/ticker:${symbols.join(",")}`;
-    kuCoinWs.send(
-      JSON.stringify({
-        id: Date.now(),
-        type: "subscribe",
-        topic: topic,
-        privateChannel: false,
-        response: true,
-      })
-    );
-  }
+/**
+ * Normaliza el símbolo para ser usado como clave en global.preciosEnTiempoReal.
+ * Ej: 'EUR/USD' -> 'EURUSD', 'BTC-USDT' -> 'BTCUSDT'
+ */
+function normalizeSymbol(symbol) {
+  return symbol.toUpperCase().replace(/[-/]/g, "");
 }
 
-function getTwelveDataSymbolFormat(symbol) {
-  const s = symbol.toUpperCase();
-  if (s.includes("/") && s.length > 6) return s;
-  if (!s.includes("/") && s.length === 6)
-    return `${s.slice(0, 3)}/${s.slice(3)}`;
-  return s;
-}
+// --- SIMULADOR DE PRECIOS CRÍTICO ---
+function startPriceSimulator() {
+  console.log("🟢 Iniciando simulador de precios de prueba...");
 
-function subscribeToTwelveData(symbols) {
-  if (twelveDataWs && twelveDataWs.readyState === WebSocket.OPEN) {
-    const formattedSymbols = symbols.map(getTwelveDataSymbolFormat);
-    twelveDataWs.send(
-      JSON.stringify({
-        action: "subscribe",
-        params: { symbols: formattedSymbols.join(",") },
-      })
-    );
+  // Inicializa los precios si están vacíos (simulando precios de apertura)
+  if (Object.keys(global.preciosEnTiempoReal).length === 0) {
+    const initialAssets = [
+      "BTC-USDT",
+      "ETH-USDT",
+      "SOL-USDT",
+      "AAPL",
+      "TSLA",
+      "NVDA",
+      "AMZN",
+      "EUR/USD",
+      "GBP/USD",
+      "XAU/USD",
+    ];
+    initialAssets.forEach((symbol) => {
+      const normalized = normalizeSymbol(symbol);
+      let basePrice;
+      if (symbol.includes("BTC")) {
+        basePrice = 60000;
+      } else if (symbol.includes("USD") && symbol.includes("/")) {
+        basePrice = 1.1;
+      } else if (symbol.includes("JPY")) {
+        basePrice = 160.0;
+      } else if (symbol.includes("XAU")) {
+        basePrice = 2300.0;
+      } else {
+        basePrice = 150.0; // Stocks/Others
+      }
+      global.preciosEnTiempoReal[normalized] = basePrice.toFixed(4);
+      // Llenamos el mapa de suscripciones iniciales para que el simulador empiece a funcionar
+      subscribedAssets.set(normalized, basePrice);
+    });
   }
+
+  // Intervalo para generar y transmitir nuevos precios
+  setInterval(() => {
+    const updatedPrices = {};
+    let shouldBroadcast = false;
+
+    // Solo actualizamos y enviamos precios para los activos que están en la lista del frontend
+    subscribedAssets.forEach((initialPrice, normalizedSymbol) => {
+      const currentPrice = parseFloat(
+        global.preciosEnTiempoReal[normalizedSymbol]
+      );
+      if (isNaN(currentPrice)) return;
+
+      // Simular un movimiento aleatorio pequeño (±0.05% o ±0.5)
+      const isCrypto =
+        normalizedSymbol.includes("BTC") || normalizedSymbol.includes("ETH");
+      const volatilityFactor = isCrypto
+        ? 0.0005
+        : currentPrice > 100
+        ? 0.0001
+        : 0.005;
+
+      const change =
+        (Math.random() * volatilityFactor * 2 - volatilityFactor) *
+        currentPrice;
+      const newPrice = currentPrice + change;
+
+      updatedPrices[normalizedSymbol] = newPrice.toFixed(4);
+      global.preciosEnTiempoReal[normalizedSymbol] =
+        updatedPrices[normalizedSymbol];
+      shouldBroadcast = true;
+    });
+
+    if (shouldBroadcast) {
+      broadcast({
+        type: "price_update",
+        prices: updatedPrices,
+      });
+    }
+  }, 1000); // Enviar actualizaciones cada 1 segundo (rápido para pruebas)
 }
+// --- FIN SIMULADOR ---
 
 async function getLatestPrice(symbol) {
-  // Nota: Usar el fetch nativo de Node.js (ya que eliminamos node-fetch).
-  // La implementación actual de getLatestPrice solo usa global.preciosEnTiempoReal,
-  // por lo que no es necesario el fetch para esta función específica.
-  return (
-    global.preciosEnTiempoReal[symbol.toUpperCase().replace(/[-/]/g, "")] ||
-    null
-  );
+  const normalizedSymbol = normalizeSymbol(symbol);
+  const price = global.preciosEnTiempoReal[normalizedSymbol];
+  return price !== undefined ? parseFloat(price) : null;
 }
+
+// Lógica para manejar suscripciones enviadas por el cliente
+wss.on("connection", (ws, req) => {
+  ws.on("message", (message) => {
+    try {
+      const data = JSON.parse(message);
+      if (data.type === "subscribe" && Array.isArray(data.symbols)) {
+        console.log(
+          `[WS] Cliente solicitó suscripción a: ${data.symbols.join(", ")}`
+        );
+
+        // Agregar los símbolos solicitados al mapa de activos suscritos
+        data.symbols.forEach((symbol) => {
+          const normalized = normalizeSymbol(symbol);
+          // Si el activo no existe en preciosEnTiempoReal, inicializamos un precio base
+          if (global.preciosEnTiempoReal[normalized] === undefined) {
+            // Simulación de inicialización de precio (debe ser realista)
+            let basePrice;
+            if (symbol.includes("BTC")) basePrice = 60000;
+            else if (symbol.includes("USD") && symbol.includes("/"))
+              basePrice = 1.1;
+            else if (symbol.includes("XAU")) basePrice = 2300.0;
+            else basePrice = 100;
+            global.preciosEnTiempoReal[normalized] = basePrice.toFixed(4);
+          }
+          subscribedAssets.set(
+            normalized,
+            parseFloat(global.preciosEnTiempoReal[normalized])
+          );
+        });
+
+        // Enviar precios actuales inmediatamente después de la suscripción
+        const currentPrices = {};
+        data.symbols.forEach((symbol) => {
+          const normalized = normalizeSymbol(symbol);
+          if (global.preciosEnTiempoReal[normalized]) {
+            currentPrices[normalized] = global.preciosEnTiempoReal[normalized];
+          }
+        });
+        if (Object.keys(currentPrices).length > 0) {
+          ws.send(
+            JSON.stringify({
+              type: "price_update",
+              prices: currentPrices,
+            })
+          );
+        }
+      }
+    } catch (e) {
+      console.error("Error al parsear mensaje de WS:", e);
+    }
+  });
+
+  ws.on("close", () => {
+    // Nota: Para la simulación actual no es necesario desuscribir del mapa subscribedAssets
+    // ya que no vinculamos el mapa directamente al cliente, sino que simulamos que
+    // el simulador actualiza todos los activos en el mapa.
+  });
+});
 
 async function cerrarOperacionesAutomáticamente() {
   const client = await pool.connect();
@@ -1306,11 +1322,12 @@ const startServer = async () => {
         `);
     console.log("Tabla de sesiones verificada/creada.");
 
+    // Inicia el simulador de precios
+    startPriceSimulator();
+
     // Escuchar en el puerto definido por el entorno (Render)
     server.listen(PORT, () => {
       console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
-      iniciarWebSocketKuCoin();
-      iniciarWebSocketTwelveData();
       // El Swap se aplica cada 24 horas (86400000 ms) para simular el cobro nocturno,
       // pero lo establecemos a 5 segundos para fines de prueba en el Canvas.
       setInterval(() => cerrarOperacionesAutomáticamente(), 5000); // 5 segundos para prueba
@@ -1355,19 +1372,8 @@ const startServer = async () => {
   }
 };
 
-// Funciones para los WebSockets (simuladas aquí, si no usas twelve-data-wrapper)
-// Para que esto compile en un entorno donde no esté la librería externa,
-// debemos asegurarnos de que estas funciones existan.
-function iniciarWebSocketKuCoin() {
-  console.log("Iniciando simulación de WebSocket KuCoin...");
-  // Aquí se haría la conexión real a KuCoin.
-  // En la simulación, simplemente se pasa.
-}
-
-function iniciarWebSocketTwelveData() {
-  console.log("Iniciando simulación de WebSocket Twelve Data...");
-  // Aquí se haría la conexión real a Twelve Data (usando la API Key TWELVE_DATA_API_KEY).
-  // En la simulación, simplemente se pasa.
-}
+// --- ELIMINADAS FUNCIONES DE SIMULACIÓN VACÍAS ---
+// (iniciarWebSocketKuCoin y iniciarWebSocketTwelveData fueron eliminadas
+// y reemplazadas por startPriceSimulator)
 
 startServer();
