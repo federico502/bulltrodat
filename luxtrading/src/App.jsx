@@ -1081,7 +1081,7 @@ const LiveProfitCell = ({ operation }) => {
       .toUpperCase()
       .replace(/[-/]/g, "");
     const currentPrice = realTimePrices[normalizedSymbol];
-    if (typeof currentPrice !== "number") return total;
+    if (typeof currentPrice !== "number") return 0;
     // Cálculo P&L basado en el precio de entrada (que ya incluye el spread)
     return operation.tipo_operacion.toLowerCase().includes("sell")
       ? (operation.precio_entrada - currentPrice) * operation.volumen
@@ -3155,12 +3155,17 @@ const DashboardPage = () => {
         try {
           const data = JSON.parse(event.data);
           if (data.type === "price_update" && data.prices) {
+            // AÑADIDO: Log de depuración para ver los datos crudos entrantes
+            console.log("-> RECEIVED RAW PRICE UPDATE:", data.prices);
+
             // FIX CRÍTICO: Normalizar claves de precios entrantes para coincidir con AssetPrice
             const normalizedPrices = {};
             for (const key in data.prices) {
               const normalizedKey = key.toUpperCase().replace(/[-/]/g, "");
               normalizedPrices[normalizedKey] = data.prices[key];
             }
+            // AÑADIDO: Log de depuración para ver los datos normalizados
+            console.log("-> NORMALIZED PRICES:", normalizedPrices);
 
             setRealTimePrices((prev) => ({ ...prev, ...normalizedPrices }));
           } else if (data.tipo === "operacion_cerrada") {
