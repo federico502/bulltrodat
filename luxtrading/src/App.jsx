@@ -640,8 +640,7 @@ const StatisticsPanel = ({ stats, performanceData, isLoading }) => (
 
 const AssetPrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
-  // CORRECCIÓN: Normalizar el símbolo para la búsqueda en realTimePrices
-  // El backend normaliza eliminando todos los caracteres no alfanuméricos como '-' y '/'
+  // CRÍTICO: Normalizar el símbolo para la búsqueda
   const normalizedSymbol = symbol.toUpperCase().replace(/[-/]/g, "");
   const price = realTimePrices[normalizedSymbol];
   const flashClass = useFlashOnUpdate(price);
@@ -1082,7 +1081,7 @@ const LiveProfitCell = ({ operation }) => {
       .toUpperCase()
       .replace(/[-/]/g, "");
     const currentPrice = realTimePrices[normalizedSymbol];
-    if (typeof currentPrice !== "number") return 0;
+    if (typeof currentPrice !== "number") return total;
     // Cálculo P&L basado en el precio de entrada (que ya incluye el spread)
     return operation.tipo_operacion.toLowerCase().includes("sell")
       ? (operation.precio_entrada - currentPrice) * operation.volumen
@@ -3139,7 +3138,9 @@ const DashboardPage = () => {
     const connectWebSocket = () => {
       const wsUrl = import.meta.env.VITE_WSS_URL;
       if (!wsUrl) {
-        console.error("WebSocket URL is not defined.");
+        console.error(
+          "CRITICAL: VITE_WSS_URL is not defined. Cannot connect to real-time prices."
+        );
         return;
       }
       const ws = new WebSocket(wsUrl);
@@ -3153,8 +3154,15 @@ const DashboardPage = () => {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.type === "price_update") {
-            setRealTimePrices((prev) => ({ ...prev, ...data.prices }));
+          if (data.type === "price_update" && data.prices) {
+            // FIX CRÍTICO: Normalizar claves de precios entrantes para coincidir con AssetPrice
+            const normalizedPrices = {};
+            for (const key in data.prices) {
+              const normalizedKey = key.toUpperCase().replace(/[-/]/g, "");
+              normalizedPrices[normalizedKey] = data.prices[key];
+            }
+
+            setRealTimePrices((prev) => ({ ...prev, ...normalizedPrices }));
           } else if (data.tipo === "operacion_cerrada") {
             setAlert({
               message: `Operación #${data.operacion_id} (${
