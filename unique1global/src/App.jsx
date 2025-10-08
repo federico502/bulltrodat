@@ -351,6 +351,7 @@ const useFlashOnUpdate = (value) => {
   const prevValueRef = useRef(value);
 
   useEffect(() => {
+    // CRÍTICO: Asegurar que el valor sea un número antes de la comparación
     const currentValue = parseFloat(value);
     const prevValue = parseFloat(prevValueRef.current);
 
@@ -659,16 +660,21 @@ const AssetPrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
   // CRÍTICO: Normalizar el símbolo para la búsqueda
   const normalizedSymbol = symbol.toUpperCase().replace(/[-/]/g, "");
-  const price = realTimePrices[normalizedSymbol];
+  const priceString = realTimePrices[normalizedSymbol];
+
+  // FIX: Convertir explícitamente a número y manejar NaN
+  const price = parseFloat(priceString);
+
   const flashClass = useFlashOnUpdate(price);
-  const baseColor = price ? "text-gray-800" : "text-gray-400";
+  const baseColor = !isNaN(price) ? "text-gray-800" : "text-gray-400";
   const finalColorClass = flashClass || baseColor;
+
   return (
     <div className="px-2 py-1 rounded-md">
       <span
         className={`font-mono text-xs transition-colors duration-300 ${finalColorClass}`}
       >
-        {price ? price.toFixed(4) : "---"}
+        {!isNaN(price) ? price.toFixed(4) : "---"}
       </span>
     </div>
   );
@@ -1086,17 +1092,26 @@ const LiveProfitCell = ({ operation }) => {
     const normalizedSymbol = operation.activo
       .toUpperCase()
       .replace(/[-/]/g, "");
-    const currentPrice = realTimePrices[normalizedSymbol];
-    if (typeof currentPrice !== "number") return 0;
+
+    // FIX: Asegurar que el precio sea un número
+    const currentPrice = parseFloat(realTimePrices[normalizedSymbol]);
+
+    if (isNaN(currentPrice)) return 0;
+
     return operation.tipo_operacion.toLowerCase().includes("sell")
       ? (operation.precio_entrada - currentPrice) * operation.volumen
       : (currentPrice - operation.precio_entrada) * operation.volumen;
   }, [realTimePrices, operation]);
 
+  // FIX: Asegurar que el resultado de calculateProfit sea un número para toFixed
   const profit = calculateProfit();
-  const profitColor = profit >= 0 ? "text-green-600" : "text-red-600";
+  const profitNum = parseFloat(profit);
+
+  if (isNaN(profitNum)) return <span className="text-gray-400">---</span>;
+
+  const profitColor = profitNum >= 0 ? "text-green-600" : "text-red-600";
   return (
-    <span className={`font-mono ${profitColor}`}>{profit.toFixed(2)}</span>
+    <span className={`font-mono ${profitColor}`}>{profitNum.toFixed(2)}</span>
   );
 };
 
@@ -1402,15 +1417,19 @@ const Modal = ({
 const ModalLivePrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
   const normalizedSymbol = symbol?.toUpperCase().replace(/[-/]/g, "");
-  const price = realTimePrices[normalizedSymbol];
+  const priceString = realTimePrices[normalizedSymbol];
+
+  // FIX: Convertir explícitamente a número
+  const price = parseFloat(priceString);
+
   const flashClass = useFlashOnUpdate(price);
-  const baseColor = price ? "text-gray-900" : "text-yellow-500";
+  const baseColor = !isNaN(price) ? "text-gray-900" : "text-yellow-500";
   const finalColorClass = flashClass || baseColor;
   return (
     <span
       className={`font-mono transition-colors duration-300 ${finalColorClass}`}
     >
-      ${price ? price.toFixed(4) : "Cargando..."}
+      {!isNaN(price) ? `$${price.toFixed(4)}` : "Cargando..."}
     </span>
   );
 });
@@ -1445,7 +1464,8 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const { type, asset, volume } = operationData || {};
   const { realTimePrices, commissions } = useContext(AppContext);
   const normalizedAsset = asset?.toUpperCase().replace(/[-/]/g, "");
-  const livePrice = realTimePrices[normalizedAsset];
+  const livePrice = realTimePrices[normalizedAsset]; // Esto es un STRING
+  const livePriceNum = parseFloat(livePrice); // Usar número para cálculos
 
   const [tp, setTp] = useState("");
   const [sl, setSl] = useState("");
@@ -1471,28 +1491,28 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   }, [isOpen]);
 
   const commissionCost = useMemo(() => {
-    if (!livePrice || !volume || !commissions) return 0;
+    if (isNaN(livePriceNum) || !volume || !commissions) return 0;
     return calculateCommissionCost(
-      livePrice,
+      livePriceNum,
       volume,
       commissions.commissionPercentage
     );
-  }, [livePrice, volume, commissions]);
+  }, [livePriceNum, volume, commissions]);
 
   // NUEVO: Cálculo del costo de Swap diario
   const swapDailyCost = useMemo(() => {
-    if (!livePrice || !volume || !commissions || !leverage) return 0;
+    if (isNaN(livePriceNum) || !volume || !commissions || !leverage) return 0;
     return calculateSwapDailyCost(
-      livePrice,
+      livePriceNum,
       volume,
       commissions.swapDailyPercentage,
       leverage
     );
-  }, [livePrice, volume, commissions, leverage]);
+  }, [livePriceNum, volume, commissions, leverage]);
 
-  const requiredMargin = livePrice
-    ? ((livePrice * volume) / leverage).toFixed(2)
-    : "0.00";
+  const requiredMargin = isNaN(livePriceNum)
+    ? "0.00"
+    : ((livePriceNum * volume) / leverage).toFixed(2);
 
   useEffect(() => {
     if (!isOpen) {
@@ -1503,7 +1523,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   }, [isOpen]);
 
   const calculatePotentialProfit = (value, targetType) => {
-    if (!value || !livePrice || !volume) return null;
+    if (!value || isNaN(livePriceNum) || !volume) return null;
     const targetPrice = parseFloat(value);
     if (isNaN(targetPrice)) return null;
 
@@ -1511,13 +1531,13 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
       // Nota: La comisión ya está aplicada en el balance, por lo que solo la restamos
       // para la estimación de PnL en el modal.
       return type === "buy"
-        ? (targetPrice - livePrice) * volume - commissionCost
-        : (livePrice - targetPrice) * volume - commissionCost;
+        ? (targetPrice - livePriceNum) * volume - commissionCost
+        : (livePriceNum - targetPrice) * volume - commissionCost;
     }
     if (targetType === "sl") {
       return type === "buy"
-        ? (targetPrice - livePrice) * volume - commissionCost
-        : (livePrice - targetPrice) * volume - commissionCost;
+        ? (targetPrice - livePriceNum) * volume - commissionCost
+        : (livePriceNum - targetPrice) * volume - commissionCost;
     }
     return null;
   };
@@ -1546,6 +1566,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
       <div className="space-y-3 mb-4 text-gray-700">
         <p className="flex justify-between">
           <span>Precio Actual:</span>
+          {/* Usamos el símbolo para que ModalLivePrice maneje la conversión */}
           <ModalLivePrice symbol={asset} />
         </p>
         <p className="flex justify-between">
@@ -1627,9 +1648,9 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
       <div className="flex justify-end mt-4">
         <button
           onClick={handleConfirm}
-          disabled={!livePrice}
+          disabled={isNaN(livePriceNum)}
           className={`px-5 py-2 rounded-md text-white font-bold transition-colors cursor-pointer ${
-            !livePrice
+            isNaN(livePriceNum)
               ? "bg-gray-400 cursor-not-allowed"
               : type === "buy"
               ? "bg-green-600 hover:bg-green-500"
@@ -3315,8 +3336,21 @@ const DashboardPage = () => {
             // FIX CRÍTICO: Normalizar claves de precios entrantes para coincidir con AssetPrice
             const normalizedPrices = {};
             for (const key in data.prices) {
+              // Asegurarse de que el precio se reciba como string y se guarde como string para consistencia,
+              // y se convierta a número en los componentes que lo usan (AssetPrice, LiveProfitCell).
+              const priceValue = data.prices[key];
               const normalizedKey = key.toUpperCase().replace(/[-/]/g, "");
-              normalizedPrices[normalizedKey] = data.prices[key];
+
+              // Guardamos como string para evitar problemas de reactividad si el server no lo envía ya formateado
+              // y para que el parseFloat(priceString) en los componentes sea robusto.
+              if (
+                typeof priceValue === "number" ||
+                typeof priceValue === "string"
+              ) {
+                normalizedPrices[normalizedKey] = String(priceValue);
+              } else {
+                normalizedPrices[normalizedKey] = "0.0000";
+              }
             }
 
             setRealTimePrices((prev) => ({ ...prev, ...normalizedPrices }));
@@ -3380,8 +3414,11 @@ const DashboardPage = () => {
     const openOperations = operations.filter((op) => !op.cerrada);
     const pnl = openOperations.reduce((total, op) => {
       const normalizedSymbol = op.activo.toUpperCase().replace(/[-/]/g, "");
-      const currentPrice = realTimePrices[normalizedSymbol];
-      if (typeof currentPrice !== "number") return total;
+      // FIX: Asegurarse de que el precio sea un número para el cálculo
+      const currentPrice = parseFloat(realTimePrices[normalizedSymbol]);
+
+      if (isNaN(currentPrice)) return total;
+
       return (
         total +
         (op.tipo_operacion.toLowerCase() === "sell"
@@ -3422,8 +3459,10 @@ const DashboardPage = () => {
         return;
       }
       const normalizedAsset = selectedAsset.toUpperCase().replace(/[-/]/g, "");
-      const currentPrice = realTimePrices[normalizedAsset];
-      if (!currentPrice) {
+      // FIX: Asegurarse de que el precio sea un número para la validación
+      const currentPrice = parseFloat(realTimePrices[normalizedAsset]);
+
+      if (isNaN(currentPrice)) {
         setAlert({
           message: "Precio del activo no disponible. Intente de nuevo.",
           type: "error",
@@ -3440,8 +3479,10 @@ const DashboardPage = () => {
   const handleConfirmOperation = useCallback(
     async (opDetails) => {
       const normalizedAsset = selectedAsset.toUpperCase().replace(/[-/]/g, "");
-      const livePrice = realTimePrices[normalizedAsset];
-      if (!livePrice) {
+      // FIX: Asegurarse de que el precio sea un número para el cálculo
+      const livePrice = parseFloat(realTimePrices[normalizedAsset]);
+
+      if (isNaN(livePrice)) {
         setAlert({
           message: "No se pudo confirmar, el precio no está disponible.",
           type: "error",
@@ -3522,14 +3563,17 @@ const DashboardPage = () => {
   const handleOpRowClick = useCallback(
     (op) => {
       const normalizedSymbol = op.activo.toUpperCase().replace(/[-/]/g, "");
-      const currentPrice = realTimePrices[normalizedSymbol];
+      // FIX: Asegurarse de que el precio sea un número
+      const currentPrice = parseFloat(realTimePrices[normalizedSymbol]);
+
       const profit = op.cerrada
         ? parseFloat(op.ganancia || 0)
-        : typeof currentPrice === "number"
-        ? op.tipo_operacion.toLowerCase() === "sell"
-          ? (op.precio_entrada - currentPrice) * op.volumen
-          : (currentPrice - op.precio_entrada) * op.volumen
-        : 0;
+        : isNaN(currentPrice)
+        ? 0
+        : op.tipo_operacion.toLowerCase() === "sell"
+        ? (op.precio_entrada - currentPrice) * op.volumen
+        : (currentPrice - op.precio_entrada) * op.volumen;
+
       setCurrentOpDetails({ op, profit });
       setIsOpDetailsModalOpen(true);
     },
