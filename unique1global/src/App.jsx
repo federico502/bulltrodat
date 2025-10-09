@@ -26,13 +26,11 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 // --- Carga Pereza (Lazy Loading) de Componentes Principales ---
-// Esto asegura que el usuario solo cargue el código de trading si está autenticado.
 const LazyLandingPage = lazy(() => import("./LandingPage.jsx"));
 const LazyLoginPage = lazy(() => import("./LoginPage.jsx"));
 const LazyDashboardPage = lazy(() => import("./DashboardPage.jsx"));
 
-// --- Configuración de Entorno Segura ---
-// Solución para el Warning: Reemplazar import.meta.env con una variable global para el entorno
+// --- Configuración de Entorno Segura (Ajuste para compatibilidad) ---
 const env =
   typeof window !== "undefined" && typeof window.__env !== "undefined"
     ? window.__env
@@ -44,7 +42,6 @@ const VITE_PLATFORM_LOGO_WHITE =
   env.VITE_PLATFORM_LOGO_WHITE || "/unique1global-logo-white.png";
 const VITE_PLATFORM_ID = env.VITE_PLATFORM_ID || "unique1global";
 
-// Asignar variables al objeto window para que los componentes externos las puedan acceder
 if (typeof window !== "undefined") {
   window.__env = {
     VITE_API_URL,
@@ -59,7 +56,7 @@ if (typeof window !== "undefined") {
 axios.defaults.baseURL = VITE_API_URL;
 axios.defaults.withCredentials = true;
 
-// --- Registro de Chart.js (Necesario en el root para evitar problemas de contexto) ---
+// --- Registro de Chart.js ---
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -72,7 +69,7 @@ ChartJS.register(
   TimeScale
 );
 
-// --- Iconos SVG (Mantenidos en el archivo principal para evitar repeticiones) ---
+// --- Iconos SVG (Exportados para que todos los módulos los usen) ---
 export const Icon = ({ path, className = "h-5 w-5" }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -179,7 +176,7 @@ export const normalizeAssetKey = (symbol) => {
   return symbol.toUpperCase().replace(/[-/]/g, "");
 };
 
-// --- Catálogo de Activos (Mantenido aquí para acceso a todas las vistas) ---
+// --- Catálogo de Activos ---
 export const ASSET_CATALOG = [
   { symbol: "EUR/USD", name: "Euro / Dólar Estadounidense" },
   { symbol: "GBP/USD", name: "Libra Esterlina / Dólar Estadounidense" },
@@ -410,8 +407,6 @@ export default function Root() {
 }
 
 // --- Exportación de componentes comunes para DashboardPage ---
-// Exportamos helpers y componentes que son usados por el Dashboard,
-// para que no haya duplicación de código en el bundle.
 export {
   motion,
   AnimatePresence,
@@ -1090,7 +1085,7 @@ const Header = ({
   onToggleMainSidebar,
   onOpenProfileModal,
 }) => {
-  const { user, logout, selectedAsset } = useContext(AppContext);
+  const { selectedAsset } = useContext(AppContext);
   const [volume, setVolume] = useState(0.01);
 
   return (
@@ -1137,9 +1132,8 @@ const Header = ({
         </p>
       </div>
       <div className="flex items-center space-x-4">
+        {/* ProfileMenu ahora toma user y logout directamente del AppContext en DashboardPage */}
         <ProfileMenu
-          user={user}
-          logout={logout}
           onToggleSideMenu={onToggleSideMenu}
           onManageUsers={onManageUsers}
           onManageLeverage={onManageLeverage}

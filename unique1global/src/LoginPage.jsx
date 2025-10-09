@@ -1,6 +1,6 @@
 import React, { useState, useContext } from "react";
 import axios from "axios";
-import { AppContext, motion, AnimatePresence } from "./App.jsx";
+import { AppContext, motion, AnimatePresence, Icons } from "./App.jsx"; // Aseguramos la importación de todos los hooks y helpers
 
 const LoginPage = ({ onNavigate }) => {
   const {
@@ -158,6 +158,7 @@ const LoginPage = ({ onNavigate }) => {
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     className="w-full p-3 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    autoComplete="username"
                   />
                   <input
                     type="password"
@@ -165,6 +166,7 @@ const LoginPage = ({ onNavigate }) => {
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     className="w-full p-3 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    autoComplete="current-password"
                   />
                   <button
                     type="submit"
@@ -206,6 +208,7 @@ const LoginPage = ({ onNavigate }) => {
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
                     className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    autoComplete="name"
                   />
                   <input
                     type="email"
@@ -213,6 +216,7 @@ const LoginPage = ({ onNavigate }) => {
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
                     className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    autoComplete="email"
                   />
                   <input
                     type="password"
@@ -220,6 +224,7 @@ const LoginPage = ({ onNavigate }) => {
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
                     className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    autoComplete="new-password"
                   />
                   <button
                     type="submit"
