@@ -40,7 +40,9 @@ const env =
   typeof window !== "undefined" && typeof window.__env !== "undefined"
     ? window.__env
     : {};
-const VITE_API_URL = env.VITE_API_URL || "";
+// FIX CRÍTICO APLICADO: Usamos la URL de tu backend de Render para resolver el error 404 de la API.
+const VITE_API_URL =
+  env.VITE_API_URL || "https://bulltrodat-backend.onrender.com";
 
 // FIX: Usar el logo de Google como fallback universal para evitar 404 del logo PNG local.
 const VITE_WSS_URL = env.VITE_WSS_URL || "";
@@ -60,8 +62,7 @@ if (typeof window !== "undefined") {
 }
 
 // --- Configuración de Axios ---
-// CRÍTICO: Si VITE_API_URL es "", Axios asumirá el host actual, causando 404 si el backend no está ahí.
-// La solución es configurar VITE_API_URL en el entorno o en el `server.js` para que apunte al host real del backend.
+// La URL de tu backend de Render ahora se establece aquí.
 axios.defaults.baseURL = VITE_API_URL;
 axios.defaults.withCredentials = true;
 
