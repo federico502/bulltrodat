@@ -16,7 +16,7 @@ import bcrypt from "bcryptjs";
 import path from "path";
 import { fileURLToPath } from "url";
 import cors from "cors";
-// import fetch from "node-fetch"; // Eliminamos esta importación ya que 'fetch' es nativo en Node.js moderno.
+import fetch from "node-fetch"; // Importación necesaria para llamadas a APIs externas
 import WebSocket, { WebSocketServer } from "ws";
 import http from "http";
 import helmet from "helmet";
@@ -29,7 +29,7 @@ const wss = new WebSocketServer({ noServer: true });
 const {
   DATABASE_URL,
   SESSION_SECRET,
-  TWELVE_DATA_API_KEY,
+  TWELVE_DATA_API_KEY, // Clave para precios reales
   FRONTEND_URLS,
   NODE_ENV,
   PORT = 3000,
@@ -40,18 +40,20 @@ let REGISTRATION_CODE = process.env.REGISTRATION_CODE || "ADMIN2024";
 let MAX_LEVERAGE = 200;
 
 // --- VARIABLES GLOBALES PARA COMISIONES, SPREADS Y SWAP ---
-// Spread base: 0.01% (0.0001) del precio de entrada (Spread)
 let SPREAD_PORCENTAJE = parseFloat(process.env.SPREAD_PORCENTAJE) || 0.01;
-// Comisión fija: 0.1% (0.001) del volumen total (Comisión por Volumen)
 let COMISION_PORCENTAJE = parseFloat(process.env.COMISION_PORCENTAJE) || 0.1;
-// NUEVO: Swap diario (Interés nocturno)
 let SWAP_DAILY_PORCENTAJE =
   parseFloat(process.env.SWAP_DAILY_PORCENTAJE) || 0.05;
 
 // Validar que las variables críticas existan
-if (!DATABASE_URL || !SESSION_SECRET || !FRONTEND_URLS) {
+if (
+  !DATABASE_URL ||
+  !SESSION_SECRET ||
+  !FRONTEND_URLS ||
+  !TWELVE_DATA_API_KEY
+) {
   console.error(
-    "CRITICAL ERROR: DATABASE_URL, SESSION_SECRET, or FRONTEND_URLS is not set."
+    "CRITICAL ERROR: DATABASE_URL, SESSION_SECRET, FRONTEND_URLS, or TWELVE_DATA_API_KEY is not set."
   );
   process.exit(1);
 }
@@ -98,7 +100,7 @@ app.use(
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
       "script-src": ["'self'", "https://s3.tradingview.com"],
-      "connect-src": ["'self'", "wss:", "https:"],
+      "connect-src": ["'self'", "wss:", "https:", "wss://twelve-data.com"], // Twelve Data WS
     },
   })
 );
@@ -131,6 +133,7 @@ global.preciosEnTiempoReal = {};
 // Almacena los símbolos a los que el frontend se ha suscrito.
 // Key: Normalized Symbol (ej: 'BTCUSDT'), Value: Initial/Base Price
 const subscribedAssets = new Map();
+let twelveDataWs = null; // Conexión a Twelve Data
 
 function broadcast(data) {
   wss.clients.forEach((client) => {
@@ -148,85 +151,110 @@ function normalizeSymbol(symbol) {
   return symbol.toUpperCase().replace(/[-/]/g, "");
 }
 
-// --- SIMULADOR DE PRECIOS CRÍTICO ---
-function startPriceSimulator() {
-  console.log("🟢 Iniciando simulador de precios de prueba...");
+/**
+ * Convierte los símbolos del frontend (ej: BTC-USDT, EUR/USD) al formato de Twelve Data (BTC/USD, EUR/USD).
+ * Twelve Data no usa el formato KUCOIN:BTCUSDT que a veces usamos en el frontend.
+ */
+function convertToTwelveDataSymbol(symbol) {
+  let s = symbol.toUpperCase();
+  if (s.includes("-USDT")) {
+    // Criptos: BTC-USDT -> BTC/USD
+    return s.replace("-USDT", "/USD");
+  }
+  // Forex/Commodities: EUR/USD, XAU/USD ya están en el formato correcto
+  return s.replace("-", "/");
+}
 
-  // Inicializa los precios si están vacíos (simulando precios de apertura)
-  if (Object.keys(global.preciosEnTiempoReal).length === 0) {
-    const initialAssets = [
-      "BTC-USDT",
-      "ETH-USDT",
-      "SOL-USDT",
-      "AAPL",
-      "TSLA",
-      "NVDA",
-      "AMZN",
-      "EUR/USD",
-      "GBP/USD",
-      "XAU/USD",
-    ];
-    initialAssets.forEach((symbol) => {
-      const normalized = normalizeSymbol(symbol);
-      let basePrice;
-      if (symbol.includes("BTC")) {
-        basePrice = 60000;
-      } else if (symbol.includes("USD") && symbol.includes("/")) {
-        basePrice = 1.1;
-      } else if (symbol.includes("JPY")) {
-        basePrice = 160.0;
-      } else if (symbol.includes("XAU")) {
-        basePrice = 2300.0;
-      } else {
-        basePrice = 150.0; // Stocks/Others
-      }
-      global.preciosEnTiempoReal[normalized] = basePrice.toFixed(4);
-      // Llenamos el mapa de suscripciones iniciales para que el simulador empiece a funcionar
-      subscribedAssets.set(normalized, basePrice);
-    });
+// --- FUNCIÓN CRÍTICA: INICIAR CONEXIÓN REAL TWELVE DATA ---
+function iniciarWebSocketTwelveData(symbols) {
+  if (!TWELVE_DATA_API_KEY) {
+    console.error(
+      "No se puede iniciar Twelve Data WS: TWELVE_DATA_API_KEY no está definida."
+    );
+    return;
   }
 
-  // Intervalo para generar y transmitir nuevos precios
-  setInterval(() => {
-    const updatedPrices = {};
-    let shouldBroadcast = false;
-
-    // Solo actualizamos y enviamos precios para los activos que están en la lista del frontend
-    subscribedAssets.forEach((initialPrice, normalizedSymbol) => {
-      const currentPrice = parseFloat(
-        global.preciosEnTiempoReal[normalizedSymbol]
-      );
-      if (isNaN(currentPrice)) return;
-
-      // Simular un movimiento aleatorio pequeño (±0.05% o ±0.5)
-      const isCrypto =
-        normalizedSymbol.includes("BTC") || normalizedSymbol.includes("ETH");
-      const volatilityFactor = isCrypto
-        ? 0.0005
-        : currentPrice > 100
-        ? 0.0001
-        : 0.005;
-
-      const change =
-        (Math.random() * volatilityFactor * 2 - volatilityFactor) *
-        currentPrice;
-      const newPrice = currentPrice + change;
-
-      updatedPrices[normalizedSymbol] = newPrice.toFixed(4);
-      global.preciosEnTiempoReal[normalizedSymbol] =
-        updatedPrices[normalizedSymbol];
-      shouldBroadcast = true;
+  // Si la conexión ya existe y está abierta, solo enviamos la suscripción.
+  if (twelveDataWs && twelveDataWs.readyState === WebSocket.OPEN) {
+    const twelveDataSymbols = symbols.map(convertToTwelveDataSymbol);
+    const subscriptionMessage = JSON.stringify({
+      action: "subscribe",
+      symbols: twelveDataSymbols.join(","),
     });
+    twelveDataWs.send(subscriptionMessage);
+    console.log(`[TwelveData] Suscrito a: ${twelveDataSymbols.join(", ")}`);
+    return;
+  }
 
-    if (shouldBroadcast) {
-      broadcast({
-        type: "price_update",
-        prices: updatedPrices,
+  // Intentar abrir la conexión
+  const wsUrl = `wss://ws.twelve-data.com/v1/quotes/price?apikey=${TWELVE_DATA_API_KEY}`;
+  twelveDataWs = new WebSocket(wsUrl);
+
+  twelveDataWs.onopen = () => {
+    console.log(
+      "🟢 [TwelveData] Conexión establecida. Suscribiendo activos..."
+    );
+    if (symbols && symbols.length > 0) {
+      const twelveDataSymbols = symbols.map(convertToTwelveDataSymbol);
+      const subscriptionMessage = JSON.stringify({
+        action: "subscribe",
+        symbols: twelveDataSymbols.join(","),
       });
+      twelveDataWs.send(subscriptionMessage);
+      console.log(`[TwelveData] Suscrito a: ${twelveDataSymbols.join(", ")}`);
     }
-  }, 1000); // Enviar actualizaciones cada 1 segundo (rápido para pruebas)
+  };
+
+  twelveDataWs.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+
+      if (data.event === "price") {
+        const twelveDataSymbol = data.symbol; // Ej: BTC/USD
+        const price = parseFloat(data.price);
+
+        // Mapear el símbolo de Twelve Data de vuelta al formato normalizado interno (ej: BTCUSDT)
+        const normalizedKey = normalizeSymbol(
+          twelveDataSymbol.replace("/USD", "-USDT").replace("/", "")
+        );
+
+        if (!isNaN(price)) {
+          global.preciosEnTiempoReal[normalizedKey] = price.toFixed(4);
+
+          // Transmitir la actualización a todos los clientes del frontend
+          broadcast({
+            type: "price_update",
+            prices: {
+              [normalizedKey]: global.preciosEnTiempoReal[normalizedKey],
+            },
+          });
+        }
+      } else if (data.event === "subscribe-success") {
+        console.log(
+          `[TwelveData] Suscripción exitosa: ${data.success.join(", ")}`
+        );
+      } else if (data.event === "error") {
+        console.error(
+          `[TwelveData] Error de suscripción: ${data.message} para ${data.symbol}`
+        );
+      }
+    } catch (e) {
+      console.error("[TwelveData] Error al procesar mensaje:", e);
+    }
+  };
+
+  twelveDataWs.onclose = () => {
+    console.warn(
+      "🟡 [TwelveData] Conexión cerrada. Reintentando en 15 segundos..."
+    );
+    setTimeout(() => iniciarWebSocketTwelveData(symbols), 15000);
+  };
+
+  twelveDataWs.onerror = (err) => {
+    console.error("❌ [TwelveData] Error de WebSocket:", err.message);
+  };
 }
-// --- FIN SIMULADOR ---
+// --- FIN FUNCIÓN CRÍTICA TWELVE DATA ---
 
 async function getLatestPrice(symbol) {
   const normalizedSymbol = normalizeSymbol(symbol);
@@ -244,30 +272,26 @@ wss.on("connection", (ws, req) => {
           `[WS] Cliente solicitó suscripción a: ${data.symbols.join(", ")}`
         );
 
-        // Agregar los símbolos solicitados al mapa de activos suscritos
+        // 1. Agregar los símbolos solicitados al mapa de activos suscritos
+        const newSymbolsToSubscribe = [];
         data.symbols.forEach((symbol) => {
           const normalized = normalizeSymbol(symbol);
-          // Si el activo no existe en preciosEnTiempoReal, inicializamos un precio base
-          if (global.preciosEnTiempoReal[normalized] === undefined) {
-            // Simulación de inicialización de precio (debe ser realista)
-            let basePrice;
-            if (symbol.includes("BTC")) basePrice = 60000;
-            else if (symbol.includes("USD") && symbol.includes("/"))
-              basePrice = 1.1;
-            else if (symbol.includes("XAU")) basePrice = 2300.0;
-            else basePrice = 100;
-            global.preciosEnTiempoReal[normalized] = basePrice.toFixed(4);
+          if (!subscribedAssets.has(normalized)) {
+            subscribedAssets.set(normalized, 0); // Añadir al mapa de control
+            newSymbolsToSubscribe.push(symbol);
           }
-          subscribedAssets.set(
-            normalized,
-            parseFloat(global.preciosEnTiempoReal[normalized])
-          );
         });
 
-        // Enviar precios actuales inmediatamente después de la suscripción
+        // 2. Iniciar/Actualizar la conexión a Twelve Data con los nuevos símbolos
+        if (newSymbolsToSubscribe.length > 0) {
+          iniciarWebSocketTwelveData(newSymbolsToSubscribe);
+        }
+
+        // 3. Enviar precios actuales inmediatamente después de la suscripción
         const currentPrices = {};
         data.symbols.forEach((symbol) => {
           const normalized = normalizeSymbol(symbol);
+          // Si tenemos el precio, lo enviamos de vuelta al cliente
           if (global.preciosEnTiempoReal[normalized]) {
             currentPrices[normalized] = global.preciosEnTiempoReal[normalized];
           }
@@ -287,9 +311,8 @@ wss.on("connection", (ws, req) => {
   });
 
   ws.on("close", () => {
-    // Nota: Para la simulación actual no es necesario desuscribir del mapa subscribedAssets
-    // ya que no vinculamos el mapa directamente al cliente, sino que simulamos que
-    // el simulador actualiza todos los activos en el mapa.
+    // Aquí se podría implementar la lógica para desuscribir de Twelve Data
+    // si no quedan clientes conectados a un activo, pero lo omitimos por simplicidad.
   });
 });
 
@@ -1322,14 +1345,14 @@ const startServer = async () => {
         `);
     console.log("Tabla de sesiones verificada/creada.");
 
-    // Inicia el simulador de precios
-    startPriceSimulator();
+    // NOTA CLAVE: No llamamos a iniciarWebSocketTwelveData aquí.
+    // Lo llamamos dentro de wss.on('connection') para solo suscribir
+    // los símbolos que el cliente realmente necesita.
 
     // Escuchar en el puerto definido por el entorno (Render)
     server.listen(PORT, () => {
       console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
-      // El Swap se aplica cada 24 horas (86400000 ms) para simular el cobro nocturno,
-      // pero lo establecemos a 5 segundos para fines de prueba en el Canvas.
+      // El Swap se aplica cada 24 horas (86400000 ms), aquí 5s para prueba.
       setInterval(() => cerrarOperacionesAutomáticamente(), 5000); // 5 segundos para prueba
     });
 
@@ -1371,9 +1394,5 @@ const startServer = async () => {
     process.exit(1);
   }
 };
-
-// --- ELIMINADAS FUNCIONES DE SIMULACIÓN VACÍAS ---
-// (iniciarWebSocketKuCoin y iniciarWebSocketTwelveData fueron eliminadas
-// y reemplazadas por startPriceSimulator)
 
 startServer();
