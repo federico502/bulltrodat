@@ -1411,13 +1411,23 @@ const startServer = async () => {
         `[WebSocket Upgrade] Intento de conexión desde el origen: ${origin}`
       );
 
-      if (
-        !origin ||
-        allowedOrigins.some((allowed) => origin.includes(allowed))
-      ) {
-        // Permitir si el origen incluye una URL permitida (para manejar https://www.)
-        // La validación estricta de CORS se hace en el middleware principal
-      } else if (allowedOrigins.indexOf(normalizeOrigin(origin)) === -1) {
+      // --- ARREGLO CRÍTICO DE AUTENTICACIÓN WS ---
+      const normalizedOrigin = normalizeOrigin(origin);
+      let originIsAllowed = false;
+
+      if (!origin && NODE_ENV !== "production") {
+        // Permitir en desarrollo si no hay origen (ej. Postman)
+        originIsAllowed = true;
+      } else if (normalizedOrigin) {
+        // Chequeo más estricto contra la lista normalizada
+        originIsAllowed = allowedOrigins.some(
+          (allowed) =>
+            normalizedOrigin === allowed ||
+            normalizedOrigin.endsWith(`.${allowed}`)
+        );
+      }
+
+      if (!originIsAllowed) {
         console.error(
           `[WebSocket Upgrade] Bloqueado: El origen '${origin}' no está en la lista de permitidos.`
         );
@@ -1425,6 +1435,7 @@ const startServer = async () => {
         socket.destroy();
         return;
       }
+      // --- FIN ARREGLO DE AUTENTICACIÓN WS ---
 
       // FIX CRÍTICO: Usar un middleware que ya fue inicializado para la sesión
       sessionMiddleware(request, {}, () => {
