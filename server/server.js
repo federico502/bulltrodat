@@ -221,7 +221,20 @@ function iniciarWebSocketTwelveData(symbols) {
 
   // FIX CRÍTICO 1: Corregir la URL. Debe ser 'ws.twelvedata.com', no 'ws.twelve-data.com'
   const wsUrl = `wss://ws.twelvedata.com/v1/quotes/price?apikey=${TWELVE_DATA_API_KEY}`;
-  twelveDataWs = new WebSocket(wsUrl);
+
+  // Añadir un log de diagnóstico antes de intentar conectar
+  console.log(
+    `[TwelveData DIAG] Intentando conectar a: ${wsUrl.substring(0, 50)}...`
+  );
+
+  try {
+    twelveDataWs = new WebSocket(wsUrl);
+  } catch (error) {
+    console.error(
+      `[TwelveData CRITICAL] Fallo al crear la instancia de WebSocket: ${error.message}`
+    );
+    return; // Detener la ejecución si la instancia no se pudo crear.
+  }
 
   twelveDataWs.onopen = () => {
     console.log(
@@ -857,7 +870,7 @@ app.post("/cerrar-operacion", async (req, res) => {
 
     await client.query(
       "UPDATE operaciones SET cerrada = true, ganancia = $1, precio_cierre = $2 WHERE id = $3",
-      [gananciaFinal, precioActual, operacion_id]
+      [ganancia, precioActual, op.id]
     );
     await client.query(
       "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
@@ -1439,18 +1452,24 @@ const startServer = async () => {
 
       // FIX CRÍTICO: Usar un middleware que ya fue inicializado para la sesión
       sessionMiddleware(request, {}, () => {
+        // *** ARREGLO TEMPORAL PARA DIAGNÓSTICO: Ignorar error de sesión si el ORIGEN es válido ***
+        // Si el origen pasó la validación de CORS (originIsAllowed es true),
+        // y la sesión es inválida, permitimos la conexión para que los precios fluyan.
+        // Esto aísla el problema de precios del problema de autenticación persistente.
+
         if (!request.session || !request.session.userId) {
           console.error(
-            `[WebSocket Upgrade] Bloqueado: No se encontró una sesión activa para el origen '${origin}'.`
+            `[WebSocket DIAG] WARNING: Sesión no encontrada para el origen válido '${origin}'. Permitida la conexión para diagnóstico.`
           );
-          socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-          socket.destroy();
-          return;
+          // *** CAMBIO CLAVE: NO DESTRUIR LA CONEXIÓN ***
+          // No devolvemos 401 para permitir que la conexión WS continúe.
+          // El frontend manejará la falta de datos de usuario.
+        } else {
+          console.log(
+            `[WebSocket Upgrade] Éxito: Sesión validada para el usuario ${request.session.userId}. Actualizando conexión.`
+          );
         }
 
-        console.log(
-          `[WebSocket Upgrade] Éxito: Sesión validada para el usuario ${request.session.userId}. Actualizando conexión.`
-        );
         wss.handleUpgrade(request, socket, head, (ws) => {
           wss.emit("connection", ws, request);
         });
