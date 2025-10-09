@@ -214,56 +214,25 @@ function iniciarWebSocketTwelveData(symbols) {
         const twelveDataSymbol = data.symbol; // Ej: BTC/USD, EUR/USD
         const price = parseFloat(data.price);
 
-        // --- ARREGLO CRÍTICO DE MAPEO ---
-        let normalizedKey;
-        if (twelveDataSymbol.endsWith("/USD")) {
-          // Caso Cripto/Forex/Commodity que usa /USD (Ej: BTC/USD -> BTCUSDT, EUR/USD -> EURUSD)
-          normalizedKey = normalizeSymbol(twelveDataSymbol);
+        // --- ARREGLO CRÍTICO DE MAPEO V2 ---
+        let normalizedKey = normalizeSymbol(twelveDataSymbol);
 
-          // Si el símbolo original *era* una cripto (ej. BTC-USDT), debemos forzar
-          // la clave para que termine en USDT, ya que el frontend usa ese formato.
-          // Para simplificar, revisamos si el símbolo original suscrito tenía -USDT
-          // (esto es una simplificación, ya que el backend pierde el contexto original)
-          // Ya que el frontend pide el formato 'BTC-USDT', forzamos el mapeo de '/USD' a 'USDT' para criptos.
+        // Expresión regular para identificar pares X/USD que NO son Forex/Commodities
+        // Lista de Forex/Commodities conocidos que usan /USD (o similar) y NO deben ser USDT:
+        // EUR, GBP, AUD, NZD, CAD, CHF, JPY (base), XAU, XAG, WTI, BRENT, NG
+        const knownBaseSymbols =
+          /^(EUR|GBP|AUD|NZD|CAD|CHF|JPY|XAG|XAU|WTI|BRENT|NG)/i;
 
-          // Para ser robustos, asumimos que si la clave NO es un par de divisas estándar (4 letras, ej: EURUSD),
-          // es una cripto o un índice que mapeamos a un formato sin barra.
-          // La mejor práctica es usar la clave que el frontend espera:
-          if (twelveDataSymbol.includes("/")) {
-            // Para Forex/Commodity (EUR/USD, XAU/USD), la clave sin barra es suficiente (EURUSD, XAUUSD)
-            normalizedKey = normalizeSymbol(twelveDataSymbol);
-
-            // Pero si es una cripto (Ej: BTC/USD), debemos mantener la consistencia con el frontend que espera BTCUSDT
-            // Si es un par conocido de la lista de criptos, lo mapeamos a USDT
-            // Nota: Twelve Data no ofrece USDT para BTC/USD, por eso debemos forzar la clave BTCUSDT
-            if (
-              twelveDataSymbol.includes("BTC/") ||
-              twelveDataSymbol.includes("ETH/")
-            ) {
-              normalizedKey = normalizedKey.replace("USD", "USDT");
-            }
-          } else {
-            // Indices o Stocks (DAX, AAPL). El símbolo ya es correcto.
-            normalizedKey = twelveDataSymbol.toUpperCase();
-          }
-          // FIN ARREGLO CRÍTICO DE MAPEO
-        } else {
-          // Stocks/Indices (ya sin barras, ej: AAPL, DAX)
-          normalizedKey = twelveDataSymbol.toUpperCase();
-        }
-
-        // La mejor manera de asegurarnos la clave para el frontend es simplemente:
-        normalizedKey = normalizeSymbol(twelveDataSymbol);
-
-        // PERO, si es una CRIPTO, el frontend espera USDT. Forzamos esto.
         if (
-          twelveDataSymbol.match(/^[A-Z]{3,5}\/USD$/) &&
-          !twelveDataSymbol.match(
-            /^(EUR|GBP|AUD|NZD|CAD|CHF|JPY|XAG|XAU|WTI|BRENT|NG)\//i
-          )
+          twelveDataSymbol.endsWith("/USD") &&
+          !twelveDataSymbol.match(knownBaseSymbols)
         ) {
+          // Esto atrapa criptos como BTC/USD y las convierte a BTCUSDT
           normalizedKey = normalizedKey.replace("USD", "USDT");
         }
+        // Para el resto (Forex/Commodities y Acciones/Índices), normalizeSymbol es suficiente (EURUSD, AAPL, DAX).
+
+        // --- FIN ARREGLO CRÍTICO DE MAPEO V2 ---
 
         if (!isNaN(price)) {
           // Usamos toFixed(4) para uniformidad, aunque las acciones/criptos a veces necesitan más.
@@ -1150,7 +1119,7 @@ app.post("/admin/actualizar-operacion", async (req, res) => {
 
   const client = await pool.connect();
   try {
-    const adminResult = await client.query(
+    const adminResult = await pool.query(
       "SELECT rol FROM usuarios WHERE id = $1",
       [req.session.userId]
     );
