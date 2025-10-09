@@ -4045,35 +4045,39 @@ const ProfileModal = ({ isOpen, onClose, user, stats }) => {
 
 const TradingVisual = () => {
   const AnimatedLine = motion.div;
-  const numLines = 15;
+  const numLines = 20;
+  // Colores más visibles que combinan con el tema (Púrpura, Verde, Rojo)
   const colors = [
-    "rgba(65, 0, 147, 0.15)", // Púrpura oscuro suave
-    "rgba(93, 27, 199, 0.15)", // Púrpura medio suave
-    "rgba(16, 185, 129, 0.15)", // Verde trading suave
-    "rgba(239, 68, 68, 0.15)", // Rojo trading suave
+    "rgba(93, 27, 199, 0.25)", // Púrpura medio (Up)
+    "rgba(16, 185, 129, 0.25)", // Verde trading (Up)
+    "rgba(239, 68, 68, 0.25)", // Rojo trading (Down)
   ];
 
   return (
-    <div className="absolute inset-0 overflow-hidden opacity-80 pointer-events-none">
+    // Contenedor principal con opacidad mejorada
+    <div className="absolute inset-0 overflow-hidden opacity-100 pointer-events-none">
       {Array.from({ length: numLines }).map((_, i) => {
-        const delay = i * 0.5 + (i % 5); // Distribuye las animaciones
-        const duration = 15 + (i % 6); // Duración variada
-        const size = 150 + i * 50; // Tamaño creciente
+        const delay = i * 0.7 + (i % 5);
+        const duration = 18 + (i % 8);
+        const size = 180 + i * 40;
         const color = colors[i % colors.length];
 
-        const initialX = i % 2 === 0 ? "-100%" : "100%";
-        const finalX = i % 2 === 0 ? "100%" : "-100%";
+        // Mueve hacia la derecha o izquierda aleatoriamente
+        const initialX = i % 2 === 0 ? "-150%" : "150%";
+        const finalX = i % 2 === 0 ? "150%" : "-150%";
+
+        // Mueve de arriba a abajo o viceversa
         const yStart = (i / numLines) * 100;
-        const yEnd = yStart + (i % 3 === 0 ? 5 : -5); // Ligera variación vertical
+        const yEnd = yStart + (i % 4 === 0 ? 10 : -10);
 
         return (
           <AnimatedLine
             key={i}
-            initial={{ x: initialX, y: `${yStart}vh`, opacity: 0.5 }}
+            initial={{ x: initialX, y: `${yStart}vh`, opacity: 0 }}
             animate={{
               x: finalX,
               y: `${yEnd}vh`,
-              opacity: 0.2,
+              opacity: 0.7, // Opacidad más alta
               transition: {
                 duration: duration,
                 repeat: Infinity,
@@ -4083,20 +4087,19 @@ const TradingVisual = () => {
               },
             }}
             style={{
-              height: `${size / 25}px`,
+              height: `${size / 30}px`, // Líneas más gruesas
               width: `${size}px`,
               background: `linear-gradient(90deg, transparent, ${color}, transparent)`,
               position: "absolute",
               top: 0,
               zIndex: 0,
               transformOrigin: "left center",
-              // Asegura que las líneas no se superpongan visualmente al texto
-              filter: "blur(1px)",
+              filter: "blur(3px)", // Mayor desenfoque para suavizar
             }}
           />
         );
       })}
-      {/* Gradiente sutil para oscurecer el fondo si el Hero es claro */}
+      {/* Velo semitransparente para garantizar la legibilidad del texto */}
       <div className="absolute inset-0 bg-gray-50/70" />
     </div>
   );
@@ -4408,7 +4411,7 @@ const LandingPage = ({ onNavigate }) => {
       {/* Hero Section */}
       <section
         id="inicio"
-        className="relative min-h-screen pt-24 pb-16 bg-gray-50 overflow-hidden flex items-center justify-center"
+        className="relative min-h-screen pt-24 pb-16 bg-gray-900 overflow-hidden flex items-center justify-center text-white"
       >
         {/* AÑADIDO: Elemento Dinámico con Movimiento */}
         <TradingVisual />
@@ -4418,7 +4421,7 @@ const LandingPage = ({ onNavigate }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7 }}
-            className="text-4xl md:text-6xl font-extrabold text-gray-900 mb-4"
+            className="text-4xl md:text-6xl font-extrabold text-white mb-4"
           >
             Tu Puerta de Acceso a los Mercados Financieros
           </motion.h1>
@@ -4426,7 +4429,7 @@ const LandingPage = ({ onNavigate }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2 }}
-            className="text-lg md:text-xl text-gray-800 max-w-3xl mx-auto mb-8 font-semibold"
+            className="text-lg md:text-xl text-white max-w-3xl mx-auto mb-8 font-semibold"
           >
             Descubre una experiencia de trading superior. Opera con acciones,
             Forex, criptomonedas y más, con herramientas avanzadas y una
