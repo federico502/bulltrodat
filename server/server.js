@@ -100,7 +100,8 @@ app.use(
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
       "script-src": ["'self'", "https://s3.tradingview.com"],
-      "connect-src": ["'self'", "wss:", "https:", "wss://ws.twelve-data.com"], // Twelve Data WS
+      // FIX CRÍTICO 2: La directiva de seguridad debe permitir la conexión al endpoint REAL.
+      "connect-src": ["'self'", "wss:", "https:", "wss://ws.twelvedata.com"],
     },
   })
 );
@@ -187,8 +188,8 @@ function iniciarWebSocketTwelveData(symbols) {
     return;
   }
 
-  // Intentar abrir la conexión
-  const wsUrl = `wss://ws.twelve-data.com/v1/quotes/price?apikey=${TWELVE_DATA_API_KEY}`;
+  // FIX CRÍTICO 1: Corregir la URL. Debe ser 'ws.twelvedata.com', no 'ws.twelve-data.com'
+  const wsUrl = `wss://ws.twelvedata.com/v1/quotes/price?apikey=${TWELVE_DATA_API_KEY}`;
   twelveDataWs = new WebSocket(wsUrl);
 
   twelveDataWs.onopen = () => {
