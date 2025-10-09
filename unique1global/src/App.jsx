@@ -4043,63 +4043,61 @@ const ProfileModal = ({ isOpen, onClose, user, stats }) => {
   );
 };
 
-const HeroVisual = () => {
-  const AnimatedBlob = motion.div;
-
-  const animationVariants = {
-    initial: { x: 0, y: 0, scale: 0.9, rotate: 0 },
-    animate: {
-      x: [0, 50, -50, 0],
-      y: [0, -30, 30, 0],
-      scale: [0.9, 1.1, 0.95, 0.9],
-      rotate: [0, 60, -60, 0],
-      transition: {
-        duration: 20,
-        repeat: Infinity,
-        ease: "easeInOut",
-      },
-    },
-  };
+const TradingVisual = () => {
+  const AnimatedLine = motion.div;
+  const numLines = 15;
+  const colors = [
+    "rgba(65, 0, 147, 0.15)", // Púrpura oscuro suave
+    "rgba(93, 27, 199, 0.15)", // Púrpura medio suave
+    "rgba(16, 185, 129, 0.15)", // Verde trading suave
+    "rgba(239, 68, 68, 0.15)", // Rojo trading suave
+  ];
 
   return (
-    <div className="absolute inset-0 overflow-hidden opacity-30 pointer-events-none">
-      <AnimatedBlob
-        variants={animationVariants}
-        initial="initial"
-        animate="animate"
-        className="w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 absolute top-1/4 left-1/4"
-        style={{ backgroundColor: "#a78bfa" }}
-      />
-      <AnimatedBlob
-        variants={animationVariants}
-        initial="initial"
-        animate="animate"
-        className="w-80 h-80 bg-green-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 absolute bottom-1/4 right-1/4"
-        style={{
-          backgroundColor: "#34d399",
-          transition: {
-            delay: 5,
-            duration: 20,
-            repeat: Infinity,
-            ease: "easeInOut",
-          },
-        }}
-      />
-      <AnimatedBlob
-        variants={animationVariants}
-        initial="initial"
-        animate="animate"
-        className="w-72 h-72 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 absolute bottom-0 left-0"
-        style={{
-          backgroundColor: "#60a5fa",
-          transition: {
-            delay: 10,
-            duration: 20,
-            repeat: Infinity,
-            ease: "easeInOut",
-          },
-        }}
-      />
+    <div className="absolute inset-0 overflow-hidden opacity-80 pointer-events-none">
+      {Array.from({ length: numLines }).map((_, i) => {
+        const delay = i * 0.5 + (i % 5); // Distribuye las animaciones
+        const duration = 15 + (i % 6); // Duración variada
+        const size = 150 + i * 50; // Tamaño creciente
+        const color = colors[i % colors.length];
+
+        const initialX = i % 2 === 0 ? "-100%" : "100%";
+        const finalX = i % 2 === 0 ? "100%" : "-100%";
+        const yStart = (i / numLines) * 100;
+        const yEnd = yStart + (i % 3 === 0 ? 5 : -5); // Ligera variación vertical
+
+        return (
+          <AnimatedLine
+            key={i}
+            initial={{ x: initialX, y: `${yStart}vh`, opacity: 0.5 }}
+            animate={{
+              x: finalX,
+              y: `${yEnd}vh`,
+              opacity: 0.2,
+              transition: {
+                duration: duration,
+                repeat: Infinity,
+                repeatType: "reverse",
+                ease: "linear",
+                delay: delay,
+              },
+            }}
+            style={{
+              height: `${size / 25}px`,
+              width: `${size}px`,
+              background: `linear-gradient(90deg, transparent, ${color}, transparent)`,
+              position: "absolute",
+              top: 0,
+              zIndex: 0,
+              transformOrigin: "left center",
+              // Asegura que las líneas no se superpongan visualmente al texto
+              filter: "blur(1px)",
+            }}
+          />
+        );
+      })}
+      {/* Gradiente sutil para oscurecer el fondo si el Hero es claro */}
+      <div className="absolute inset-0 bg-gray-50/70" />
     </div>
   );
 };
@@ -4413,7 +4411,7 @@ const LandingPage = ({ onNavigate }) => {
         className="relative min-h-screen pt-24 pb-16 bg-gray-50 overflow-hidden flex items-center justify-center"
       >
         {/* AÑADIDO: Elemento Dinámico con Movimiento */}
-        <HeroVisual />
+        <TradingVisual />
 
         <div className="container mx-auto px-6 text-center relative z-10">
           <motion.h1
