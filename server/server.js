@@ -100,7 +100,7 @@ app.use(
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
       "script-src": ["'self'", "https://s3.tradingview.com"],
-      "connect-src": ["'self'", "wss:", "https:", "wss://twelve-data.com"], // Twelve Data WS
+      "connect-src": ["'self'", "wss:", "https:", "wss://ws.twelve-data.com"], // Twelve Data WS
     },
   })
 );
@@ -144,16 +144,17 @@ function broadcast(data) {
 }
 
 /**
- * Normaliza el símbolo para ser usado como clave en global.preciosEnTiempoReal.
- * Ej: 'EUR/USD' -> 'EURUSD', 'BTC-USDT' -> 'BTCUSDT'
+ * Normaliza el símbolo para ser usado como clave en global.preciosEnTiempoReal (ej: BTCUSDT o EURUSD).
+ * Esta clave debe ser la misma que usa el frontend para buscar precios.
  */
 function normalizeSymbol(symbol) {
+  // Asegura que los símbolos como BTC-USDT o EUR/USD se conviertan a BTCUSDT o EURUSD
   return symbol.toUpperCase().replace(/[-/]/g, "");
 }
 
 /**
  * Convierte los símbolos del frontend (ej: BTC-USDT, EUR/USD) al formato de Twelve Data (BTC/USD, EUR/USD).
- * Twelve Data no usa el formato KUCOIN:BTCUSDT que a veces usamos en el frontend.
+ * Twelve Data no soporta 'USDT' directamente, por lo que usamos '/USD' y ajustamos el mapeo de vuelta.
  */
 function convertToTwelveDataSymbol(symbol) {
   let s = symbol.toUpperCase();
@@ -162,7 +163,7 @@ function convertToTwelveDataSymbol(symbol) {
     return s.replace("-USDT", "/USD");
   }
   // Forex/Commodities: EUR/USD, XAU/USD ya están en el formato correcto
-  return s.replace("-", "/");
+  return s.replace("-", "/"); // Asegura que cualquier guion sea barra
 }
 
 // --- FUNCIÓN CRÍTICA: INICIAR CONEXIÓN REAL TWELVE DATA ---
@@ -210,15 +211,63 @@ function iniciarWebSocketTwelveData(symbols) {
       const data = JSON.parse(event.data);
 
       if (data.event === "price") {
-        const twelveDataSymbol = data.symbol; // Ej: BTC/USD
+        const twelveDataSymbol = data.symbol; // Ej: BTC/USD, EUR/USD
         const price = parseFloat(data.price);
 
-        // Mapear el símbolo de Twelve Data de vuelta al formato normalizado interno (ej: BTCUSDT)
-        const normalizedKey = normalizeSymbol(
-          twelveDataSymbol.replace("/USD", "-USDT").replace("/", "")
-        );
+        // --- ARREGLO CRÍTICO DE MAPEO ---
+        let normalizedKey;
+        if (twelveDataSymbol.endsWith("/USD")) {
+          // Caso Cripto/Forex/Commodity que usa /USD (Ej: BTC/USD -> BTCUSDT, EUR/USD -> EURUSD)
+          normalizedKey = normalizeSymbol(twelveDataSymbol);
+
+          // Si el símbolo original *era* una cripto (ej. BTC-USDT), debemos forzar
+          // la clave para que termine en USDT, ya que el frontend usa ese formato.
+          // Para simplificar, revisamos si el símbolo original suscrito tenía -USDT
+          // (esto es una simplificación, ya que el backend pierde el contexto original)
+          // Ya que el frontend pide el formato 'BTC-USDT', forzamos el mapeo de '/USD' a 'USDT' para criptos.
+
+          // Para ser robustos, asumimos que si la clave NO es un par de divisas estándar (4 letras, ej: EURUSD),
+          // es una cripto o un índice que mapeamos a un formato sin barra.
+          // La mejor práctica es usar la clave que el frontend espera:
+          if (twelveDataSymbol.includes("/")) {
+            // Para Forex/Commodity (EUR/USD, XAU/USD), la clave sin barra es suficiente (EURUSD, XAUUSD)
+            normalizedKey = normalizeSymbol(twelveDataSymbol);
+
+            // Pero si es una cripto (Ej: BTC/USD), debemos mantener la consistencia con el frontend que espera BTCUSDT
+            // Si es un par conocido de la lista de criptos, lo mapeamos a USDT
+            // Nota: Twelve Data no ofrece USDT para BTC/USD, por eso debemos forzar la clave BTCUSDT
+            if (
+              twelveDataSymbol.includes("BTC/") ||
+              twelveDataSymbol.includes("ETH/")
+            ) {
+              normalizedKey = normalizedKey.replace("USD", "USDT");
+            }
+          } else {
+            // Indices o Stocks (DAX, AAPL). El símbolo ya es correcto.
+            normalizedKey = twelveDataSymbol.toUpperCase();
+          }
+          // FIN ARREGLO CRÍTICO DE MAPEO
+        } else {
+          // Stocks/Indices (ya sin barras, ej: AAPL, DAX)
+          normalizedKey = twelveDataSymbol.toUpperCase();
+        }
+
+        // La mejor manera de asegurarnos la clave para el frontend es simplemente:
+        normalizedKey = normalizeSymbol(twelveDataSymbol);
+
+        // PERO, si es una CRIPTO, el frontend espera USDT. Forzamos esto.
+        if (
+          twelveDataSymbol.match(/^[A-Z]{3,5}\/USD$/) &&
+          !twelveDataSymbol.match(
+            /^(EUR|GBP|AUD|NZD|CAD|CHF|JPY|XAG|XAU|WTI|BRENT|NG)\//i
+          )
+        ) {
+          normalizedKey = normalizedKey.replace("USD", "USDT");
+        }
 
         if (!isNaN(price)) {
+          // Usamos toFixed(4) para uniformidad, aunque las acciones/criptos a veces necesitan más.
+          // El frontend usará parseFloat(priceString) para la comparación de flasheo.
           global.preciosEnTiempoReal[normalizedKey] = price.toFixed(4);
 
           // Transmitir la actualización a todos los clientes del frontend
@@ -891,9 +940,8 @@ app.get("/commissions", (req, res) => {
 });
 
 app.get("/usuarios", async (req, res) => {
-  if (!req.session.userId) {
+  if (!req.session.userId)
     return res.status(401).json({ error: "No autenticado" });
-  }
 
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
