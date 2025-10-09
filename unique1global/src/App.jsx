@@ -4044,59 +4044,91 @@ const ProfileModal = ({ isOpen, onClose, user, stats }) => {
 };
 
 const TradingVisual = () => {
-  const AnimatedLine = motion.div;
-  const numLines = 20;
-  // Colores que combinan con el tema (Púrpura, Verde, Rojo), ahora en blanco para un fondo oscuro
-  const colors = [
-    "rgba(180, 140, 255, 0.4)", // Púrpura claro suave
-    "rgba(52, 211, 163, 0.4)", // Verde trading claro
-    "rgba(251, 113, 133, 0.4)", // Rojo trading claro
-  ];
+  const AnimatedElement = motion.div;
+  const numCandles = 20;
+
+  // Parámetros de animación para los elementos de gráfico
+  const lineAnimation = {
+    initial: { pathLength: 0, opacity: 0.5 },
+    animate: {
+      pathLength: 1,
+      opacity: 0.2,
+      transition: {
+        duration: 8,
+        repeat: Infinity,
+        repeatType: "reverse",
+        ease: "easeInOut",
+      },
+    },
+  };
+
+  const candleAnimation = {
+    animate: (i) => ({
+      scaleY: [1, 0.5, 1.5, 1],
+      y: [0, -10, 10, 0],
+      backgroundColor:
+        i % 2 === 0
+          ? ["#10b981", "#ef4444", "#10b981"]
+          : ["#ef4444", "#10b981", "#ef4444"],
+      transition: {
+        duration: 4,
+        repeat: Infinity,
+        ease: "easeInOut",
+        delay: i * 0.2,
+      },
+    }),
+  };
 
   return (
-    // Contenedor principal con opacidad mejorada
-    <div className="absolute inset-0 overflow-hidden opacity-100 pointer-events-none">
-      {Array.from({ length: numLines }).map((_, i) => {
-        const delay = i * 0.7 + (i % 5);
-        const duration = 18 + (i % 8);
-        const size = 180 + i * 40;
-        const color = colors[i % colors.length];
+    <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-50">
+      {/* 1. Patrón de Cuadrícula de Fondo (Simula un gráfico) */}
+      <div className="absolute inset-0 [background:repeating-linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:100%_25px] opacity-30" />
+      <div className="absolute inset-0 [background:repeating-linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:10%_100%] opacity-30" />
 
-        const initialX = i % 2 === 0 ? "-150%" : "150%";
-        const finalX = i % 2 === 0 ? "150%" : "-150%";
+      {/* 2. Gráfico de Líneas Animado (Línea de tendencia) */}
+      <svg
+        className="absolute inset-0 w-full h-full"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="none"
+      >
+        <motion.path
+          d="M0,80 C 25,20 75,90 100,30"
+          stroke="#a78bfa" // Púrpura
+          strokeWidth="0.5"
+          fill="none"
+          variants={lineAnimation}
+          initial="initial"
+          animate="animate"
+        />
+        <motion.path
+          d="M0,50 C 30,70 70,30 100,50"
+          stroke="#10b981" // Verde
+          strokeWidth="0.5"
+          fill="none"
+          variants={lineAnimation}
+          initial="initial"
+          animate="animate"
+          style={{ transform: "translateY(10px)" }}
+        />
+      </svg>
 
-        const yStart = (i / numLines) * 100;
-        const yEnd = yStart + (i % 4 === 0 ? 10 : -10);
-
-        return (
-          <AnimatedLine
+      {/* 3. Velas de Trading Animadas */}
+      <div className="absolute inset-0 flex justify-around items-end p-8 pb-12">
+        {Array.from({ length: numCandles }).map((_, i) => (
+          <AnimatedElement
             key={i}
-            initial={{ x: initialX, y: `${yStart}vh`, opacity: 0 }}
-            animate={{
-              x: finalX,
-              y: `${yEnd}vh`,
-              opacity: 0.7, // Opacidad más alta para visibilidad
-              transition: {
-                duration: duration,
-                repeat: Infinity,
-                repeatType: "reverse",
-                ease: "linear",
-                delay: delay,
-              },
-            }}
+            custom={i}
+            variants={candleAnimation}
+            animate="animate"
+            className="w-1.5 h-16 origin-bottom rounded-sm shadow-md"
             style={{
-              height: `${size / 30}px`,
-              width: `${size}px`,
-              background: `linear-gradient(90deg, transparent, ${color}, transparent)`,
-              position: "absolute",
-              top: 0,
+              height: `${25 + i * 2}px`, // Altura inicial variada
+              margin: `0 ${i % 3 === 0 ? "5px" : "1px"}`,
               zIndex: 0,
-              transformOrigin: "left center",
-              filter: "blur(3px)",
             }}
           />
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 };
@@ -4409,7 +4441,7 @@ const LandingPage = ({ onNavigate }) => {
         id="inicio"
         className="relative min-h-screen pt-24 pb-16 bg-gray-900 overflow-hidden flex items-center justify-center text-white"
       >
-        {/* AÑADIDO: Elemento Dinámico con Movimiento */}
+        {/* Elemento Dinámico con Movimiento (Fondo de Trading) */}
         <TradingVisual />
 
         <div className="container mx-auto px-6 text-center relative z-10">
@@ -4425,7 +4457,7 @@ const LandingPage = ({ onNavigate }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2 }}
-            className="text-lg md:text-xl text-white max-w-3xl mx-auto mb-8 font-semibold"
+            className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8 font-medium"
           >
             Descubre una experiencia de trading superior. Opera con acciones,
             Forex, criptomonedas y más, con herramientas avanzadas y una
@@ -4436,8 +4468,10 @@ const LandingPage = ({ onNavigate }) => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.4 }}
             onClick={() => onNavigate("login")}
-            className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-8 rounded-lg text-lg transition-colors shadow-xl"
-            style={{ backgroundColor: "#410093" }}
+            className="bg-white hover:bg-gray-200 text-purple-600 font-bold py-3 px-8 rounded-lg text-lg transition-colors shadow-xl"
+            style={{
+              color: "#410093",
+            }} /* Asegura el color púrpura del texto */
           >
             Comienza a Operar Ahora{" "}
             <Icons.ArrowRight className="inline-block h-5 w-5 ml-2" />
@@ -4447,18 +4481,18 @@ const LandingPage = ({ onNavigate }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.6 }}
-            className="mt-12 flex flex-col sm:flex-row justify-center items-center gap-8 text-gray-700 font-medium"
+            className="mt-12 flex flex-col sm:flex-row justify-center items-center gap-8 text-gray-200 font-medium"
           >
             <div className="flex items-center gap-2">
-              <Icons.ShieldCheck className="h-5 w-5 text-green-600" />
+              <Icons.ShieldCheck className="h-5 w-5 text-green-400" />
               <span>Plataforma Segura</span>
             </div>
             <div className="flex items-center gap-2">
-              <Icons.Banknotes className="h-5 w-5 text-green-600" />
+              <Icons.Banknotes className="h-5 w-5 text-green-400" />
               <span>Comisiones Bajas</span>
             </div>
             <div className="flex items-center gap-2">
-              <Icons.UserGroup className="h-5 w-5 text-green-600" />
+              <Icons.UserGroup className="h-5 w-5 text-green-400" />
               <span>Soporte 24/7</span>
             </div>
           </motion.div>
