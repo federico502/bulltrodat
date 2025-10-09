@@ -3359,10 +3359,28 @@ const DashboardPage = () => {
         try {
           const data = JSON.parse(event.data);
           if (data.type === "price_update" && data.prices) {
-            // FIX CRÍTICO: El backend ya envía las claves normalizadas (ej: BTCUSDT).
-            // No necesitamos re-normalizar aquí, solo usar los datos.
+            // --- FIX CRÍTICO: APLICAR VALIDACIÓN RIGUROSA A LOS DATOS DE WS ---
+            const incomingPrices = data.prices;
+            const validatedPrices = {};
 
-            setRealTimePrices((prev) => ({ ...prev, ...data.prices }));
+            for (const key in incomingPrices) {
+              const value = incomingPrices[key];
+
+              // 1. Asegurar que la clave sea una cadena válida (pre-normalizada por el backend)
+              if (typeof key !== "string" || key.length === 0) continue;
+
+              // 2. Asegurar que el valor sea un número o una cadena que pueda ser un número
+              if (typeof value === "string" || typeof value === "number") {
+                // Almacenar siempre como cadena para consistencia y para que toFixed funcione
+                // correctamente en los componentes AssetPrice
+                validatedPrices[key] = String(value);
+              } else {
+                console.warn(`Valor de precio inválido para ${key}:`, value);
+              }
+            }
+
+            setRealTimePrices((prev) => ({ ...prev, ...validatedPrices }));
+            // --- FIN FIX CRÍTICO ---
           } else if (data.tipo === "operacion_cerrada") {
             setAlert({
               message: `Operación #${data.operacion_id} (${
