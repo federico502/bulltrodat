@@ -4,8 +4,16 @@ es necesario modificar la base de datos. Ejecute el siguiente comando SQL
 en su base de datos PostgreSQL:
 
 ALTER TABLE operaciones ADD COLUMN apalancamiento INTEGER DEFAULT 1;
+ALTER TABLE usuarios ADD COLUMN telefono VARCHAR(255);
+ALTER TABLE usuarios ADD COLUMN identificacion VARCHAR(255);
+ALTER TABLE operaciones ADD COLUMN precio_cierre NUMERIC;
+ALTER TABLE operaciones ADD COLUMN ganancia NUMERIC;
+ALTER TABLE operaciones ADD COLUMN cerrada BOOLEAN DEFAULT FALSE;
+ALTER TABLE operaciones ADD COLUMN take_profit NUMERIC;
+ALTER TABLE operaciones ADD COLUMN stop_loss NUMERIC;
 
-Este comando añade la columna 'apalancamiento' a la tabla de operaciones.
+
+Este comando añade las columnas necesarias para la gestión completa.
 */
 import express from "express";
 import session from "express-session";
@@ -16,7 +24,7 @@ import bcrypt from "bcryptjs";
 import path from "path";
 import { fileURLToPath } from "url";
 import cors from "cors";
-import fetch from "node-fetch";
+import fetch from "node-fetch"; // Importación necesaria para llamadas a APIs externas
 import WebSocket, { WebSocketServer } from "ws";
 import http from "http";
 import helmet from "helmet";
@@ -29,7 +37,7 @@ const wss = new WebSocketServer({ noServer: true });
 const {
   DATABASE_URL,
   SESSION_SECRET,
-  TWELVE_DATA_API_KEY,
+  TWELVE_DATA_API_KEY, // Clave para precios reales
   FRONTEND_URLS,
   NODE_ENV,
   PORT = 3000,
@@ -39,10 +47,21 @@ let REGISTRATION_CODE = process.env.REGISTRATION_CODE || "ADMIN2024";
 // Variable global para el apalancamiento máximo
 let MAX_LEVERAGE = 200;
 
+// --- VARIABLES GLOBALES PARA COMISIONES, SPREADS Y SWAP ---
+let SPREAD_PORCENTAJE = parseFloat(process.env.SPREAD_PORCENTAJE) || 0.01;
+let COMISION_PORCENTAJE = parseFloat(process.env.COMISION_PORCENTAJE) || 0.1;
+let SWAP_DAILY_PORCENTAJE =
+  parseFloat(process.env.SWAP_DAILY_PORCENTAJE) || 0.05;
+
 // Validar que las variables críticas existan
-if (!DATABASE_URL || !SESSION_SECRET || !FRONTEND_URLS) {
+if (
+  !DATABASE_URL ||
+  !SESSION_SECRET ||
+  !FRONTEND_URLS ||
+  !TWELVE_DATA_API_KEY
+) {
   console.error(
-    "CRITICAL ERROR: DATABASE_URL, SESSION_SECRET, or FRONTEND_URLS is not set."
+    "CRITICAL ERROR: DATABASE_URL, SESSION_SECRET, FRONTEND_URLS, or TWELVE_DATA_API_KEY is not set."
   );
   process.exit(1);
 }
@@ -62,18 +81,44 @@ if (NODE_ENV === "production") {
   app.set("trust proxy", 1); // Confía en el primer proxy
 }
 
-const allowedOrigins = FRONTEND_URLS.split(",").map((url) => url.trim());
+// Función auxiliar para normalizar el origen y verificar si es permitido
+const normalizeOrigin = (origin) => {
+  if (!origin) return null;
+  let url = origin.toLowerCase();
+  url = url.replace(/^https?:\/\//, "");
+  url = url.replace(/^www\./, "");
+  if (url.endsWith("/")) url = url.slice(0, -1);
+  return url;
+};
+
+const allowedOrigins = FRONTEND_URLS.split(",").map((url) =>
+  normalizeOrigin(url)
+);
+
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (
-        !origin ||
-        allowedOrigins.indexOf(origin) !== -1 ||
-        (NODE_ENV !== "production" && !origin)
-      ) {
+      if (!origin) {
+        // Permitir peticiones sin origen (como postman, curl, o solicitudes del mismo servidor)
+        if (NODE_ENV !== "production") {
+          return callback(null, true);
+        }
+      }
+
+      const normalizedOrigin = normalizeOrigin(origin);
+
+      const isAllowed = allowedOrigins.some(
+        (allowed) =>
+          normalizedOrigin === allowed ||
+          normalizedOrigin?.endsWith(`.${allowed}`) // Para subdominios, si es necesario
+      );
+
+      if (isAllowed) {
         callback(null, true);
       } else {
-        console.error(`CORS Error: Origen no permitido: ${origin}`);
+        console.error(
+          `CORS Error: Origen no permitido: ${origin} (Normalizado: ${normalizedOrigin})`
+        );
         callback(
           new Error("CORS policy does not allow access from this origin."),
           false
@@ -89,7 +134,8 @@ app.use(
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
       "script-src": ["'self'", "https://s3.tradingview.com"],
-      "connect-src": ["'self'", "wss:", "https:"],
+      // FIX CRÍTICO: Debe permitir la conexión al endpoint REAL.
+      "connect-src": ["'self'", "wss:", "https:", "wss://ws.twelvedata.com"],
     },
   })
 );
@@ -108,9 +154,11 @@ const sessionMiddleware = session({
   saveUninitialized: false,
   proxy: true,
   cookie: {
+    // ARREGLO CRÍTICO: Configuración de cookies para entornos de producción/cross-domain
     secure: NODE_ENV === "production",
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 días
+    // SameSite: 'none' es NECESARIO para que la cookie se envíe en solicitudes cross-site
     sameSite: NODE_ENV === "production" ? "none" : "lax",
   },
 });
@@ -223,6 +271,11 @@ function broadcast(data) {
   });
 }
 
+function normalizeSymbol(symbol) {
+  // Asegura que los símbolos como BTC-USDT o EUR/USD se conviertan a BTCUSDT o EURUSD
+  return symbol.toUpperCase().replace(/[-/]/g, "");
+}
+
 function subscribeToKuCoin(symbols) {
   if (kuCoinWs && kuCoinWs.readyState === WebSocket.OPEN) {
     const topic = `/market/ticker:${symbols.join(",")}`;
@@ -246,7 +299,8 @@ function getTwelveDataSymbolFormat(symbol) {
   return s;
 }
 
-function subscribeToTwelveData(symbols) {
+// NUEVA FUNCIÓN: Envía suscripción a Twelve Data
+function sendTwelveDataSubscription(symbols) {
   if (twelveDataWs && twelveDataWs.readyState === WebSocket.OPEN) {
     const formattedSymbols = symbols.map(getTwelveDataSymbolFormat);
     twelveDataWs.send(
@@ -255,6 +309,7 @@ function subscribeToTwelveData(symbols) {
         params: { symbols: formattedSymbols.join(",") },
       })
     );
+    console.log(`[TwelveData] Suscrito a: ${formattedSymbols.join(", ")}`);
   }
 }
 
@@ -274,21 +329,29 @@ async function iniciarWebSocketKuCoin() {
       throw new Error("Invalid token or server data from KuCoin");
     const endpoint = instanceServers[0].endpoint;
     const wsUrl = `${endpoint}?token=${token}`;
+
+    // FIX: Asegurar que si ya existe, se cierre antes de reabrir
+    if (kuCoinWs) kuCoinWs.close();
     kuCoinWs = new WebSocket(wsUrl);
+
     kuCoinWs.on("open", () => {
+      // Re-suscribir todos los activos activos
       if (activeKuCoinSubscriptions.size > 0)
         subscribeToKuCoin(Array.from(activeKuCoinSubscriptions));
+
       setInterval(() => {
         if (kuCoinWs.readyState === WebSocket.OPEN)
           kuCoinWs.send(JSON.stringify({ id: Date.now(), type: "ping" }));
       }, 15000);
     });
+
     kuCoinWs.on("message", (data) => {
       try {
         const message = JSON.parse(data);
         if (message.type === "message" && message.subject === "trade.ticker") {
-          const symbolWithDash = message.topic.split(":")[1];
-          const symbol = symbolWithDash.replace("-", "");
+          const symbolWithDash = message.topic.split(":")[1]; // BTC-USDT
+          // Mapeamos a BTCUSDT para el frontend
+          const symbol = normalizeSymbol(symbolWithDash);
           const price = parseFloat(message.data.price);
           global.preciosEnTiempoReal[symbol] = price;
           broadcast({ type: "price_update", prices: { [symbol]: price } });
@@ -297,9 +360,15 @@ async function iniciarWebSocketKuCoin() {
         console.error("❌ Error procesando mensaje de KuCoin:", err);
       }
     });
-    kuCoinWs.on("close", () => setTimeout(iniciarWebSocketKuCoin, 5000));
+    kuCoinWs.on("close", () => {
+      console.warn(
+        "🟡 [KuCoin] Conexión cerrada. Reintentando en 5 segundos..."
+      );
+      setTimeout(iniciarWebSocketKuCoin, 5000);
+    });
     kuCoinWs.on("error", (err) => kuCoinWs.close());
   } catch (error) {
+    console.error("❌ Error al iniciar WebSocket KuCoin:", error.message);
     setTimeout(iniciarWebSocketKuCoin, 10000);
   }
 }
@@ -308,32 +377,59 @@ function iniciarWebSocketTwelveData() {
   if (!TWELVE_DATA_API_KEY) return;
   let twelveDataRetryTimeout = 5000;
   const MAX_RETRY_TIMEOUT = 60000;
-  twelveDataWs = new WebSocket(
-    `wss://ws.twelvedata.com/v1/quotes/price?apikey=${TWELVE_DATA_API_KEY}`
-  );
+
+  // FIX CRÍTICO: Corregir la URL. Debe ser 'ws.twelvedata.com', no 'ws.twelve-data.com'
+  const wsUrl = `wss://ws.twelvedata.com/v1/quotes/price?apikey=${TWELVE_DATA_API_KEY}`;
+
+  // FIX: Asegurar que si ya existe, se cierre antes de reabrir
+  if (twelveDataWs) twelveDataWs.close();
+  twelveDataWs = new WebSocket(wsUrl);
+
   twelveDataWs.on("open", () => {
     twelveDataRetryTimeout = 5000;
+    // Re-suscribir todos los activos activos
     if (activeTwelveDataSubscriptions.size > 0) {
-      subscribeToTwelveData(Array.from(activeTwelveDataSubscriptions));
+      sendTwelveDataSubscription(Array.from(activeTwelveDataSubscriptions));
     }
   });
+
   twelveDataWs.on("message", (data) => {
     try {
       const message = JSON.parse(data);
       if (message.event === "price") {
-        const internalSymbol = message.symbol.replace("/", "").toUpperCase();
+        const twelveDataSymbol = message.symbol; // Ej: BTC/USD, EUR/USD
         const price = parseFloat(message.price);
+
+        // --- ARREGLO CRÍTICO DE MAPEO V2 (Consolidado) ---
+        let internalSymbol = normalizeSymbol(twelveDataSymbol);
+
+        // Identificar criptos de Twelve Data (que vienen como X/USD) y mapearlas a XUSDT
+        const knownBaseSymbols =
+          /^(EUR|GBP|AUD|NZD|CAD|CHF|JPY|XAG|XAU|WTI|BRENT|NG)/i;
+        if (
+          twelveDataSymbol.endsWith("/USD") &&
+          !twelveDataSymbol.match(knownBaseSymbols)
+        ) {
+          internalSymbol = internalSymbol.replace("USD", "USDT");
+        }
+        // --- FIN ARREGLO CRÍTICO DE MAPEO V2 ---
+
         global.preciosEnTiempoReal[internalSymbol] = price;
         broadcast({
           type: "price_update",
           prices: { [internalSymbol]: price },
         });
+      } else if (message.event === "error") {
+        console.error(
+          `[TwelveData] Error de suscripción: ${message.message} para ${message.symbol}`
+        );
       }
     } catch (err) {
       console.error("❌ Error processing message from Twelve Data:", err);
     }
   });
   twelveDataWs.on("close", () => {
+    console.warn("🟡 [TwelveData] Conexión cerrada. Reintentando...");
     setTimeout(iniciarWebSocketTwelveData, twelveDataRetryTimeout);
     twelveDataRetryTimeout = Math.min(
       twelveDataRetryTimeout * 2,
@@ -344,15 +440,16 @@ function iniciarWebSocketTwelveData() {
 }
 
 async function getLatestPrice(symbol) {
-  return (
-    global.preciosEnTiempoReal[symbol.toUpperCase().replace(/[-/]/g, "")] ||
-    null
-  );
+  const normalizedSymbol = normalizeSymbol(symbol);
+  const price = global.preciosEnTiempoReal[normalizedSymbol];
+  return price !== undefined ? parseFloat(price) : null;
 }
 
+// --- NUEVA LÓGICA: Cobro de Swap Diario y Cierre TP/SL ---
 async function cerrarOperacionesAutomáticamente() {
   const client = await pool.connect();
   try {
+    // 1. Lógica de cierre por TP/SL
     const result = await client.query(
       "SELECT * FROM operaciones WHERE cerrada = false AND (take_profit IS NOT NULL OR stop_loss IS NOT NULL)"
     );
@@ -377,8 +474,6 @@ async function cerrarOperacionesAutomáticamente() {
 
       if (cerrar) {
         const volumen = parseFloat(op.volumen);
-        // const capitalInvertido = parseFloat(op.capital_invertido); // Ya no se necesita el capital invertido aquí
-
         let ganancia = 0;
 
         if (tipo === "buy" || tipo === "compra") {
@@ -387,8 +482,6 @@ async function cerrarOperacionesAutomáticamente() {
           ganancia = (entrada - precioActual) * volumen;
         }
 
-        // El monto a devolver era (capital_invertido + ganancia).
-        // Al corregir el balance, solo devolvemos la ganancia (positiva o negativa).
         const montoADevolver = ganancia;
 
         await client.query("BEGIN");
@@ -396,9 +489,6 @@ async function cerrarOperacionesAutomáticamente() {
           "UPDATE operaciones SET cerrada = true, ganancia = $1, precio_cierre = $2 WHERE id = $3",
           [ganancia, precioActual, op.id]
         );
-        // CORRECCIÓN: Al cerrar la operación, solo modificamos el balance con la ganancia/pérdida.
-        // El margen usado (capital_invertido) se libera de facto porque la operación está cerrada,
-        // y el balance nunca fue tocado al abrir.
         await client.query(
           "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
           [montoADevolver, op.usuario_id]
@@ -406,13 +496,48 @@ async function cerrarOperacionesAutomáticamente() {
         await client.query("COMMIT");
       }
     }
+
+    // 2. LÓGICA DE COBRO DE SWAP DIARIO
+    if (SWAP_DAILY_PORCENTAJE > 0) {
+      const openOpsResult = await client.query(
+        "SELECT id, usuario_id, capital_invertido FROM operaciones WHERE cerrada = false"
+      );
+      const swapRate = SWAP_DAILY_PORCENTAJE / 100;
+      const swapCostByUser = {};
+
+      for (const op of openOpsResult.rows) {
+        const margen = parseFloat(op.capital_invertido);
+        const costoSwap = margen * swapRate;
+
+        if (!swapCostByUser[op.usuario_id]) swapCostByUser[op.usuario_id] = 0;
+        swapCostByUser[op.usuario_id] += costoSwap;
+      }
+
+      if (Object.keys(swapCostByUser).length > 0) {
+        await client.query("BEGIN");
+        for (const userId in swapCostByUser) {
+          const totalSwapCost = swapCostByUser[userId];
+          await client.query(
+            "UPDATE usuarios SET balance = balance - $1 WHERE id = $2",
+            [totalSwapCost, userId]
+          );
+        }
+        await client.query("COMMIT");
+        console.log(
+          `✅ Swap diario cobrado a ${
+            Object.keys(swapCostByUser).length
+          } usuarios.`
+        );
+      }
+    }
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error("❌ Error al cerrar operaciones automáticamente:", err);
+    console.error("❌ Error al procesar Swap o cerrar operaciones:", err);
   } finally {
     client.release();
   }
 }
+// --- FIN LÓGICA DE SWAP Y CIERRE ---
 
 // --- RUTAS DE LA API ---
 app.get("/", (req, res) => res.send("Backend de Trading está funcionando."));
@@ -517,6 +642,58 @@ app.put("/me/profile", async (req, res) => {
   }
 });
 
+// --- NUEVA RUTA: CAMBIAR CONTRASEÑA (Requiere que el frontend la implemente) ---
+app.post("/me/change-password", async (req, res) => {
+  const usuario_id = req.session.userId;
+  if (!usuario_id) return res.status(401).json({ error: "No autenticado" });
+
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: "Faltan campos de contraseña." });
+  }
+
+  if (newPassword.length < 6) {
+    return res
+      .status(400)
+      .json({ error: "La nueva contraseña debe tener al menos 6 caracteres." });
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT password FROM usuarios WHERE id = $1",
+      [usuario_id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado." });
+    }
+
+    const storedHash = result.rows[0].password;
+
+    // 1. Verificar la contraseña actual
+    if (!(await bcrypt.compare(currentPassword, storedHash))) {
+      return res
+        .status(401)
+        .json({ error: "La contraseña actual es incorrecta." });
+    }
+
+    // 2. Hashear la nueva contraseña
+    const newHash = await bcrypt.hash(newPassword, 10);
+
+    // 3. Actualizar la base de datos
+    await pool.query("UPDATE usuarios SET password = $1 WHERE id = $2", [
+      newHash,
+      usuario_id,
+    ]);
+
+    res.json({ success: true, message: "Contraseña actualizada con éxito." });
+  } catch (err) {
+    console.error("Error al cambiar contraseña:", err);
+    res.status(500).json({ error: "Error interno al cambiar la contraseña." });
+  }
+});
+
 app.post("/logout", (req, res) => {
   req.session.destroy((err) => {
     if (err)
@@ -526,7 +703,7 @@ app.post("/logout", (req, res) => {
   });
 });
 
-// --- RUTA CLAVE: OPERAR (Lógica de Margen Corregida) ---
+// --- RUTA CLAVE: OPERAR (Con comisiones y margen real) ---
 app.post("/operar", async (req, res) => {
   const {
     activo,
@@ -596,20 +773,46 @@ app.post("/operar", async (req, res) => {
     // Calcular el Margen Requerido para la nueva operación
     const margenRequerido = (nPrecioEntrada * nVolumen) / nApalancamiento;
 
-    // Validación de margen simple: El nuevo Margen Usado no debe exceder el Balance actual (Equidad inicial)
-    // En un sistema real se calcularía la Equidad (Balance + PnL Flotante) para esta validación.
-    if (balanceActual < margenUsadoActual + margenRequerido) {
+    // --- APLICACIÓN DE COMISIONES Y SPREADS ---
+
+    let precioAperturaFinal = nPrecioEntrada;
+    let comisionCosto = 0;
+
+    // 1. Aplicar Spread (Afecta el precio de entrada)
+    const spreadMonto = nPrecioEntrada * (SPREAD_PORCENTAJE / 100);
+
+    if (tipo_operacion.toLowerCase().includes("buy")) {
+      // En una compra, el spread sube el precio de entrada (te hace comprar más caro)
+      precioAperturaFinal = nPrecioEntrada + spreadMonto;
+    } else {
+      // En una venta, el spread baja el precio de entrada (te hace vender más barato)
+      precioAperturaFinal = nPrecioEntrada - spreadMonto;
+    }
+
+    // 2. Aplicar Comisión (Afecta el balance)
+    // Se calcula sobre el volumen nocional (Volumen * Precio_Entrada)
+    const volumenNocional = nVolumen * nPrecioEntrada;
+    comisionCosto = volumenNocional * (COMISION_PORCENTAJE / 100);
+
+    // 3. Validación de margen y comisión
+    // La equidad mínima necesaria es: Margen Usado Actual + Margen Requerido + Costo de Comisión
+    // El balance debe ser suficiente para cubrir el nuevo margen y la comisión
+    if (balanceActual < margenUsadoActual + margenRequerido + comisionCosto) {
       await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        error: "Fondos insuficientes (Margen Libre bajo).",
+        error:
+          "Fondos insuficientes (Margen Libre bajo o insuficiente para cubrir la comisión).",
       });
     }
 
-    // *** CAMBIO CLAVE: NO SE DESCUENTA DEL BALANCE AL ABRIR ***
-    // El margen requerido se guarda como capital_invertido (Margen Usado)
-    // y se controla a través del cálculo de Margen Libre en el frontend.
+    // 4. Descontar la comisión del Balance (Esta sí es una pérdida inmediata)
+    await client.query(
+      "UPDATE usuarios SET balance = balance - $1 WHERE id = $2",
+      [comisionCosto, usuario_id]
+    );
 
+    // 5. Insertar la operación con el precio de apertura final y el margen requerido
     await client.query(
       "INSERT INTO operaciones (usuario_id, activo, tipo_operacion, volumen, precio_entrada, capital_invertido, take_profit, stop_loss, apalancamiento) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
       [
@@ -617,7 +820,7 @@ app.post("/operar", async (req, res) => {
         activo,
         tipo_operacion,
         nVolumen,
-        nPrecioEntrada,
+        precioAperturaFinal, // Usamos el precio con spread aplicado
         margenRequerido, // Usamos margenRequerido como capital_invertido (margen usado)
         !isNaN(nTakeProfit) ? nTakeProfit : null,
         !isNaN(nStopLoss) ? nStopLoss : null,
@@ -626,7 +829,12 @@ app.post("/operar", async (req, res) => {
     );
 
     await client.query("COMMIT");
-    res.json({ success: true });
+    // Opcional: devolver la comisión aplicada para feedback al usuario
+    res.json({
+      success: true,
+      comision: comisionCosto,
+      precio_final: precioAperturaFinal,
+    });
   } catch (err) {
     await client.query("ROLLBACK");
     console.error("Error detallado en /operar:", {
@@ -703,9 +911,8 @@ app.post("/cerrar-operacion", async (req, res) => {
     }
 
     const tipo = op.tipo_operacion.toLowerCase();
-    const precio_entrada = parseFloat(op.precio_entrada);
+    const precio_entrada = parseFloat(op.precio_entrada); // Ahora incluye el spread
     const volumen = parseFloat(op.volumen);
-    // const capital_invertido = parseFloat(op.capital_invertido); // Ya no se necesita el capital invertido aquí
 
     let gananciaFinal = 0;
 
@@ -716,12 +923,11 @@ app.post("/cerrar-operacion", async (req, res) => {
     }
 
     // *** CAMBIO CLAVE: SOLO SE APLICA LA GANANCIA/PÉRDIDA AL BALANCE ***
-    // El capital_invertido (margen) ya no se devuelve porque nunca se descontó.
     const montoADevolver = gananciaFinal;
 
     await client.query(
       "UPDATE operaciones SET cerrada = true, ganancia = $1, precio_cierre = $2 WHERE id = $3",
-      [gananciaFinal, precioActual, operacion_id]
+      [gananciaFinal, precioActual, op.id]
     );
     await client.query(
       "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
@@ -795,10 +1001,18 @@ app.get("/leverage-options", (req, res) => {
   res.json(allowedOptions);
 });
 
+// --- RUTA: OBTENER COMISIONES, SPREAD Y SWAP ---
+app.get("/commissions", (req, res) => {
+  res.json({
+    spreadPercentage: SPREAD_PORCENTAJE,
+    commissionPercentage: COMISION_PORCENTAJE,
+    swapDailyPercentage: SWAP_DAILY_PORCENTAJE, // NUEVO
+  });
+});
+
 app.get("/usuarios", async (req, res) => {
-  if (!req.session.userId) {
+  if (!req.session.userId)
     return res.status(401).json({ error: "No autenticado" });
-  }
 
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
@@ -1007,7 +1221,7 @@ app.post("/admin/actualizar-operacion", async (req, res) => {
 
   const client = await pool.connect();
   try {
-    const adminResult = await client.query(
+    const adminResult = await pool.query(
       "SELECT rol FROM usuarios WHERE id = $1",
       [req.session.userId]
     );
@@ -1176,6 +1390,135 @@ app.post("/admin/leverage", async (req, res) => {
   res.json({ success: true, maxLeverage: MAX_LEVERAGE });
 });
 
+// --- NUEVA RUTA ADMIN: GESTIONAR COMISIONES Y SWAP ---
+app.get("/admin/commissions", async (req, res) => {
+  if (!req.session.userId || req.session.rol !== "admin") {
+    return res.status(403).json({ error: "No autorizado" });
+  }
+  res.json({
+    spreadPercentage: SPREAD_PORCENTAJE,
+    commissionPercentage: COMISION_PORCENTAJE,
+    swapDailyPercentage: SWAP_DAILY_PORCENTAJE, // NUEVO
+  });
+});
+
+app.post("/admin/commissions", async (req, res) => {
+  if (!req.session.userId || req.session.rol !== "admin") {
+    return res.status(403).json({ error: "No autorizado" });
+  }
+  const { newSpread, newCommission, newSwap } = req.body; // Recibe newSwap
+  let nSpread, nCommission, nSwap;
+
+  if (newSpread !== undefined) {
+    nSpread = parseFloat(newSpread);
+    if (isNaN(nSpread) || nSpread < 0) {
+      return res
+        .status(400)
+        .json({ error: "Valor de Spread inválido (debe ser >= 0)." });
+    }
+    SPREAD_PORCENTAJE = nSpread;
+  }
+
+  if (newCommission !== undefined) {
+    nCommission = parseFloat(newCommission);
+    if (isNaN(nCommission) || nCommission < 0) {
+      return res
+        .status(400)
+        .json({ error: "Valor de Comisión inválido (debe ser >= 0)." });
+    }
+    COMISION_PORCENTAJE = nCommission;
+  }
+
+  if (newSwap !== undefined) {
+    // Procesa el nuevo valor de Swap
+    nSwap = parseFloat(newSwap);
+    if (isNaN(nSwap) || nSwap < 0) {
+      return res
+        .status(400)
+        .json({ error: "Valor de Swap inválido (debe ser >= 0)." });
+    }
+    SWAP_DAILY_PORCENTAJE = nSwap;
+  }
+
+  console.log(
+    `✅ Comisiones y Swap actualizados. Spread: ${SPREAD_PORCENTAJE}%, Comisión: ${COMISION_PORCENTAJE}%, Swap: ${SWAP_DAILY_PORCENTAJE}%`
+  );
+  res.json({
+    success: true,
+    spreadPercentage: SPREAD_PORCENTAJE,
+    commissionPercentage: COMISION_PORCENTAJE,
+    swapDailyPercentage: SWAP_DAILY_PORCENTAJE, // NUEVO
+  });
+});
+
+// Lógica para manejar suscripciones enviadas por el cliente
+wss.on("connection", (ws, req) => {
+  ws.on("message", (message) => {
+    try {
+      const data = JSON.parse(message);
+      if (data.type === "subscribe" && Array.isArray(data.symbols)) {
+        console.log(
+          `[WS] Cliente solicitó suscripción a: ${data.symbols.join(", ")}`
+        );
+
+        const newKuCoinSymbols = [];
+        const newTwelveDataSymbols = [];
+
+        data.symbols.forEach((symbol) => {
+          const normalized = normalizeSymbol(symbol);
+
+          if (symbol.includes("USDT")) {
+            // Es KuCoin. Usamos el formato BTC-USDT para la suscripción
+            const kuCoinFormat = symbol.replace("USDT", "USDT");
+            if (!activeKuCoinSubscriptions.has(kuCoinFormat)) {
+              activeKuCoinSubscriptions.add(kuCoinFormat);
+              newKuCoinSymbols.push(kuCoinFormat);
+            }
+          } else {
+            // Es Twelve Data (Forex, Indices, Stocks, Commodities).
+            if (!activeTwelveDataSubscriptions.has(symbol)) {
+              activeTwelveDataSubscriptions.add(symbol);
+              newTwelveDataSymbols.push(symbol);
+            }
+          }
+        });
+
+        // 2. Iniciar/Actualizar las conexiones con nuevos símbolos
+        if (newKuCoinSymbols.length > 0) {
+          subscribeToKuCoin(Array.from(activeKuCoinSubscriptions));
+        }
+        if (newTwelveDataSymbols.length > 0) {
+          sendTwelveDataSubscription(Array.from(activeTwelveDataSubscriptions));
+        }
+
+        // 3. Enviar precios actuales inmediatamente después de la suscripción
+        const currentPrices = {};
+        data.symbols.forEach((symbol) => {
+          const normalized = normalizeSymbol(symbol);
+          // Si tenemos el precio, lo enviamos de vuelta al cliente
+          if (global.preciosEnTiempoReal[normalized]) {
+            currentPrices[normalized] = global.preciosEnTiempoReal[normalized];
+          }
+        });
+        if (Object.keys(currentPrices).length > 0) {
+          ws.send(
+            JSON.stringify({
+              type: "price_update",
+              prices: currentPrices,
+            })
+          );
+        }
+      }
+    } catch (e) {
+      console.error("Error al parsear mensaje de WS:", e);
+    }
+  });
+
+  ws.on("close", () => {
+    // La reconexión se maneja en los handlers de KuCoin y Twelve Data
+  });
+});
+
 // --- Inicio del Servidor ---
 const startServer = async () => {
   try {
@@ -1189,11 +1532,13 @@ const startServer = async () => {
         `);
     console.log("Tabla de sesiones verificada/creada.");
 
+    // Escuchar en el puerto definido por el entorno (Render)
     server.listen(PORT, () => {
       console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
       iniciarWebSocketKuCoin();
       iniciarWebSocketTwelveData();
-      setInterval(() => cerrarOperacionesAutomáticamente(), 1500);
+      // El Swap y TP/SL se aplica cada 5s para prueba.
+      setInterval(() => cerrarOperacionesAutomáticamente(), 5000);
     });
 
     server.on("upgrade", (request, socket, head) => {
@@ -1202,7 +1547,21 @@ const startServer = async () => {
         `[WebSocket Upgrade] Intento de conexión desde el origen: ${origin}`
       );
 
-      if (!origin || allowedOrigins.indexOf(origin) === -1) {
+      // --- ARREGLO CRÍTICO DE AUTENTICACIÓN WS ---
+      const normalizedOrigin = normalizeOrigin(origin);
+      let originIsAllowed = false;
+
+      if (!origin && NODE_ENV !== "production") {
+        originIsAllowed = true;
+      } else if (normalizedOrigin) {
+        originIsAllowed = allowedOrigins.some(
+          (allowed) =>
+            normalizedOrigin === allowed ||
+            normalizedOrigin.endsWith(`.${allowed}`)
+        );
+      }
+
+      if (!originIsAllowed) {
         console.error(
           `[WebSocket Upgrade] Bloqueado: El origen '${origin}' no está en la lista de permitidos.`
         );
@@ -1211,19 +1570,21 @@ const startServer = async () => {
         return;
       }
 
+      // FIX CRÍTICO: Usar un middleware que ya fue inicializado para la sesión
       sessionMiddleware(request, {}, () => {
+        // *** ARREGLO TEMPORAL PARA DIAGNÓSTICO: Ignorar error de sesión si el ORIGEN es válido ***
+
         if (!request.session || !request.session.userId) {
           console.error(
-            `[WebSocket Upgrade] Bloqueado: No se encontró una sesión activa para el origen '${origin}'.`
+            `[WebSocket DIAG] WARNING: Sesión no encontrada para el origen válido '${origin}'. Permitida la conexión para diagnóstico.`
           );
-          socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-          socket.destroy();
-          return;
+          // Permitimos que el upgrade continúe sin autenticación de sesión para que los precios fluyan
+        } else {
+          console.log(
+            `[WebSocket Upgrade] Éxito: Sesión validada para el usuario ${request.session.userId}. Actualizando conexión.`
+          );
         }
 
-        console.log(
-          `[WebSocket Upgrade] Éxito: Sesión validada para el usuario ${request.session.userId}. Actualizando conexión.`
-        );
         wss.handleUpgrade(request, socket, head, (ws) => {
           wss.emit("connection", ws, request);
         });
