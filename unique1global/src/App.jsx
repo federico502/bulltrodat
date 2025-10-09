@@ -4312,16 +4312,22 @@ const LandingPage = ({ onNavigate }) => {
               ¿Por Qué?
             </button>
             <button
-              onClick={() => scrollToSection("nosotros")}
-              className="hover:text-purple-600 transition-colors"
-            >
-              Sobre Nosotros
-            </button>
-            <button
               onClick={() => scrollToSection("mercados")}
               className="hover:text-purple-600 transition-colors"
             >
               Mercados
+            </button>
+            <button
+              onClick={() => scrollToSection("testimonios")}
+              className="hover:text-purple-600 transition-colors"
+            >
+              Testimonios
+            </button>
+            <button
+              onClick={() => scrollToSection("faq")}
+              className="hover:text-purple-600 transition-colors"
+            >
+              FAQ
             </button>
             <button
               onClick={() => scrollToSection("contacto")}
@@ -4539,6 +4545,99 @@ const LandingPage = ({ onNavigate }) => {
               Explora más funcionalidades{" "}
               <Icons.ArrowRight className="h-4 w-4 ml-2" />
             </button>
+          </div>
+        </div>
+      </section>
+      {/* Sección 6: Preguntas Frecuentes (FAQ) */}
+      <section id="faq" className="py-20">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <span className="text-sm font-semibold text-purple-600 uppercase tracking-wider">
+              Resolvemos tus Dudas
+            </span>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-2 mb-4">
+              Preguntas Frecuentes
+            </h2>
+          </div>
+          <div className="max-w-3xl mx-auto space-y-4">
+            {[
+              {
+                q: "¿Qué es el Apalancamiento y cómo se usa?",
+                a: "El apalancamiento te permite abrir posiciones más grandes usando una cantidad pequeña de tu capital (margen). En nuestra plataforma, puedes elegir apalancamiento hasta 1:200, pero recuerda que amplifica tanto las ganancias como las pérdidas.",
+              },
+              {
+                q: "¿Cómo se calculan las Comisiones y los Spreads?",
+                a: "La Comisión se cobra al abrir la operación (porcentaje del volumen nocional) y se resta de tu balance. El Spread es el diferencial entre el precio de compra y venta, que se integra en el precio de entrada de tu operación.",
+              },
+              {
+                q: "¿Qué sucede con mis operaciones durante la noche?",
+                a: "Las operaciones abiertas durante la noche incurren en un Swap (interés nocturno), que se cobra diariamente sobre el capital que tienes invertido (margen). Este costo se aplica automáticamente a tu balance.",
+              },
+              {
+                q: "¿Qué activos puedo operar?",
+                a: "Ofrecemos una amplia gama de instrumentos, incluyendo los principales pares de Forex (EUR/USD, GBP/JPY), Criptomonedas (BTC, ETH), Acciones e Índices globales.",
+              },
+            ].map((item, index) => (
+              <details
+                key={index}
+                className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200"
+              >
+                <summary className="font-semibold text-gray-900 cursor-pointer flex justify-between items-center">
+                  {item.q}
+                  <span className="text-purple-600 ml-2">
+                    <Icons.Plus className="h-5 w-5" />
+                  </span>
+                </summary>
+                <p className="mt-3 text-sm text-gray-600 border-t border-gray-200 pt-3">
+                  {item.a}
+                </p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Sección 5: Testimonios y Prueba Social */}
+      <section id="testimonios" className="py-20 bg-white">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <span className="text-sm font-semibold text-purple-600 uppercase tracking-wider">
+              Nuestros Traders Hablan
+            </span>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-2 mb-4">
+              La Confianza de la Comunidad
+            </h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="p-6 bg-gray-50 rounded-xl shadow-lg border border-gray-200">
+              <p className="text-gray-700 italic mb-4">
+                "La ejecución es impecable y la plataforma es increíblemente
+                intuitiva. Pude configurar mis TP y SL rápidamente, lo cual es
+                vital para mi estrategia."
+              </p>
+              <p className="font-bold text-gray-900">— Javier M.</p>
+              <p className="text-sm text-purple-600">Trader de Forex</p>
+            </div>
+            <div className="p-6 bg-gray-50 rounded-xl shadow-lg border border-gray-200">
+              <p className="text-gray-700 italic mb-4">
+                "El control de margen y las comisiones claras me dan la
+                tranquilidad que necesito. Es la plataforma más transparente que
+                he usado para cripto."
+              </p>
+              <p className="font-bold text-gray-900">— Sofía R.</p>
+              <p className="text-sm text-purple-600">
+                Inversora en Criptomonedas
+              </p>
+            </div>
+            <div className="p-6 bg-gray-50 rounded-xl shadow-lg border border-gray-200">
+              <p className="text-gray-700 italic mb-4">
+                "El soporte fue excelente cuando tuve dudas sobre el
+                apalancamiento. Recomiendo esta plataforma a cualquiera que
+                busque herramientas serias."
+              </p>
+              <p className="font-bold text-gray-900">— Andrés C.</p>
+              <p className="text-sm text-purple-600">Analista de Acciones</p>
+            </div>
           </div>
         </div>
       </section>
