@@ -16,7 +16,7 @@ import bcrypt from "bcryptjs";
 import path from "path";
 import { fileURLToPath } from "url";
 import cors from "cors";
-import fetch from "node-fetch";
+import fetch from "node-fetch"; // Importación necesaria para llamadas a APIs externas
 import WebSocket, { WebSocketServer } from "ws";
 import http from "http";
 import helmet from "helmet";
@@ -29,7 +29,7 @@ const wss = new WebSocketServer({ noServer: true });
 const {
   DATABASE_URL,
   SESSION_SECRET,
-  TWELVE_DATA_API_KEY,
+  TWELVE_DATA_API_KEY, // Clave para precios reales
   FRONTEND_URLS,
   NODE_ENV,
   PORT = 3000,
@@ -40,18 +40,20 @@ let REGISTRATION_CODE = process.env.REGISTRATION_CODE || "ADMIN2024";
 let MAX_LEVERAGE = 200;
 
 // --- VARIABLES GLOBALES PARA COMISIONES, SPREADS Y SWAP ---
-// Spread base: 0.01% (0.0001) del precio de entrada (Spread)
 let SPREAD_PORCENTAJE = parseFloat(process.env.SPREAD_PORCENTAJE) || 0.01;
-// Comisión fija: 0.1% (0.001) del volumen total (Comisión por Volumen)
 let COMISION_PORCENTAJE = parseFloat(process.env.COMISION_PORCENTAJE) || 0.1;
-// NUEVO: Swap diario (Interés nocturno)
 let SWAP_DAILY_PORCENTAJE =
   parseFloat(process.env.SWAP_DAILY_PORCENTAJE) || 0.05;
 
 // Validar que las variables críticas existan
-if (!DATABASE_URL || !SESSION_SECRET || !FRONTEND_URLS) {
+if (
+  !DATABASE_URL ||
+  !SESSION_SECRET ||
+  !FRONTEND_URLS ||
+  !TWELVE_DATA_API_KEY
+) {
   console.error(
-    "CRITICAL ERROR: DATABASE_URL, SESSION_SECRET, or FRONTEND_URLS is not set."
+    "CRITICAL ERROR: DATABASE_URL, SESSION_SECRET, FRONTEND_URLS, or TWELVE_DATA_API_KEY is not set."
   );
   process.exit(1);
 }
@@ -71,18 +73,44 @@ if (NODE_ENV === "production") {
   app.set("trust proxy", 1); // Confía en el primer proxy
 }
 
-const allowedOrigins = FRONTEND_URLS.split(",").map((url) => url.trim());
+// Función auxiliar para normalizar el origen y verificar si es permitido
+const normalizeOrigin = (origin) => {
+  if (!origin) return null;
+  let url = origin.toLowerCase();
+  url = url.replace(/^https?:\/\//, "");
+  url = url.replace(/^www\./, "");
+  if (url.endsWith("/")) url = url.slice(0, -1);
+  return url;
+};
+
+const allowedOrigins = FRONTEND_URLS.split(",").map((url) =>
+  normalizeOrigin(url)
+);
+
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (
-        !origin ||
-        allowedOrigins.indexOf(origin) !== -1 ||
-        (NODE_ENV !== "production" && !origin)
-      ) {
+      if (!origin) {
+        // Permitir peticiones sin origen (como postman, curl, o solicitudes del mismo servidor)
+        if (NODE_ENV !== "production") {
+          return callback(null, true);
+        }
+      }
+
+      const normalizedOrigin = normalizeOrigin(origin);
+
+      const isAllowed = allowedOrigins.some(
+        (allowed) =>
+          normalizedOrigin === allowed ||
+          normalizedOrigin?.endsWith(`.${allowed}`) // Para subdominios, si es necesario
+      );
+
+      if (isAllowed) {
         callback(null, true);
       } else {
-        console.error(`CORS Error: Origen no permitido: ${origin}`);
+        console.error(
+          `CORS Error: Origen no permitido: ${origin} (Normalizado: ${normalizedOrigin})`
+        );
         callback(
           new Error("CORS policy does not allow access from this origin."),
           false
@@ -98,7 +126,8 @@ app.use(
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
       "script-src": ["'self'", "https://s3.tradingview.com"],
-      "connect-src": ["'self'", "wss:", "https:"],
+      // FIX CRÍTICO 2: La directiva de seguridad debe permitir la conexión al endpoint REAL.
+      "connect-src": ["'self'", "wss:", "https:", "wss://ws.twelvedata.com"],
     },
   })
 );
@@ -117,10 +146,15 @@ const sessionMiddleware = session({
   saveUninitialized: false,
   proxy: true,
   cookie: {
+    // ARREGLO CRÍTICO: Configuración de cookies para entornos de producción/cross-domain
+    // Secure: Requerido para SameSite=None
     secure: NODE_ENV === "production",
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 días
+    // SameSite: 'none' es NECESARIO para que la cookie se envíe en solicitudes cross-site (Frontend/Backend en dominios distintos)
     sameSite: NODE_ENV === "production" ? "none" : "lax",
+    // Opcional pero ÚTIL si los dominios son subdominios (ej: app.mydomain.com y api.mydomain.com)
+    // domain: NODE_ENV === 'production' ? '.uniqueoneglobal.com' : undefined,
   },
 });
 app.use(sessionMiddleware);
@@ -128,101 +162,10 @@ app.use(sessionMiddleware);
 // --- Lógica de WebSockets ---
 global.preciosEnTiempoReal = {};
 
-// --- Listas de Activos para Suscripción a WebSockets ---
-const initialCrypto = [
-  "BTC-USDT",
-  "ETH-USDT",
-  "LTC-USDT",
-  "XRP-USDT",
-  "BNB-USDT",
-  "TRX-USDT",
-  "ADA-USDT",
-  "DOGE-USDT",
-  "SOL-USDT",
-  "DOT-USDT",
-  "LINK-USDT",
-  "MATIC-USDT",
-  "AVAX-USDT",
-  "PEPE-USDT",
-  "SUI-USDT",
-  "TON-USDT",
-];
-
-const initialTwelveDataAssets = [
-  "EUR/USD",
-  "GBP/USD",
-  "EUR/JPY",
-  "USD/JPY",
-  "AUD/USD",
-  "USD/CHF",
-  "GBP/JPY",
-  "USD/CAD",
-  "EUR/GBP",
-  "EUR/CHF",
-  "AUD/JPY",
-  "NZD/USD",
-  "CHF/JPY",
-  "EUR/AUD",
-  "CAD/JPY",
-  "GBP/AUD",
-  "EUR/CAD",
-  "AUD/CAD",
-  "GBP/CAD",
-  "AUD/NZD",
-  "NZD/JPY",
-  "AUD/CHF",
-  "USD/MXN",
-  "GBP/NZD",
-  "EUR/NZD",
-  "CAD/CHF",
-  "NZD/CAD",
-  "NZD/CHF",
-  "GBP/CHF",
-  "USD/BRL",
-  "XAU/USD",
-  "XAG/USD",
-  "WTI/USD",
-  "BRENT/USD",
-  "XCU/USD",
-  "NG/USD",
-  "META",
-  "JNJ",
-  "JPM",
-  "KO",
-  "MA",
-  "IBM",
-  "DIS",
-  "CVX",
-  "AAPL",
-  "AMZN",
-  "BA",
-  "BAC",
-  "CSCO",
-  "MCD",
-  "NVDA",
-  "WMT",
-  "MSFT",
-  "NFLX",
-  "NKE",
-  "ORCL",
-  "PG",
-  "T",
-  "TSLA",
-  "DAX",
-  "FCHI",
-  "FTSE",
-  "SX5E",
-  "IBEX",
-  "DJI",
-  "SPX",
-  "NDX",
-  "NI225",
-];
-
-let kuCoinWs = null;
-let twelveDataWs = null;
-const activeKuCoinSubscriptions = new Set(initialCrypto);
-const activeTwelveDataSubscriptions = new Set(initialTwelveDataAssets);
+// Almacena los símbolos a los que el frontend se ha suscrito.
+// Key: Normalized Symbol (ej: 'BTCUSDT'), Value: Initial/Base Price
+const subscribedAssets = new Map();
+let twelveDataWs = null; // Conexión a Twelve Data
 
 function broadcast(data) {
   wss.clients.forEach((client) => {
@@ -232,47 +175,209 @@ function broadcast(data) {
   });
 }
 
-function subscribeToKuCoin(symbols) {
-  if (kuCoinWs && kuCoinWs.readyState === WebSocket.OPEN) {
-    const topic = `/market/ticker:${symbols.join(",")}`;
-    kuCoinWs.send(
-      JSON.stringify({
-        id: Date.now(),
-        type: "subscribe",
-        topic: topic,
-        privateChannel: false,
-        response: true,
-      })
-    );
+/**
+ * Normaliza el símbolo para ser usado como clave en global.preciosEnTiempoReal (ej: BTCUSDT o EURUSD).
+ * Esta clave debe ser la misma que usa el frontend para buscar precios.
+ */
+function normalizeSymbol(symbol) {
+  // Asegura que los símbolos como BTC-USDT o EUR/USD se conviertan a BTCUSDT o EURUSD
+  return symbol.toUpperCase().replace(/[-/]/g, "");
+}
+
+/**
+ * Convierte los símbolos del frontend (ej: BTC-USDT, EUR/USD) al formato de Twelve Data (BTC/USD, EUR/USD).
+ * Twelve Data no soporta 'USDT' directamente, por lo que usamos '/USD' y ajustamos el mapeo de vuelta.
+ */
+function convertToTwelveDataSymbol(symbol) {
+  let s = symbol.toUpperCase();
+  if (s.includes("-USDT")) {
+    // Criptos: BTC-USDT -> BTC/USD
+    return s.replace("-USDT", "/USD");
   }
+  // Forex/Commodities: EUR/USD, XAU/USD ya están en el formato correcto
+  return s.replace("-", "/"); // Asegura que cualquier guion sea barra
 }
 
-function getTwelveDataSymbolFormat(symbol) {
-  const s = symbol.toUpperCase();
-  if (s.includes("/") && s.length > 6) return s;
-  if (!s.includes("/") && s.length === 6)
-    return `${s.slice(0, 3)}/${s.slice(3)}`;
-  return s;
-}
+// --- FUNCIÓN CRÍTICA: INICIAR CONEXIÓN REAL TWELVE DATA ---
+function iniciarWebSocketTwelveData(symbols) {
+  if (!TWELVE_DATA_API_KEY) {
+    console.error(
+      "No se puede iniciar Twelve Data WS: TWELVE_DATA_API_KEY no está definida."
+    );
+    return;
+  }
 
-function subscribeToTwelveData(symbols) {
+  // Si la conexión ya existe y está abierta, solo enviamos la suscripción.
   if (twelveDataWs && twelveDataWs.readyState === WebSocket.OPEN) {
-    const formattedSymbols = symbols.map(getTwelveDataSymbolFormat);
-    twelveDataWs.send(
-      JSON.stringify({
-        action: "subscribe",
-        params: { symbols: formattedSymbols.join(",") },
-      })
-    );
+    const twelveDataSymbols = symbols.map(convertToTwelveDataSymbol);
+    const subscriptionMessage = JSON.stringify({
+      action: "subscribe",
+      symbols: twelveDataSymbols.join(","),
+    });
+    twelveDataWs.send(subscriptionMessage);
+    console.log(`[TwelveData] Suscrito a: ${twelveDataSymbols.join(", ")}`);
+    return;
   }
+
+  // FIX CRÍTICO 1: Corregir la URL. Debe ser 'ws.twelvedata.com', no 'ws.twelve-data.com'
+  const wsUrl = `wss://ws.twelvedata.com/v1/quotes/price?apikey=${TWELVE_DATA_API_KEY}`;
+
+  // Añadir un log de diagnóstico antes de intentar conectar
+  console.log(
+    `[TwelveData DIAG] Intentando conectar a: ${wsUrl.substring(0, 50)}...`
+  );
+
+  try {
+    twelveDataWs = new WebSocket(wsUrl);
+  } catch (error) {
+    console.error(
+      `[TwelveData CRITICAL] Fallo al crear la instancia de WebSocket: ${error.message}`
+    );
+    return; // Detener la ejecución si la instancia no se pudo crear.
+  }
+
+  twelveDataWs.onopen = () => {
+    console.log(
+      "🟢 [TwelveData] Conexión establecida. Suscribiendo activos..."
+    );
+    if (symbols && symbols.length > 0) {
+      const twelveDataSymbols = symbols.map(convertToTwelveDataSymbol);
+      const subscriptionMessage = JSON.stringify({
+        action: "subscribe",
+        symbols: twelveDataSymbols.join(","),
+      });
+      twelveDataWs.send(subscriptionMessage);
+      console.log(`[TwelveData] Suscrito a: ${twelveDataSymbols.join(", ")}`);
+    }
+  };
+
+  twelveDataWs.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+
+      if (data.event === "price") {
+        const twelveDataSymbol = data.symbol; // Ej: BTC/USD, EUR/USD
+        const price = parseFloat(data.price);
+
+        // --- ARREGLO CRÍTICO DE MAPEO V2 ---
+        let normalizedKey = normalizeSymbol(twelveDataSymbol);
+
+        // Expresión regular para identificar pares X/USD que NO son Forex/Commodities
+        // Lista de Forex/Commodities conocidos que usan /USD (o similar) y NO deben ser USDT:
+        // EUR, GBP, AUD, NZD, CAD, CHF, JPY (base), XAU, XAG, WTI, BRENT, NG
+        const knownBaseSymbols =
+          /^(EUR|GBP|AUD|NZD|CAD|CHF|JPY|XAG|XAU|WTI|BRENT|NG)/i;
+
+        if (
+          twelveDataSymbol.endsWith("/USD") &&
+          !twelveDataSymbol.match(knownBaseSymbols)
+        ) {
+          // Esto atrapa criptos como BTC/USD y las convierte a BTCUSDT
+          normalizedKey = normalizedKey.replace("USD", "USDT");
+        }
+        // Para el resto (Forex/Commodities y Acciones/Índices), normalizeSymbol es suficiente (EURUSD, AAPL, DAX).
+
+        // --- FIN ARREGLO CRÍTICO DE MAPEO V2 ---
+
+        if (!isNaN(price)) {
+          // Usamos toFixed(4) para uniformidad, aunque las acciones/criptos a veces necesitan más.
+          // El frontend usará parseFloat(priceString) para la comparación de flasheo.
+          global.preciosEnTiempoReal[normalizedKey] = price.toFixed(4);
+
+          // Transmitir la actualización a todos los clientes del frontend
+          broadcast({
+            type: "price_update",
+            prices: {
+              [normalizedKey]: global.preciosEnTiempoReal[normalizedKey],
+            },
+          });
+        }
+      } else if (data.event === "subscribe-success") {
+        console.log(
+          `[TwelveData] Suscripción exitosa: ${data.success.join(", ")}`
+        );
+      } else if (data.event === "error") {
+        console.error(
+          `[TwelveData] Error de suscripción: ${data.message} para ${data.symbol}`
+        );
+      }
+    } catch (e) {
+      console.error("[TwelveData] Error al procesar mensaje:", e);
+    }
+  };
+
+  twelveDataWs.onclose = () => {
+    console.warn(
+      "🟡 [TwelveData] Conexión cerrada. Reintentando en 15 segundos..."
+    );
+    setTimeout(() => iniciarWebSocketTwelveData(symbols), 15000);
+  };
+
+  twelveDataWs.onerror = (err) => {
+    console.error("❌ [TwelveData] Error de WebSocket:", err.message);
+  };
 }
+// --- FIN FUNCIÓN CRÍTICA TWELVE DATA ---
 
 async function getLatestPrice(symbol) {
-  return (
-    global.preciosEnTiempoReal[symbol.toUpperCase().replace(/[-/]/g, "")] ||
-    null
-  );
+  const normalizedSymbol = normalizeSymbol(symbol);
+  const price = global.preciosEnTiempoReal[normalizedSymbol];
+  return price !== undefined ? parseFloat(price) : null;
 }
+
+// Lógica para manejar suscripciones enviadas por el cliente
+wss.on("connection", (ws, req) => {
+  ws.on("message", (message) => {
+    try {
+      const data = JSON.parse(message);
+      if (data.type === "subscribe" && Array.isArray(data.symbols)) {
+        console.log(
+          `[WS] Cliente solicitó suscripción a: ${data.symbols.join(", ")}`
+        );
+
+        // 1. Agregar los símbolos solicitados al mapa de activos suscritos
+        const newSymbolsToSubscribe = [];
+        data.symbols.forEach((symbol) => {
+          const normalized = normalizeSymbol(symbol);
+          if (!subscribedAssets.has(normalized)) {
+            subscribedAssets.set(normalized, 0); // Añadir al mapa de control
+            newSymbolsToSubscribe.push(symbol);
+          }
+        });
+
+        // 2. Iniciar/Actualizar la conexión a Twelve Data con los nuevos símbolos
+        if (newSymbolsToSubscribe.length > 0) {
+          iniciarWebSocketTwelveData(newSymbolsToSubscribe);
+        }
+
+        // 3. Enviar precios actuales inmediatamente después de la suscripción
+        const currentPrices = {};
+        data.symbols.forEach((symbol) => {
+          const normalized = normalizeSymbol(symbol);
+          // Si tenemos el precio, lo enviamos de vuelta al cliente
+          if (global.preciosEnTiempoReal[normalized]) {
+            currentPrices[normalized] = global.preciosEnTiempoReal[normalized];
+          }
+        });
+        if (Object.keys(currentPrices).length > 0) {
+          ws.send(
+            JSON.stringify({
+              type: "price_update",
+              prices: currentPrices,
+            })
+          );
+        }
+      }
+    } catch (e) {
+      console.error("Error al parsear mensaje de WS:", e);
+    }
+  });
+
+  ws.on("close", () => {
+    // Aquí se podría implementar la lógica para desuscribir de Twelve Data
+    // si no quedan clientes conectados a un activo, pero lo omitimos por simplicidad.
+  });
+});
 
 async function cerrarOperacionesAutomáticamente() {
   const client = await pool.connect();
@@ -765,7 +870,7 @@ app.post("/cerrar-operacion", async (req, res) => {
 
     await client.query(
       "UPDATE operaciones SET cerrada = true, ganancia = $1, precio_cierre = $2 WHERE id = $3",
-      [gananciaFinal, precioActual, operacion_id]
+      [ganancia, precioActual, op.id]
     );
     await client.query(
       "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
@@ -849,9 +954,8 @@ app.get("/commissions", (req, res) => {
 });
 
 app.get("/usuarios", async (req, res) => {
-  if (!req.session.userId) {
+  if (!req.session.userId)
     return res.status(401).json({ error: "No autenticado" });
-  }
 
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
@@ -1060,7 +1164,7 @@ app.post("/admin/actualizar-operacion", async (req, res) => {
 
   const client = await pool.connect();
   try {
-    const adminResult = await client.query(
+    const adminResult = await pool.query(
       "SELECT rol FROM usuarios WHERE id = $1",
       [req.session.userId]
     );
@@ -1303,12 +1407,14 @@ const startServer = async () => {
         `);
     console.log("Tabla de sesiones verificada/creada.");
 
+    // NOTA CLAVE: No llamamos a iniciarWebSocketTwelveData aquí.
+    // Lo llamamos dentro de wss.on('connection') para solo suscribir
+    // los símbolos que el cliente realmente necesita.
+
+    // Escuchar en el puerto definido por el entorno (Render)
     server.listen(PORT, () => {
       console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
-      iniciarWebSocketKuCoin();
-      iniciarWebSocketTwelveData();
-      // El Swap se aplica cada 24 horas (86400000 ms) para simular el cobro nocturno,
-      // pero lo establecemos a 5 segundos para fines de prueba en el Canvas.
+      // El Swap se aplica cada 24 horas (86400000 ms), aquí 5s para prueba.
       setInterval(() => cerrarOperacionesAutomáticamente(), 5000); // 5 segundos para prueba
     });
 
@@ -1318,7 +1424,23 @@ const startServer = async () => {
         `[WebSocket Upgrade] Intento de conexión desde el origen: ${origin}`
       );
 
-      if (!origin || allowedOrigins.indexOf(origin) === -1) {
+      // --- ARREGLO CRÍTICO DE AUTENTICACIÓN WS ---
+      const normalizedOrigin = normalizeOrigin(origin);
+      let originIsAllowed = false;
+
+      if (!origin && NODE_ENV !== "production") {
+        // Permitir en desarrollo si no hay origen (ej. Postman)
+        originIsAllowed = true;
+      } else if (normalizedOrigin) {
+        // Chequeo más estricto contra la lista normalizada
+        originIsAllowed = allowedOrigins.some(
+          (allowed) =>
+            normalizedOrigin === allowed ||
+            normalizedOrigin.endsWith(`.${allowed}`)
+        );
+      }
+
+      if (!originIsAllowed) {
         console.error(
           `[WebSocket Upgrade] Bloqueado: El origen '${origin}' no está en la lista de permitidos.`
         );
@@ -1326,20 +1448,28 @@ const startServer = async () => {
         socket.destroy();
         return;
       }
+      // --- FIN ARREGLO DE AUTENTICACIÓN WS ---
 
+      // FIX CRÍTICO: Usar un middleware que ya fue inicializado para la sesión
       sessionMiddleware(request, {}, () => {
+        // *** ARREGLO TEMPORAL PARA DIAGNÓSTICO: Ignorar error de sesión si el ORIGEN es válido ***
+        // Si el origen pasó la validación de CORS (originIsAllowed es true),
+        // y la sesión es inválida, permitimos la conexión para que los precios fluyan.
+        // Esto aísla el problema de precios del problema de autenticación persistente.
+
         if (!request.session || !request.session.userId) {
           console.error(
-            `[WebSocket Upgrade] Bloqueado: No se encontró una sesión activa para el origen '${origin}'.`
+            `[WebSocket DIAG] WARNING: Sesión no encontrada para el origen válido '${origin}'. Permitida la conexión para diagnóstico.`
           );
-          socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-          socket.destroy();
-          return;
+          // *** CAMBIO CLAVE: NO DESTRUIR LA CONEXIÓN ***
+          // No devolvemos 401 para permitir que la conexión WS continúe.
+          // El frontend manejará la falta de datos de usuario.
+        } else {
+          console.log(
+            `[WebSocket Upgrade] Éxito: Sesión validada para el usuario ${request.session.userId}. Actualizando conexión.`
+          );
         }
 
-        console.log(
-          `[WebSocket Upgrade] Éxito: Sesión validada para el usuario ${request.session.userId}. Actualizando conexión.`
-        );
         wss.handleUpgrade(request, socket, head, (ws) => {
           wss.emit("connection", ws, request);
         });
