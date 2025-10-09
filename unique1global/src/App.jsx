@@ -4043,6 +4043,67 @@ const ProfileModal = ({ isOpen, onClose, user, stats }) => {
   );
 };
 
+const HeroVisual = () => {
+  const AnimatedBlob = motion.div;
+
+  const animationVariants = {
+    initial: { x: 0, y: 0, scale: 0.9, rotate: 0 },
+    animate: {
+      x: [0, 50, -50, 0],
+      y: [0, -30, 30, 0],
+      scale: [0.9, 1.1, 0.95, 0.9],
+      rotate: [0, 60, -60, 0],
+      transition: {
+        duration: 20,
+        repeat: Infinity,
+        ease: "easeInOut",
+      },
+    },
+  };
+
+  return (
+    <div className="absolute inset-0 overflow-hidden opacity-30 pointer-events-none">
+      <AnimatedBlob
+        variants={animationVariants}
+        initial="initial"
+        animate="animate"
+        className="w-96 h-96 bg-purple-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 absolute top-1/4 left-1/4"
+        style={{ backgroundColor: "#a78bfa" }}
+      />
+      <AnimatedBlob
+        variants={animationVariants}
+        initial="initial"
+        animate="animate"
+        className="w-80 h-80 bg-green-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 absolute bottom-1/4 right-1/4"
+        style={{
+          backgroundColor: "#34d399",
+          transition: {
+            delay: 5,
+            duration: 20,
+            repeat: Infinity,
+            ease: "easeInOut",
+          },
+        }}
+      />
+      <AnimatedBlob
+        variants={animationVariants}
+        initial="initial"
+        animate="animate"
+        className="w-72 h-72 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-70 absolute bottom-0 left-0"
+        style={{
+          backgroundColor: "#60a5fa",
+          transition: {
+            delay: 10,
+            duration: 20,
+            repeat: Infinity,
+            ease: "easeInOut",
+          },
+        }}
+      />
+    </div>
+  );
+};
+
 // --- LOGIN/REGISTER ADAPTADO PARA UNIQUE 1 GLOBAL ---
 const LoginPage = ({ onNavigate }) => {
   const { setUser, setIsAuthenticated } = useContext(AppContext);
@@ -4347,8 +4408,14 @@ const LandingPage = ({ onNavigate }) => {
       </header>
 
       {/* Hero Section */}
-      <section id="inicio" className="pt-24 md:pt-32 pb-16 bg-gray-50">
-        <div className="container mx-auto px-6 text-center">
+      <section
+        id="inicio"
+        className="relative pt-32 md:pt-40 pb-20 bg-gray-50 overflow-hidden"
+      >
+        {/* AÑADIDO: Elemento Dinámico con Movimiento */}
+        <HeroVisual />
+
+        <div className="container mx-auto px-6 text-center relative z-10">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -4361,7 +4428,7 @@ const LandingPage = ({ onNavigate }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2 }}
-            className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-8"
+            className="text-lg md:text-xl text-gray-800 max-w-3xl mx-auto mb-8 font-semibold"
           >
             Descubre una experiencia de trading superior. Opera con acciones,
             Forex, criptomonedas y más, con herramientas avanzadas y una
@@ -4383,18 +4450,18 @@ const LandingPage = ({ onNavigate }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.6 }}
-            className="mt-12 flex flex-col sm:flex-row justify-center items-center gap-8 text-gray-600"
+            className="mt-12 flex flex-col sm:flex-row justify-center items-center gap-8 text-gray-700 font-medium"
           >
             <div className="flex items-center gap-2">
-              <Icons.ShieldCheck className="h-5 w-5 text-green-500" />
+              <Icons.ShieldCheck className="h-5 w-5 text-green-600" />
               <span>Plataforma Segura</span>
             </div>
             <div className="flex items-center gap-2">
-              <Icons.Banknotes className="h-5 w-5 text-green-500" />
+              <Icons.Banknotes className="h-5 w-5 text-green-600" />
               <span>Comisiones Bajas</span>
             </div>
             <div className="flex items-center gap-2">
-              <Icons.UserGroup className="h-5 w-5 text-green-500" />
+              <Icons.UserGroup className="h-5 w-5 text-green-600" />
               <span>Soporte 24/7</span>
             </div>
           </motion.div>
