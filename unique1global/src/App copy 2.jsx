@@ -4306,10 +4306,22 @@ const LandingPage = ({ onNavigate }) => {
               Inicio
             </button>
             <button
+              onClick={() => scrollToSection("ventajas")}
+              className="hover:text-purple-600 transition-colors"
+            >
+              ¿Por Qué?
+            </button>
+            <button
               onClick={() => scrollToSection("nosotros")}
               className="hover:text-purple-600 transition-colors"
             >
               Sobre Nosotros
+            </button>
+            <button
+              onClick={() => scrollToSection("mercados")}
+              className="hover:text-purple-600 transition-colors"
+            >
+              Mercados
             </button>
             <button
               onClick={() => scrollToSection("contacto")}
@@ -4383,6 +4395,55 @@ const LandingPage = ({ onNavigate }) => {
         </div>
       </section>
 
+      {/* Sección 2: Por Qué Elegirnos - Ventajas Únicas */}
+      <section id="ventajas" className="py-20 bg-white">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <span className="text-sm font-semibold text-purple-600 uppercase tracking-wider">
+              La Diferencia
+            </span>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-2 mb-4">
+              La Plataforma que Entiende al Trader
+            </h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="p-6 border border-gray-200 rounded-xl shadow-lg hover:shadow-xl transition-all">
+              <Icons.CurrencyDollar className="h-10 w-10 text-green-600 mb-3" />
+              <h3 className="text-xl font-bold mb-2 text-gray-900">
+                Comisiones Transparentes y Bajas
+              </h3>
+              <p className="text-gray-600 text-sm">
+                Nuestra estructura de costos incluye spreads mínimos y
+                comisiones claras, asegurando que retengas la mayor parte de tus
+                ganancias.
+              </p>
+            </div>
+            <div className="p-6 border border-gray-200 rounded-xl shadow-lg hover:shadow-xl transition-all">
+              <Icons.Key className="h-10 w-10 text-indigo-600 mb-3" />
+              <h3 className="text-xl font-bold mb-2 text-gray-900">
+                Apalancamiento Flexible
+              </h3>
+              <p className="text-gray-600 text-sm">
+                Ofrecemos opciones de apalancamiento competitivo (hasta 1:200),
+                permitiéndote maximizar tu potencial de trading con gestión de
+                riesgo integrada.
+              </p>
+            </div>
+            <div className="p-6 border border-gray-200 rounded-xl shadow-lg hover:shadow-xl transition-all">
+              <Icons.ShieldCheck className="h-10 w-10 text-red-600 mb-3" />
+              <h3 className="text-xl font-bold mb-2 text-gray-900">
+                Control Total de Riesgo
+              </h3>
+              <p className="text-gray-600 text-sm">
+                Configura Take Profit y Stop Loss automáticos antes de confirmar
+                cada operación. Tus posiciones se cierran sin intervención
+                manual.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Sobre Nosotros Section */}
       <section id="nosotros" className="py-20">
         <div className="container mx-auto px-6">
@@ -4433,6 +4494,51 @@ const LandingPage = ({ onNavigate }) => {
                 tomar decisiones informadas.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Sección 4: Mercados Destacados */}
+      <section id="mercados" className="py-20 bg-gray-50">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <span className="text-sm font-semibold text-purple-600 uppercase tracking-wider">
+              Cobertura Global
+            </span>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-2 mb-4">
+              Opera en los Mercados más Relevantes
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
+            <div className="p-4 bg-white rounded-xl text-center shadow-md">
+              <p className="text-2xl font-bold text-purple-600">Forex</p>
+              <p className="text-sm text-gray-600">EUR/USD, GBP/JPY</p>
+            </div>
+            <div className="p-4 bg-white rounded-xl text-center shadow-md">
+              <p className="text-2xl font-bold text-purple-600">Cripto</p>
+              <p className="text-sm text-gray-600">BTC, ETH, SOL</p>
+            </div>
+            <div className="p-4 bg-white rounded-xl text-center shadow-md">
+              <p className="text-2xl font-bold text-purple-600">Metales</p>
+              <p className="text-sm text-gray-600">Oro (XAU), Plata (XAG)</p>
+            </div>
+            <div className="p-4 bg-white rounded-xl text-center shadow-md">
+              <p className="text-2xl font-bold text-purple-600">Acciones</p>
+              <p className="text-sm text-gray-600">AAPL, NVDA, TSLA</p>
+            </div>
+            <div className="p-4 bg-white rounded-xl text-center shadow-md">
+              <p className="text-2xl font-bold text-purple-600">Índices</p>
+              <p className="text-sm text-gray-600">S&P 500, DAX</p>
+            </div>
+          </div>
+          <div className="text-center mt-10">
+            <button
+              onClick={() => scrollToSection("caracteristicas")}
+              className="text-purple-600 hover:text-purple-700 font-semibold transition-colors flex items-center mx-auto"
+            >
+              Explora más funcionalidades{" "}
+              <Icons.ArrowRight className="h-4 w-4 ml-2" />
+            </button>
           </div>
         </div>
       </section>
