@@ -6,6 +6,8 @@ import React, {
   useContext,
   useCallback,
   useMemo,
+  lazy,
+  Suspense,
 } from "react";
 import axios from "axios";
 import { Line } from "react-chartjs-2";
@@ -23,9 +25,18 @@ import {
 } from "chart.js";
 import { motion, AnimatePresence } from "framer-motion";
 
-// --- FIX CRÍTICO: Configuración de Entorno Segura (Prevención de Pantalla Blanca) ---
-// Accede a las variables de entorno de forma segura, usando valores por defecto.
-const env = typeof import.meta.env !== "undefined" ? import.meta.env : {};
+// --- Carga Pereza (Lazy Loading) de Componentes Principales ---
+// Esto asegura que el usuario solo cargue el código de trading si está autenticado.
+const LazyLandingPage = lazy(() => import("./LandingPage.jsx"));
+const LazyLoginPage = lazy(() => import("./LoginPage.jsx"));
+const LazyDashboardPage = lazy(() => import("./DashboardPage.jsx"));
+
+// --- Configuración de Entorno Segura ---
+// Solución para el Warning: Reemplazar import.meta.env con una variable global para el entorno
+const env =
+  typeof window !== "undefined" && typeof window.__env !== "undefined"
+    ? window.__env
+    : {};
 const VITE_API_URL = env.VITE_API_URL || "";
 const VITE_WSS_URL = env.VITE_WSS_URL || "";
 const VITE_PLATFORM_LOGO = env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
@@ -33,11 +44,22 @@ const VITE_PLATFORM_LOGO_WHITE =
   env.VITE_PLATFORM_LOGO_WHITE || "/unique1global-logo-white.png";
 const VITE_PLATFORM_ID = env.VITE_PLATFORM_ID || "unique1global";
 
+// Asignar variables al objeto window para que los componentes externos las puedan acceder
+if (typeof window !== "undefined") {
+  window.__env = {
+    VITE_API_URL,
+    VITE_WSS_URL,
+    VITE_PLATFORM_LOGO,
+    VITE_PLATFORM_LOGO_WHITE,
+    VITE_PLATFORM_ID,
+  };
+}
+
 // --- Configuración de Axios ---
 axios.defaults.baseURL = VITE_API_URL;
 axios.defaults.withCredentials = true;
 
-// --- Registro de Chart.js ---
+// --- Registro de Chart.js (Necesario en el root para evitar problemas de contexto) ---
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -50,8 +72,8 @@ ChartJS.register(
   TimeScale
 );
 
-// --- Iconos SVG ---
-const Icon = ({ path, className = "h-5 w-5" }) => (
+// --- Iconos SVG (Mantenidos en el archivo principal para evitar repeticiones) ---
+export const Icon = ({ path, className = "h-5 w-5" }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     className={className}
@@ -64,7 +86,7 @@ const Icon = ({ path, className = "h-5 w-5" }) => (
   </svg>
 );
 
-const Icons = {
+export const Icons = {
   Menu: () => <Icon path="M4 6h16M4 12h16M4 18h16" className="h-6 w-6" />,
   Plus: () => <Icon path="M12 4v16m8-8H4" className="h-4 w-4" />,
   UserGroup: ({ className }) => (
@@ -152,17 +174,13 @@ const Icons = {
 };
 
 // --- Función de Normalización Clave para el Precio ---
-// Esta función debe coincidir con la lógica del backend (server.js: normalizeSymbol)
-const normalizeAssetKey = (symbol) => {
+export const normalizeAssetKey = (symbol) => {
   if (!symbol) return "";
-  // Reemplaza '-' y '/' para obtener el formato de clave de precio (ej: BTCUSDT o EURUSD)
   return symbol.toUpperCase().replace(/[-/]/g, "");
 };
 
-// --- Catálogo de Activos ---
-// Este catálogo es la fuente principal de activos para la UI.
-const ASSET_CATALOG = [
-  // Forex
+// --- Catálogo de Activos (Mantenido aquí para acceso a todas las vistas) ---
+export const ASSET_CATALOG = [
   { symbol: "EUR/USD", name: "Euro / Dólar Estadounidense" },
   { symbol: "GBP/USD", name: "Libra Esterlina / Dólar Estadounidense" },
   { symbol: "EUR/JPY", name: "Euro / Yen Japonés" },
@@ -193,16 +211,12 @@ const ASSET_CATALOG = [
   { symbol: "NZD/CHF", name: "Dólar Neozelandés / Franco Suizo" },
   { symbol: "GBP/CHF", name: "Libra Esterlina / Franco Suizo" },
   { symbol: "USD/BRL", name: "Dólar Estadounidense / Real Brasileño" },
-
-  // Commodities
   { symbol: "XAU/USD", name: "Oro (Gold)" },
   { symbol: "XAG/USD", name: "Plata (Silver)" },
   { symbol: "WTI/USD", name: "Petróleo Crudo WTI" },
-  { symbol: "BRENT/USD", name: "Petróleo Crudo Brent" }, // Normalizado de BRN/USD
+  { symbol: "BRENT/USD", name: "Petróleo Crudo Brent" },
   { symbol: "XCU/USD", name: "Cobre (Copper)" },
-  { symbol: "NG/USD", name: "Gas Natural" }, // Normalizado de NGC/USD
-
-  // Criptomonedas (normalizadas a -USDT para compatibilidad con el feed)
+  { symbol: "NG/USD", name: "Gas Natural" },
   { symbol: "BTC-USDT", name: "Bitcoin" },
   { symbol: "ETH-USDT", name: "Ethereum" },
   { symbol: "LTC-USDT", name: "Litecoin" },
@@ -214,13 +228,11 @@ const ASSET_CATALOG = [
   { symbol: "SOL-USDT", name: "Solana" },
   { symbol: "DOT-USDT", name: "Polkadot" },
   { symbol: "LINK-USDT", name: "Chainlink" },
-  { symbol: "MATIC-USDT", name: "Polygon (MATIC)" }, // Normalizado de POL/USD
+  { symbol: "MATIC-USDT", name: "Polygon (MATIC)" },
   { symbol: "AVAX-USDT", name: "Avalanche" },
   { symbol: "PEPE-USDT", name: "Pepe" },
   { symbol: "SUI-USDT", name: "Sui" },
   { symbol: "TON-USDT", name: "Toncoin" },
-
-  // Indices
   { symbol: "DAX", name: "DAX 40 (Alemania)" },
   { symbol: "FCHI", name: "CAC 40 (Francia)" },
   { symbol: "FTSE", name: "FTSE 100 (Reino Unido)" },
@@ -230,8 +242,6 @@ const ASSET_CATALOG = [
   { symbol: "SPX", name: "S&P 500" },
   { symbol: "NDX", name: "Nasdaq 100" },
   { symbol: "NI225", name: "Nikkei 225" },
-
-  // Acciones
   { symbol: "META", name: "Meta Platforms, Inc." },
   { symbol: "JNJ", name: "Johnson & Johnson" },
   { symbol: "JPM", name: "JPMorgan Chase & Co." },
@@ -250,24 +260,24 @@ const ASSET_CATALOG = [
   { symbol: "WMT", name: "Walmart Inc." },
   { symbol: "MSFT", name: "Microsoft Corporation" },
   { symbol: "NFLX", name: "Netflix, Inc." },
-  { symbol: "NKE", name: "NIKE, Inc." }, // Normalizado de NIKE
+  { symbol: "NKE", name: "NIKE, Inc." },
   { symbol: "ORCL", name: "Oracle Corporation" },
   { symbol: "PG", name: "Procter & Gamble Company" },
   { symbol: "T", name: "AT&T Inc." },
   { symbol: "TSLA", name: "Tesla, Inc." },
 ];
 
-const POPULAR_ASSETS = [
+export const POPULAR_ASSETS = [
   ASSET_CATALOG.find((a) => a.symbol === "BTC-USDT"),
   ASSET_CATALOG.find((a) => a.symbol === "EUR/USD"),
   ASSET_CATALOG.find((a) => a.symbol === "XAU/USD"),
   ASSET_CATALOG.find((a) => a.symbol === "AAPL"),
   ASSET_CATALOG.find((a) => a.symbol === "TSLA"),
   ASSET_CATALOG.find((a) => a.symbol === "NVDA"),
-].filter(Boolean); // Filter out any potential undefined if symbols change
+].filter(Boolean);
 
-// --- Contexto de la App ---
-const AppContext = createContext();
+// --- Contexto de la App (Compartido) ---
+export const AppContext = createContext();
 
 const AppProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -275,11 +285,10 @@ const AppProvider = ({ children }) => {
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [realTimePrices, setRealTimePrices] = useState({});
   const [selectedAsset, setSelectedAsset] = useState("BTC-USDT");
-  // ACTUALIZADO: Estado para las comisiones, spreads y swap
   const [commissions, setCommissions] = useState({
     spreadPercentage: 0.01,
     commissionPercentage: 0.1,
-    swapDailyPercentage: 0.05, // AÑADIDO: Swap diario por defecto
+    swapDailyPercentage: 0.05,
   });
 
   const checkUser = useCallback(async () => {
@@ -288,8 +297,6 @@ const AppProvider = ({ children }) => {
       const { data } = await axios.get("/me");
       setUser(data);
       setIsAuthenticated(true);
-
-      // Intentar cargar comisiones si es administrador o usuario regular
       if (data) {
         try {
           const commRes = await axios.get("/commissions");
@@ -299,7 +306,6 @@ const AppProvider = ({ children }) => {
         }
       }
     } catch (error) {
-      console.log("No authenticated user found.");
       setIsAuthenticated(false);
       setUser(null);
     } finally {
@@ -335,8 +341,12 @@ const AppProvider = ({ children }) => {
       selectedAsset,
       setSelectedAsset,
       refreshUser: checkUser,
-      commissions, // Exponer comisiones
-      setCommissions, // Exponer setCommissions
+      commissions,
+      setCommissions,
+      VITE_WSS_URL,
+      VITE_PLATFORM_LOGO,
+      VITE_PLATFORM_LOGO_WHITE,
+      VITE_PLATFORM_ID,
     }),
     [
       user,
@@ -347,41 +357,116 @@ const AppProvider = ({ children }) => {
       selectedAsset,
       checkUser,
       commissions,
+      VITE_WSS_URL,
+      VITE_PLATFORM_LOGO,
+      VITE_PLATFORM_LOGO_WHITE,
+      VITE_PLATFORM_ID,
     ]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
-// --- Hooks y Componentes de UI ---
-const useFlashOnUpdate = (value) => {
-  const [flashClass, setFlashClass] = useState("");
-  const prevValueRef = useRef(value);
-
-  useEffect(() => {
-    // CRÍTICO: Asegurar que el valor sea un número antes de la comparación
-    const currentValue = parseFloat(value);
-    const prevValue = parseFloat(prevValueRef.current);
-
-    if (
-      !isNaN(currentValue) &&
-      !isNaN(prevValue) &&
-      currentValue !== prevValue
-    ) {
-      setFlashClass(
-        currentValue > prevValue ? "text-green-500" : "text-red-500"
-      );
-      const timer = setTimeout(() => setFlashClass(""), 300);
-      return () => clearTimeout(timer);
-    }
-  }, [value]);
-
-  useEffect(() => {
-    prevValueRef.current = value;
-  });
-
-  return flashClass;
+// --- Componente de Carga (Fallback) ---
+const LoadingFallback = () => {
+  const { VITE_PLATFORM_LOGO } = useContext(AppContext);
+  return (
+    <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="text-xl font-bold animate-pulse">
+        <img src={VITE_PLATFORM_LOGO} width="220" alt="Cargando..." />
+      </div>
+    </div>
+  );
 };
+
+// --- Componente Raíz de la Aplicación ---
+const App = () => {
+  const { isAppLoading, isAuthenticated } = useContext(AppContext);
+  const [currentView, setCurrentView] = useState("landing");
+
+  if (isAppLoading) {
+    return <LoadingFallback />;
+  }
+
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      {isAuthenticated ? (
+        <LazyDashboardPage />
+      ) : currentView === "login" ? (
+        <LazyLoginPage onNavigate={setCurrentView} />
+      ) : (
+        <LazyLandingPage onNavigate={setCurrentView} />
+      )}
+    </Suspense>
+  );
+};
+
+export default function Root() {
+  return (
+    <AppProvider>
+      <App />
+    </AppProvider>
+  );
+}
+
+// --- Exportación de componentes comunes para DashboardPage ---
+// Exportamos helpers y componentes que son usados por el Dashboard,
+// para que no haya duplicación de código en el bundle.
+export {
+  motion,
+  AnimatePresence,
+  Line,
+  ChartJS,
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  Toast,
+  Card,
+  Skeleton,
+  TradingViewWidget,
+  Pagination,
+  PerformanceChart,
+  StatisticsPanel,
+  AssetPrice,
+  AssetRow,
+  AssetLists,
+  MenuItem,
+  ProfileMenu,
+  Header,
+  FlashingMetric,
+  FinancialMetrics,
+  LiveProfitCell,
+  OperationsHistory,
+  Modal,
+  ModalLivePrice,
+  calculateCommissionCost,
+  calculateSwapDailyCost,
+  NewOperationModal,
+  OperationDetailsModal,
+  UserOperationsModal,
+  UserCard,
+  UserTableRow,
+  ManageUsersModal,
+  ManageLeverageModal,
+  ManageCommissionsModal,
+  ConfirmationModal,
+  UserProfile,
+  PaymentMethodButton,
+  DepositView,
+  WithdrawView,
+  MenuButton,
+  SideMenu,
+  CryptoPaymentModal,
+  BankTransferModal,
+  CardPaymentModal,
+  SecurityView,
+  ChangePasswordView,
+  ProfileModal,
+};
+
+// --- Implementaciones de Componentes Comunes ---
 
 const Toast = ({ message, type, onDismiss }) => (
   <motion.div
@@ -421,6 +506,34 @@ const Card = React.forwardRef(({ children, className = "", ...props }, ref) => (
 const Skeleton = ({ className }) => (
   <div className={`animate-pulse bg-gray-200 rounded-md ${className}`} />
 );
+
+const useFlashOnUpdate = (value) => {
+  const [flashClass, setFlashClass] = useState("");
+  const prevValueRef = useRef(value);
+
+  useEffect(() => {
+    const currentValue = parseFloat(value);
+    const prevValue = parseFloat(prevValueRef.current);
+
+    if (
+      !isNaN(currentValue) &&
+      !isNaN(prevValue) &&
+      currentValue !== prevValue
+    ) {
+      setFlashClass(
+        currentValue > prevValue ? "text-green-500" : "text-red-500"
+      );
+      const timer = setTimeout(() => setFlashClass(""), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [value]);
+
+  useEffect(() => {
+    prevValueRef.current = value;
+  });
+
+  return flashClass;
+};
 
 const TradingViewWidget = React.memo(({ symbol }) => {
   const containerRef = useRef(null);
@@ -474,7 +587,6 @@ const TradingViewWidget = React.memo(({ symbol }) => {
         return `OANDA:${sanitizedSymbol}`;
       }
     }
-    // Mapeo de índices a sus símbolos en TradingView
     const indicesMap = {
       DAX: "DEU40",
       FCHI: "FRA40",
@@ -666,13 +778,9 @@ const StatisticsPanel = ({ stats, performanceData, isLoading }) => (
 
 const AssetPrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
-  // FIX CRÍTICO: Usar la función de normalización clave
   const normalizedSymbol = normalizeAssetKey(symbol);
   const priceString = realTimePrices[normalizedSymbol];
-
-  // FIX: Convertir explícitamente a número y manejar NaN
   const price = parseFloat(priceString);
-
   const flashClass = useFlashOnUpdate(price);
   const baseColor = !isNaN(price) ? "text-gray-800" : "text-gray-400";
   const finalColorClass = flashClass || baseColor;
@@ -779,7 +887,6 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (inputValue) {
-      // Find the correct symbol even if the user searched by name
       const assetToUse =
         ASSET_CATALOG.find(
           (asset) =>
@@ -874,7 +981,7 @@ const ProfileMenu = React.memo(
     onToggleSideMenu,
     onManageUsers,
     onManageLeverage,
-    onManageCommissions, // NUEVA prop
+    onManageCommissions,
     onOpenProfileModal,
   }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -948,7 +1055,6 @@ const ProfileMenu = React.memo(
                       text="Gestionar Apalancamiento"
                       onClick={() => handleItemClick(onManageLeverage)}
                     />
-                    {/* NUEVO ITEM DE MENÚ PARA COMISIONES */}
                     <MenuItem
                       icon={
                         <Icons.CurrencyDollar className="h-5 w-5 text-gray-500" />
@@ -979,7 +1085,7 @@ const Header = ({
   onOperation,
   onManageUsers,
   onManageLeverage,
-  onManageCommissions, // NUEVA prop
+  onManageCommissions,
   onToggleSideMenu,
   onToggleMainSidebar,
   onOpenProfileModal,
@@ -1037,7 +1143,7 @@ const Header = ({
           onToggleSideMenu={onToggleSideMenu}
           onManageUsers={onManageUsers}
           onManageLeverage={onManageLeverage}
-          onManageCommissions={onManageCommissions} // Pasa el nuevo handler
+          onManageCommissions={onManageCommissions}
           onOpenProfileModal={onOpenProfileModal}
         />
       </div>
@@ -1097,10 +1203,7 @@ const LiveProfitCell = ({ operation }) => {
   const { realTimePrices } = useContext(AppContext);
   const calculateProfit = useCallback(() => {
     if (operation.cerrada) return parseFloat(operation.ganancia || 0);
-    // FIX: Usar la función de normalización clave
     const normalizedSymbol = normalizeAssetKey(operation.activo);
-
-    // FIX: Asegurar que el precio sea un número
     const currentPrice = parseFloat(realTimePrices[normalizedSymbol]);
 
     if (isNaN(currentPrice)) return 0;
@@ -1110,7 +1213,6 @@ const LiveProfitCell = ({ operation }) => {
       : (currentPrice - operation.precio_entrada) * operation.volumen;
   }, [realTimePrices, operation]);
 
-  // FIX: Asegurar que el resultado de calculateProfit sea un número para toFixed
   const profit = calculateProfit();
   const profitNum = parseFloat(profit);
 
@@ -1423,13 +1525,9 @@ const Modal = ({
 
 const ModalLivePrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
-  // FIX: Usar la función de normalización clave
   const normalizedSymbol = normalizeAssetKey(symbol);
   const priceString = realTimePrices[normalizedSymbol];
-
-  // FIX: Convertir explícitamente a número
   const price = parseFloat(priceString);
-
   const flashClass = useFlashOnUpdate(price);
   const baseColor = !isNaN(price) ? "text-gray-900" : "text-yellow-500";
   const finalColorClass = flashClass || baseColor;
@@ -1442,16 +1540,13 @@ const ModalLivePrice = React.memo(({ symbol }) => {
   );
 });
 
-// Helper para calcular la comisión de forma local para el modal
 const calculateCommissionCost = (price, volume, commissionPercentage) => {
   if (!price || !volume || !commissionPercentage) return 0;
-  // Comisión: Volumen Nocional * Porcentaje de Comisión
   const volumenNocional = price * volume;
   const commissionCost = volumenNocional * (commissionPercentage / 100);
   return commissionCost;
 };
 
-// NUEVO Helper para estimar el costo de Swap diario
 const calculateSwapDailyCost = (
   price,
   volume,
@@ -1460,10 +1555,7 @@ const calculateSwapDailyCost = (
 ) => {
   if (!price || !volume || !swapDailyPercentage || !leverage || leverage === 0)
     return 0;
-
-  // El swap se aplica sobre el margen requerido (capital invertido).
   const margen = (price * volume) / leverage;
-  // Swap se aplica sobre el margen requerido. Usamos valor absoluto.
   const swapCost = margen * (swapDailyPercentage / 100);
   return swapCost;
 };
@@ -1471,10 +1563,9 @@ const calculateSwapDailyCost = (
 const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const { type, asset, volume } = operationData || {};
   const { realTimePrices, commissions } = useContext(AppContext);
-  // FIX: Usar la función de normalización clave
   const normalizedAsset = normalizeAssetKey(asset);
-  const livePrice = realTimePrices[normalizedAsset]; // Esto es un STRING
-  const livePriceNum = parseFloat(livePrice); // Usar número para cálculos
+  const livePrice = realTimePrices[normalizedAsset];
+  const livePriceNum = parseFloat(livePrice);
 
   const [tp, setTp] = useState("");
   const [sl, setSl] = useState("");
@@ -1482,14 +1573,12 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const [leverageOptions, setLeverageOptions] = useState([1]);
 
   useEffect(() => {
-    // Cargar opciones de apalancamiento permitidas desde el backend
     if (isOpen) {
       axios
         .get("/leverage-options")
         .then((res) => {
           if (res.data && res.data.length > 0) {
             setLeverageOptions(res.data);
-            // Asegurarse que el apalancamiento seleccionado sea válido
             if (!res.data.includes(leverage)) {
               setLeverage(res.data[0]);
             }
@@ -1508,7 +1597,6 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
     );
   }, [livePriceNum, volume, commissions]);
 
-  // NUEVO: Cálculo del costo de Swap diario
   const swapDailyCost = useMemo(() => {
     if (isNaN(livePriceNum) || !volume || !commissions || !leverage) return 0;
     return calculateSwapDailyCost(
@@ -1537,8 +1625,6 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
     if (isNaN(targetPrice)) return null;
 
     if (targetType === "tp") {
-      // Nota: La comisión ya está aplicada en el balance, por lo que solo la restamos
-      // para la estimación de PnL en el modal.
       return type === "buy"
         ? (targetPrice - livePriceNum) * volume - commissionCost
         : (livePriceNum - targetPrice) * volume - commissionCost;
@@ -1575,7 +1661,6 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
       <div className="space-y-3 mb-4 text-gray-700">
         <p className="flex justify-between">
           <span>Precio Actual:</span>
-          {/* Usamos el símbolo para que ModalLivePrice maneje la conversión */}
           <ModalLivePrice symbol={asset} />
         </p>
         <p className="flex justify-between">
@@ -1593,7 +1678,6 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
             </span>
             <span className="font-mono">${commissionCost.toFixed(2)}</span>
           </p>
-          {/* NUEVO: Costo de Swap Diario */}
           <p className="flex justify-between text-gray-600 text-sm">
             <span>
               Swap Diario Estimado ({commissions.swapDailyPercentage}%):
@@ -1814,14 +1898,12 @@ const UserOperationsModal = ({
 
   useEffect(() => {
     if (isOpen) {
-      // Reset state when modal opens
       setShowAll(false);
       fetchUserOperations(1);
     }
-  }, [isOpen, user]); // Depend only on isOpen and user to reset
+  }, [isOpen, user]);
 
   useEffect(() => {
-    // This effect runs when showAll changes
     fetchUserOperations(1);
   }, [showAll]);
 
@@ -2362,7 +2444,6 @@ const ManageUsersModal = ({
   );
 };
 
-// Modal para Gestionar Apalancamiento
 const ManageLeverageModal = ({ isOpen, onClose, setAlert }) => {
   const [currentLeverage, setCurrentLeverage] = useState(200);
   const [newLeverage, setNewLeverage] = useState(200);
@@ -2447,26 +2528,24 @@ const ManageLeverageModal = ({ isOpen, onClose, setAlert }) => {
   );
 };
 
-// NUEVO MODAL: Gestionar Comisiones y Spreads
 const ManageCommissionsModal = ({ isOpen, onClose, setAlert }) => {
   const { commissions, setCommissions } = useContext(AppContext);
   const [spread, setSpread] = useState(commissions.spreadPercentage);
   const [commission, setCommission] = useState(
     commissions.commissionPercentage
   );
-  const [swap, setSwap] = useState(commissions.swapDailyPercentage); // AÑADIDO: Swap
+  const [swap, setSwap] = useState(commissions.swapDailyPercentage);
 
-  // Sincronizar estado local al abrir o si el estado global cambia
   useEffect(() => {
     setSpread(commissions.spreadPercentage);
     setCommission(commissions.commissionPercentage);
-    setSwap(commissions.swapDailyPercentage); // AÑADIDO: Swap
+    setSwap(commissions.swapDailyPercentage);
   }, [commissions]);
 
   const handleSave = async () => {
     const newSpread = parseFloat(spread);
     const newCommission = parseFloat(commission);
-    const newSwap = parseFloat(swap); // AÑADIDO: Swap
+    const newSwap = parseFloat(swap);
 
     if (
       isNaN(newSpread) ||
@@ -2485,17 +2564,15 @@ const ManageCommissionsModal = ({ isOpen, onClose, setAlert }) => {
 
     try {
       const res = await axios.post("/admin/commissions", {
-        // La ruta del backend debe aceptar newSwap
         newSpread: newSpread,
         newCommission: newCommission,
-        newSwap: newSwap, // AÑADIDO: Swap
+        newSwap: newSwap,
       });
 
-      // Actualizar estado global en el Context
       setCommissions({
         spreadPercentage: res.data.spreadPercentage,
         commissionPercentage: res.data.commissionPercentage,
-        swapDailyPercentage: res.data.swapDailyPercentage, // ACTUALIZADO: Swap
+        swapDailyPercentage: res.data.swapDailyPercentage,
       });
 
       setAlert({
@@ -2524,8 +2601,6 @@ const ManageCommissionsModal = ({ isOpen, onClose, setAlert }) => {
           Define las tasas de Spread, Comisión y Swap diario para todas las
           operaciones.
         </p>
-
-        {/* Campo de Spread */}
         <div>
           <label
             htmlFor="spread-input"
@@ -2548,8 +2623,6 @@ const ManageCommissionsModal = ({ isOpen, onClose, setAlert }) => {
             el diferencial.
           </p>
         </div>
-
-        {/* Campo de Comisión */}
         <div>
           <label
             htmlFor="commission-input"
@@ -2572,8 +2645,6 @@ const ManageCommissionsModal = ({ isOpen, onClose, setAlert }) => {
             sobre el volumen nocional).
           </p>
         </div>
-
-        {/* NUEVO: Campo de Swap */}
         <div>
           <label
             htmlFor="swap-input"
@@ -2596,7 +2667,6 @@ const ManageCommissionsModal = ({ isOpen, onClose, setAlert }) => {
             usado.
           </p>
         </div>
-
         <div className="flex justify-end pt-4">
           <button
             onClick={handleSave}
@@ -2749,7 +2819,6 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
       Seleccione un Método de Depósito
     </h2>
     <div className="space-y-4">
-      {/* NUEVO: Botón para Tarjeta de Crédito/Débito */}
       <PaymentMethodButton
         icon={<Icons.CreditCard className="h-8 w-8 text-blue-500" />}
         text="Tarjeta de Crédito/Débito"
@@ -2781,7 +2850,6 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
       Seleccione un Método de Retiro
     </h2>
     <div className="space-y-4">
-      {/* NUEVO: Botón para Tarjeta de Crédito/Débito */}
       <PaymentMethodButton
         icon={<Icons.CreditCard className="h-8 w-8 text-blue-500" />}
         text="Tarjeta de Crédito/Débito"
@@ -2813,6 +2881,7 @@ const MenuButton = React.memo(({ icon, text, onClick }) => (
 
 const SideMenu = React.memo(
   ({ isOpen, onClose, setAlert, onSelectPaymentMethod }) => {
+    const { VITE_PLATFORM_LOGO } = useContext(AppContext);
     const [view, setView] = useState("main");
     useEffect(() => {
       if (isOpen) setView("main");
@@ -2929,10 +2998,9 @@ const SideMenu = React.memo(
 
 const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
   const [network, setNetwork] = useState("TRC20");
-  const depositAddress = "TQmZ1fA2gB4iC3dE5fG6h7J8k9L0mN1oP2q"; // Dirección de ejemplo
+  const depositAddress = "TQmZ1fA2gB4iC3dE5fG6h7J8k9L0mN1oP2q";
 
   const handleCopy = () => {
-    // Usar execCommand ya que clipboard.writeText puede fallar en iframes
     const el = document.createElement("textarea");
     el.value = depositAddress;
     document.body.appendChild(el);
@@ -3071,12 +3139,9 @@ const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => (
   </Modal>
 );
 
-// Modal para pagos con tarjeta
 const CardPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
-    // En una aplicación real, aquí se integraría una pasarela de pago como Stripe.
-    // Por ahora, solo simulamos el envío exitoso.
     onSubmitted();
   };
 
@@ -3179,730 +3244,6 @@ const SecurityView = React.memo(({ onBack }) => {
     </div>
   );
 });
-
-const DashboardPage = () => {
-  const {
-    user,
-    selectedAsset,
-    setSelectedAsset,
-    realTimePrices,
-    setRealTimePrices,
-    commissions, // Necesario para el cálculo de margen
-  } = useContext(AppContext);
-  const [isSidebarVisible, setIsSidebarVisible] = useState(false);
-  const [mobileVolume, setMobileVolume] = useState(0.01);
-  const wsRef = useRef(null);
-
-  // FIX CRÍTICO: Nueva función para normalizar activos en la lista inicial
-  const normalizeInitialAssets = useCallback((assets) => {
-    return assets.map((symbol) => {
-      // Si es cripto (BTC-USDT), lo dejamos como está para el display y suscripción
-      if (symbol.endsWith("-USDT")) return symbol;
-      // Si es Forex/Commodity (EUR/USD, XAU/USD), lo dejamos como está
-      if (symbol.includes("/")) return symbol;
-      // Si es una acción/índice, lo dejamos como está
-      return symbol;
-    });
-  }, []);
-
-  const initialAssets = useMemo(
-    () =>
-      normalizeInitialAssets([
-        "BTC-USDT",
-        "ETH-USDT",
-        "SOL-USDT",
-        "AAPL",
-        "TSLA",
-        "NVDA",
-        "AMZN",
-        "EUR/USD",
-        "GBP/USD",
-        "USD/JPY",
-        "XAU/USD",
-        "WTI/USD",
-      ]),
-    [normalizeInitialAssets]
-  );
-
-  const [userAssets, setUserAssets] = useState(() => {
-    try {
-      const savedAssets = localStorage.getItem("userTradingAssets");
-      const parsedAssets = savedAssets
-        ? JSON.parse(savedAssets)
-        : initialAssets;
-      // Asegurar que la lista de activos guardada también pase por la normalización inicial
-      return Array.isArray(parsedAssets) && parsedAssets.length > 0
-        ? normalizeInitialAssets(parsedAssets)
-        : initialAssets;
-    } catch (error) {
-      return initialAssets;
-    }
-  });
-
-  const [operations, setOperations] = useState([]);
-  const [stats, setStats] = useState({});
-  const [balance, setBalance] = useState(0);
-  const [performanceData, setPerformanceData] = useState([]);
-  const [metrics, setMetrics] = useState({
-    balance: 0,
-    equity: 0,
-    usedMargin: 0,
-    freeMargin: 0,
-    marginLevel: 0,
-  });
-  const [alert, setAlert] = useState({ message: "", type: "info" });
-  const [opHistoryFilter, setOpHistoryFilter] = useState("todas");
-  const [isLoadingData, setIsLoadingData] = useState(true);
-  const [isNewOpModalOpen, setIsNewOpModalOpen] = useState(false);
-  const [newOpModalData, setNewOpModalData] = useState(null);
-  const [isUsersModalOpen, setIsUsersModalOpen] = useState(false);
-  const [isUserOpsModalOpen, setIsUserOpsModalOpen] = useState(false);
-  const [isOpDetailsModalOpen, setIsOpDetailsModalOpen] = useState(false);
-  const [currentUserForOps, setCurrentUserForOps] = useState(null);
-  const [currentOpDetails, setCurrentOpDetails] = useState(null);
-  const [isLeverageModalOpen, setIsLeverageModalOpen] = useState(false);
-  const [isCommissionsModalOpen, setIsCommissionsModalOpen] = useState(false); // NUEVO
-  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-  });
-  const [paymentModalConfig, setPaymentModalConfig] = useState({
-    isOpen: false,
-    type: "",
-    method: "",
-  });
-  const [confirmationModal, setConfirmationModal] = useState({
-    isOpen: false,
-    title: "",
-    children: null,
-    onConfirm: () => {},
-  });
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-
-  const handleOpenPaymentModal = (method, type) => {
-    setPaymentModalConfig({ isOpen: true, method, type });
-    setIsSideMenuOpen(false);
-  };
-  const handleClosePaymentModal = () =>
-    setPaymentModalConfig({ isOpen: false, type: "", method: "" });
-
-  const handlePaymentSubmitted = () => {
-    handleClosePaymentModal();
-    setConfirmationModal({
-      isOpen: true,
-      title: "Solicitud en Proceso",
-      children:
-        "Su solicitud ha sido recibida. Un agente se comunicará con usted a la brevedad para completar la operación.",
-      onConfirm: () =>
-        setConfirmationModal({
-          isOpen: false,
-          title: "",
-          children: null,
-          onConfirm: () => {},
-        }),
-    });
-  };
-
-  const fetchData = useCallback(
-    async (page = 1, filter = "todas") => {
-      if (!user) return;
-      setIsLoadingData(true);
-      try {
-        const [historialRes, statsRes, balanceRes, performanceRes] =
-          await Promise.all([
-            axios.get(`/historial?page=${page}&limit=5&filter=${filter}`),
-            axios.get("/estadisticas"),
-            axios.get("/balance"),
-            axios.get("/rendimiento"),
-          ]);
-        setOperations(historialRes.data.operations);
-        setPagination({
-          currentPage: historialRes.data.currentPage,
-          totalPages: historialRes.data.totalPages,
-        });
-        setStats(statsRes.data);
-        setBalance(parseFloat(balanceRes.data.balance));
-        setPerformanceData(performanceRes.data);
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-        setAlert({ message: "Error al cargar los datos", type: "error" });
-      } finally {
-        setIsLoadingData(false);
-      }
-    },
-    [user]
-  );
-
-  useEffect(() => {
-    if (user) fetchData(1, "todas");
-  }, [user, fetchData]);
-
-  useEffect(() => {
-    if (!user || !userAssets.length) return;
-
-    const connectWebSocket = () => {
-      const wsUrl = VITE_WSS_URL;
-      if (!wsUrl) {
-        console.error("WebSocket URL is not defined.");
-        return;
-      }
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        console.log("WebSocket connected. Subscribing to assets.");
-        ws.send(JSON.stringify({ type: "subscribe", symbols: userAssets }));
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === "price_update" && data.prices) {
-            // --- FIX CRÍTICO: APLICAR VALIDACIÓN RIGUROSA A LOS DATOS DE WS ---
-            const incomingPrices = data.prices;
-            const validatedPrices = {};
-
-            for (const key in incomingPrices) {
-              const value = incomingPrices[key];
-
-              // 1. Asegurar que la clave sea una cadena válida (pre-normalizada por el backend)
-              if (typeof key !== "string" || key.length === 0) continue;
-
-              // 2. Asegurar que el valor sea un número o una cadena que pueda ser un número
-              if (typeof value === "string" || typeof value === "number") {
-                // Almacenar siempre como cadena para consistencia y para que toFixed funcione
-                // correctamente en los componentes AssetPrice
-                validatedPrices[key] = String(value);
-              } else {
-                console.warn(`Valor de precio inválido para ${key}:`, value);
-              }
-            }
-
-            setRealTimePrices((prev) => ({ ...prev, ...validatedPrices }));
-            // --- FIN FIX CRÍTICO ---
-          } else if (data.tipo === "operacion_cerrada") {
-            setAlert({
-              message: `Operación #${data.operacion_id} (${
-                data.activo
-              }) cerrada por ${
-                data.tipoCierre
-              }. Ganancia: ${data.ganancia.toFixed(2)}`,
-              type: "success",
-            });
-            fetchData(pagination.currentPage, opHistoryFilter);
-          }
-        } catch (error) {
-          console.error("Error processing WebSocket message:", error);
-        }
-      };
-
-      ws.onclose = (e) => {
-        console.log(
-          "WebSocket disconnected. Attempting to reconnect...",
-          e.reason
-        );
-        setTimeout(connectWebSocket, 3000);
-      };
-
-      ws.onerror = (error) => {
-        console.error("❌ WebSocket Error:", error);
-        ws.close();
-      };
-    };
-
-    connectWebSocket();
-
-    return () => {
-      if (wsRef.current) {
-        console.log("Closing WebSocket connection.");
-        wsRef.current.close();
-      }
-    };
-  }, [user, userAssets]); // userAssets es la clave, ya que activa la suscripción WS
-
-  useEffect(() => {
-    localStorage.setItem("userTradingAssets", JSON.stringify(userAssets));
-  }, [userAssets]);
-
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      if (user) {
-        axios.get("/estadisticas").then((res) => setStats(res.data));
-        axios
-          .get("/balance")
-          .then((res) => setBalance(parseFloat(res.data.balance)));
-      }
-    }, 10000);
-    return () => clearInterval(intervalId);
-  }, [user]);
-
-  useEffect(() => {
-    const openOperations = operations.filter((op) => !op.cerrada);
-    const pnl = openOperations.reduce((total, op) => {
-      // FIX: Usar la función de normalización clave
-      const normalizedSymbol = normalizeAssetKey(op.activo);
-      // FIX: Asegurarse de que el precio sea un número para el cálculo
-      const currentPrice = parseFloat(realTimePrices[normalizedSymbol]);
-
-      if (isNaN(currentPrice)) return total;
-
-      return (
-        total +
-        (op.tipo_operacion.toLowerCase() === "sell"
-          ? (op.precio_entrada - currentPrice) * op.volumen
-          : (currentPrice - op.precio_entrada) * op.volumen)
-      );
-    }, 0);
-
-    // Cálculo de Swap diario para PnL flotante (simulado, pero se cobra en el backend)
-    // Se calcula el Swap diario para mostrar un PnL más preciso, aunque el cobro lo hace el backend.
-    const swapCostTotal = openOperations.reduce((total, op) => {
-      const margen = parseFloat(op.capital_invertido || 0);
-      // Usar la comisión del contexto para el cálculo local
-      const swapRate = commissions.swapDailyPercentage / 100;
-      return total + margen * swapRate;
-    }, 0);
-
-    const usedMargin = openOperations.reduce(
-      (total, op) => total + parseFloat(op.capital_invertido || 0),
-      0
-    );
-    // El PnL total debe incluir el costo de swap desde que se abrió
-    // NOTA: Para una simulación simplificada, se muestra solo el PnL de mercado.
-    // Los cambios de balance por swap ocurren solo por el intervalo del backend.
-    const equity = balance + pnl;
-    const freeMargin = equity - usedMargin;
-    const marginLevel = usedMargin > 0 ? (equity / usedMargin) * 100 : 0;
-    setMetrics({ balance, equity, usedMargin, freeMargin, marginLevel });
-  }, [realTimePrices, operations, balance, commissions]); // Añadir commissions como dependencia
-
-  useEffect(() => {
-    if (alert.message) {
-      const timer = setTimeout(
-        () => setAlert({ message: "", type: "info" }),
-        3000
-      );
-      return () => clearTimeout(timer);
-    }
-  }, [alert]);
-
-  const handlePageChange = (newPage) => fetchData(newPage, opHistoryFilter);
-  const handleFilterChange = (newFilter) => {
-    setOpHistoryFilter(newFilter);
-    fetchData(1, newFilter);
-  };
-
-  const handleOpenNewOpModal = useCallback(
-    (type, volume) => {
-      if (!volume || volume <= 0) {
-        setAlert({ message: "El volumen debe ser mayor a 0.", type: "error" });
-        return;
-      }
-      // FIX: Usar la función de normalización clave
-      const normalizedAsset = normalizeAssetKey(selectedAsset);
-      // FIX: Asegurarse de que el precio sea un número para la validación
-      const currentPrice = parseFloat(realTimePrices[normalizedAsset]);
-
-      if (isNaN(currentPrice)) {
-        setAlert({
-          message: "Precio del activo no disponible. Intente de nuevo.",
-          type: "error",
-        });
-        return;
-      }
-      // La validación del margen libre se hará en el backend con el apalancamiento
-      setNewOpModalData({ type, volume, asset: selectedAsset });
-      setIsNewOpModalOpen(true);
-    },
-    [realTimePrices, selectedAsset]
-  );
-
-  const handleConfirmOperation = useCallback(
-    async (opDetails) => {
-      // FIX: Usar la función de normalización clave
-      const normalizedAsset = normalizeAssetKey(selectedAsset);
-      // FIX: Asegurarse de que el precio sea un número para el cálculo
-      const livePrice = parseFloat(realTimePrices[normalizedAsset]);
-
-      if (isNaN(livePrice)) {
-        setAlert({
-          message: "No se pudo confirmar, el precio no está disponible.",
-          type: "error",
-        });
-        return;
-      }
-      try {
-        const payload = {
-          ...opDetails,
-          activo: selectedAsset,
-          precio_entrada: livePrice,
-        };
-        const { data } = await axios.post("/operar", payload);
-        if (data.success) {
-          setAlert({
-            message: `Operación realizada con éxito. Comisión: $${data.comision.toFixed(
-              2
-            )}`,
-            type: "success",
-          });
-          fetchData(1, opHistoryFilter);
-        } else {
-          setAlert({ message: data.error || "Error al operar", type: "error" });
-        }
-      } catch (error) {
-        setAlert({
-          message: error.response?.data?.error || "Error de red",
-          type: "error",
-        });
-      }
-    },
-    [selectedAsset, opHistoryFilter, fetchData, realTimePrices]
-  );
-
-  const handleAddAsset = useCallback(
-    (symbol) => {
-      let upperSymbol = symbol.toUpperCase().trim();
-
-      // Ajustar el formato de cripto para la lista si viene sin guion
-      if (upperSymbol.endsWith("USDT") && !upperSymbol.includes("-")) {
-        // Asume que si termina en USDT pero no tiene guion (ej: BTCUSDT),
-        // el usuario quiso ingresar el formato de display (ej: BTC-USDT)
-        // La suscripción debe manejar el formato con guion, ya que el backend lo mapea.
-        upperSymbol = `${upperSymbol.slice(0, -4)}-USDT`;
-      }
-
-      if (upperSymbol && !userAssets.includes(upperSymbol)) {
-        const newAssets = [...userAssets, upperSymbol];
-        setUserAssets(newAssets);
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          wsRef.current.send(
-            JSON.stringify({ type: "subscribe", symbols: [upperSymbol] })
-          );
-        }
-        setAlert({ message: `${upperSymbol} añadido.`, type: "success" });
-      } else if (userAssets.includes(upperSymbol)) {
-        setAlert({
-          message: `${upperSymbol} ya existe en la lista.`,
-          type: "error",
-        });
-      }
-    },
-    [userAssets]
-  );
-
-  const handleRemoveAsset = useCallback(
-    (symbol) => {
-      const newAssets = userAssets.filter((a) => a !== symbol);
-      setUserAssets(newAssets);
-      if (selectedAsset === symbol) {
-        setSelectedAsset(newAssets.length > 0 ? newAssets[0] : "BTC-USDT");
-      }
-      setAlert({ message: `${symbol} eliminado.`, type: "success" });
-    },
-    [userAssets, selectedAsset, setSelectedAsset]
-  );
-
-  const handleViewUserOps = useCallback((user) => {
-    setCurrentUserForOps(user);
-    setIsUserOpsModalOpen(true);
-  }, []);
-
-  const handleOpRowClick = useCallback(
-    (op) => {
-      // FIX: Usar la función de normalización clave
-      const normalizedSymbol = normalizeAssetKey(op.activo);
-      // FIX: Asegurarse de que el precio sea un número
-      const currentPrice = parseFloat(realTimePrices[normalizedSymbol]);
-
-      const profit = op.cerrada
-        ? parseFloat(op.ganancia || 0)
-        : isNaN(currentPrice)
-        ? 0
-        : op.tipo_operacion.toLowerCase() === "sell"
-        ? (op.precio_entrada - currentPrice) * op.volumen
-        : (currentPrice - op.precio_entrada) * op.volumen;
-
-      setCurrentOpDetails({ op, profit });
-      setIsOpDetailsModalOpen(true);
-    },
-    [realTimePrices]
-  );
-
-  const handleUpdateOperation = useCallback(
-    async (operationData) => {
-      try {
-        await axios.post("/admin/actualizar-operacion", operationData);
-        setAlert({ message: "Operación actualizada", type: "success" });
-        fetchData(pagination.currentPage, opHistoryFilter); // Recargar datos del usuario
-      } catch (error) {
-        setAlert({
-          message: "Error al actualizar la operación",
-          type: "error",
-        });
-        throw error; // Re-throw para que el modal sepa que falló
-      }
-    },
-    [fetchData, pagination.currentPage, opHistoryFilter]
-  );
-
-  const handleDeleteUser = useCallback((userToDelete) => {
-    setConfirmationModal({
-      isOpen: true,
-      title: `Eliminar Usuario`,
-      children: `¿Estás seguro de que quieres eliminar a ${userToDelete.nombre}? Esta acción no se puede deshacer y eliminará todas sus operaciones.`,
-      onConfirm: async () => {
-        try {
-          await axios.delete(`/usuarios/${userToDelete.id}`);
-          setAlert({
-            message: `Usuario ${userToDelete.nombre} eliminado.`,
-            type: "success",
-          });
-          setIsUsersModalOpen(false);
-        } catch (error) {
-          setAlert({
-            message:
-              error.response?.data?.error || "Error al eliminar usuario.",
-            type: "error",
-          });
-        } finally {
-          setConfirmationModal({
-            isOpen: false,
-            title: "",
-            children: null,
-            onConfirm: () => {},
-          });
-        }
-      },
-    });
-  }, []);
-
-  const displayMetrics = {
-    balance: metrics.balance.toFixed(2),
-    equity: metrics.equity.toFixed(2),
-    usedMargin: metrics.usedMargin.toFixed(2),
-    freeMargin: metrics.freeMargin.toFixed(2),
-    marginLevel: metrics.marginLevel.toFixed(2),
-  };
-
-  const platformLogo = VITE_PLATFORM_LOGO;
-
-  return (
-    <div className="flex h-screen bg-gray-50 text-gray-800 font-sans overflow-hidden">
-      <AnimatePresence>
-        {alert.message && (
-          <Toast
-            message={alert.message}
-            type={alert.type}
-            onDismiss={() => setAlert({ message: "", type: "info" })}
-          />
-        )}
-      </AnimatePresence>
-      <SideMenu
-        isOpen={isSideMenuOpen}
-        onClose={() => setIsSideMenuOpen(false)}
-        setAlert={setAlert}
-        onSelectPaymentMethod={handleOpenPaymentModal}
-      />
-      {paymentModalConfig.method === "crypto" && (
-        <CryptoPaymentModal
-          isOpen={paymentModalConfig.isOpen}
-          onClose={handleClosePaymentModal}
-          type={paymentModalConfig.type}
-          onSubmitted={handlePaymentSubmitted}
-        />
-      )}
-      {paymentModalConfig.method === "bank" && (
-        <BankTransferModal
-          isOpen={paymentModalConfig.isOpen}
-          onClose={handleClosePaymentModal}
-          type={paymentModalConfig.type}
-          onSubmitted={handlePaymentSubmitted}
-        />
-      )}
-      {/* NUEVO: Renderizado del modal de tarjeta */}
-      {paymentModalConfig.method === "card" && (
-        <CardPaymentModal
-          isOpen={paymentModalConfig.isOpen}
-          onClose={handleClosePaymentModal}
-          type={paymentModalConfig.type}
-          onSubmitted={handlePaymentSubmitted}
-        />
-      )}
-      <ConfirmationModal
-        isOpen={confirmationModal.isOpen}
-        onClose={() =>
-          setConfirmationModal((prev) => ({ ...prev, isOpen: false }))
-        }
-        onConfirm={confirmationModal.onConfirm}
-        title={confirmationModal.title}
-      >
-        {confirmationModal.children}
-      </ConfirmationModal>
-
-      <AnimatePresence>
-        {isSidebarVisible && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="fixed inset-0 bg-black/60 z-30 lg:hidden"
-              onClick={() => setIsSidebarVisible(false)}
-            />
-            <motion.aside
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="fixed top-0 left-0 h-full w-72 bg-white p-4 overflow-y-auto flex-shrink-0 border-r border-gray-200 flex flex-col z-40 lg:hidden"
-            >
-              <div className="flex-grow">
-                <img
-                  className="mb-4"
-                  src={platformLogo}
-                  width="220"
-                  alt="Logo"
-                />
-                <AssetLists
-                  assets={userAssets}
-                  onAddAsset={handleAddAsset}
-                  onRemoveAsset={handleRemoveAsset}
-                />
-              </div>
-              <div className="flex-shrink-0">
-                <StatisticsPanel
-                  stats={stats}
-                  performanceData={performanceData}
-                  isLoading={isLoadingData}
-                />
-              </div>
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
-      <aside className="hidden lg:flex lg:flex-col w-72 bg-white p-4 overflow-y-auto flex-shrink-0 border-r border-gray-200">
-        <div className="flex-grow">
-          <img className="mb-4" src={platformLogo} width="220" alt="Logo" />
-          <AssetLists
-            assets={userAssets}
-            onAddAsset={handleAddAsset}
-            onRemoveAsset={handleRemoveAsset}
-          />
-        </div>
-        <div className="flex-shrink-0">
-          <StatisticsPanel
-            stats={stats}
-            performanceData={performanceData}
-            isLoading={isLoadingData}
-          />
-        </div>
-      </aside>
-      <NewOperationModal
-        isOpen={isNewOpModalOpen}
-        onClose={() => setIsNewOpModalOpen(false)}
-        operationData={newOpModalData}
-        onConfirm={handleConfirmOperation}
-      />
-      <ManageUsersModal
-        isOpen={isUsersModalOpen}
-        onClose={() => setIsUsersModalOpen(false)}
-        onViewUserOps={handleViewUserOps}
-        setAlert={setAlert}
-        onDeleteUser={handleDeleteUser}
-      />
-      <UserOperationsModal
-        isOpen={isUserOpsModalOpen}
-        onClose={() => setIsUserOpsModalOpen(false)}
-        user={currentUserForOps}
-        onUpdateOperation={handleUpdateOperation}
-        setAlert={setAlert}
-      />
-      <OperationDetailsModal
-        isOpen={isOpDetailsModalOpen}
-        onClose={() => setIsOpDetailsModalOpen(false)}
-        operation={currentOpDetails?.op}
-        profit={currentOpDetails?.profit}
-      />
-      <ManageLeverageModal
-        isOpen={isLeverageModalOpen}
-        onClose={() => setIsLeverageModalOpen(false)}
-        setAlert={setAlert}
-      />
-      {/* NUEVO: Renderizado del modal de comisiones */}
-      <ManageCommissionsModal
-        isOpen={isCommissionsModalOpen}
-        onClose={() => setIsCommissionsModalOpen(false)}
-        setAlert={setAlert}
-      />
-      <ProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        user={user}
-        stats={stats}
-      />
-
-      <main className="flex-1 flex flex-col bg-transparent overflow-hidden">
-        <Header
-          onOperation={handleOpenNewOpModal}
-          onManageUsers={() => setIsUsersModalOpen(true)}
-          onManageLeverage={() => setIsLeverageModalOpen(true)}
-          onManageCommissions={() => setIsCommissionsModalOpen(true)} // Nuevo handler
-          onToggleSideMenu={() => setIsSideMenuOpen(true)}
-          onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
-          onOpenProfileModal={() => setIsProfileModalOpen(true)}
-        />
-        <div className="flex-1 flex flex-col p-2 sm:p-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
-          <div className="flex-grow min-h-[300px] sm:min-h-[400px] bg-white rounded-xl shadow-lg border border-gray-200">
-            <TradingViewWidget symbol={selectedAsset} />
-          </div>
-          <FinancialMetrics
-            metrics={displayMetrics}
-            isLoading={isLoadingData}
-          />
-          <div className="h-full flex flex-col">
-            <OperationsHistory
-              operations={operations}
-              setOperations={setOperations}
-              filter={opHistoryFilter}
-              setFilter={handleFilterChange}
-              onRowClick={handleOpRowClick}
-              isLoading={isLoadingData}
-              pagination={pagination}
-              onPageChange={handlePageChange}
-              setAlert={setAlert}
-            />
-          </div>
-        </div>
-        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm p-3 border-t border-gray-200 flex justify-around items-center gap-2">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => handleOpenNewOpModal("sell", mobileVolume)}
-            className="flex-1 bg-red-600 hover:bg-red-500 transition-all text-white px-4 py-3 text-sm font-bold rounded-md"
-          >
-            SELL
-          </motion.button>
-          <input
-            type="number"
-            value={mobileVolume}
-            onChange={(e) => setMobileVolume(parseFloat(e.target.value) || 0)}
-            step="0.01"
-            min="0.01"
-            className="w-24 p-3 border border-gray-300 bg-gray-50 rounded-md text-gray-900 text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => handleOpenNewOpModal("buy", mobileVolume)}
-            className="flex-1 bg-green-600 hover:bg-green-500 transition-all text-white px-4 py-3 text-sm font-bold rounded-md"
-          >
-            BUY
-          </motion.button>
-        </div>
-      </main>
-    </div>
-  );
-};
 
 const ChangePasswordView = React.memo(({ onBack, setAlert }) => {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -4042,467 +3383,3 @@ const ProfileModal = ({ isOpen, onClose, user, stats }) => {
     </Modal>
   );
 };
-
-// --- LOGIN/REGISTER ADAPTADO PARA UNIQUE 1 GLOBAL ---
-const LoginPage = ({ onNavigate }) => {
-  const { setUser, setIsAuthenticated } = useContext(AppContext);
-  const [isLogin, setIsLogin] = useState(true);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-
-  const [regName, setRegName] = useState("");
-  const [regEmail, setRegEmail] = useState("");
-  const [regPassword, setRegPassword] = useState("");
-
-  const handleAuth = async (e, action) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-    const platform_id = VITE_PLATFORM_ID;
-
-    if (action === "login") {
-      try {
-        const { data } = await axios.post("/login", {
-          email: loginEmail,
-          password: loginPassword,
-          platform_id,
-        });
-        if (data.success && data.user) {
-          setUser(data.user);
-          setIsAuthenticated(true);
-        } else {
-          setError(data.error || "Credenciales inválidas");
-        }
-      } catch (err) {
-        setError(
-          err.response?.data?.error ||
-            "Ocurrió un error en el inicio de sesión."
-        );
-      }
-    } else {
-      // register
-      try {
-        const payload = {
-          nombre: regName,
-          email: regEmail,
-          password: regPassword,
-          platform_id,
-        };
-        const { data } = await axios.post("/register", payload);
-        if (data.success) {
-          setSuccess("Registro exitoso. Por favor, inicie sesión.");
-          setIsLogin(true);
-        } else {
-          setError(data.error || "Error en el registro");
-        }
-      } catch (err) {
-        setError(
-          err.response?.data?.error || "Ocurrió un error en el registro."
-        );
-      }
-    }
-  };
-
-  // CAMBIO: Se actualiza la variable para usar un logo blanco específico para el login.
-  // Puedes cambiar "/unique1global-logo-white.png" por la ruta correcta de tu logo blanco.
-  const platformLogo = VITE_PLATFORM_LOGO_WHITE;
-  const formVariants = {
-    hidden: { opacity: 0, x: 300 },
-    visible: {
-      opacity: 1,
-      x: 0,
-      transition: { type: "spring", stiffness: 100, damping: 20 },
-    },
-    exit: { opacity: 0, x: -300, transition: { ease: "easeInOut" } },
-  };
-
-  return (
-    <div
-      className="min-h-screen bg-gray-100 flex items-center justify-center p-4 bg-cover bg-center"
-      style={{
-        // CAMBIO: Nuevo fondo abstracto con blanco predominante y toques de color.
-        backgroundImage:
-          "url('https://images.unsplash.com/photo-1588345921523-c2dcdb7f1dcd?q=80&w=2070&auto=format&fit=crop')",
-      }}
-    >
-      <div className="relative w-full max-w-4xl min-h-[600px] bg-white/80 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-gray-200">
-        <div
-          className="w-full md:w-1/2 text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-purple-600 to-purple-800"
-          style={{
-            background: "linear-gradient(to bottom right, #5D1BC7, #410093)",
-          }}
-        >
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <img
-              src={platformLogo}
-              alt="Logo de la Plataforma"
-              className="w-40 sm:w-48 mx-auto mb-4"
-            />
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2">
-              {isLogin ? "¡Bienvenido de Nuevo!" : "Crea tu Cuenta"}
-            </h1>
-            <p className="mb-6 text-sm sm:text-base">
-              {isLogin
-                ? "Para seguir conectado, por favor inicia sesión con tu información personal."
-                : "Ingresa tus datos para comenzar tu viaje con nosotros."}
-            </p>
-            <button
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setError("");
-                setSuccess("");
-              }}
-              className="bg-white/20 hover:bg-white/30 font-bold py-2 px-6 rounded-full transition-all"
-            >
-              {isLogin ? "Registrarse" : "Iniciar Sesión"}
-            </button>
-          </motion.div>
-        </div>
-        <div className="w-full md:w-1/2 p-8 sm:p-12 flex flex-col justify-center">
-          <AnimatePresence mode="wait">
-            {isLogin ? (
-              <motion.div
-                key="login"
-                variants={formVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 text-center">
-                  Iniciar Sesión
-                </h2>
-                {error && (
-                  <p className="text-red-500 text-center text-sm mb-4">
-                    {error}
-                  </p>
-                )}
-                {success && (
-                  <p className="text-green-500 text-center text-sm mb-4">
-                    {success}
-                  </p>
-                )}
-                <form
-                  onSubmit={(e) => handleAuth(e, "login")}
-                  className="space-y-4"
-                >
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    className="w-full p-3 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                  <input
-                    type="password"
-                    placeholder="Contraseña"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full p-3 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                  <button
-                    type="submit"
-                    className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
-                    style={{ backgroundColor: "#410093" }}
-                  >
-                    Entrar
-                  </button>
-                </form>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="register"
-                variants={formVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4 text-center">
-                  Crear Cuenta
-                </h2>
-                {error && (
-                  <p className="text-red-500 text-center text-sm mb-2">
-                    {error}
-                  </p>
-                )}
-                {success && (
-                  <p className="text-green-500 text-center text-sm mb-2">
-                    {success}
-                  </p>
-                )}
-                <form
-                  onSubmit={(e) => handleAuth(e, "register")}
-                  className="space-y-3"
-                >
-                  <input
-                    type="text"
-                    placeholder="Nombre Completo"
-                    value={regName}
-                    onChange={(e) => setRegName(e.target.value)}
-                    className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
-                    className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                  <input
-                    type="password"
-                    placeholder="Contraseña"
-                    value={regPassword}
-                    onChange={(e) => setRegPassword(e.target.value)}
-                    className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                  <button
-                    type="submit"
-                    className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
-                    style={{ backgroundColor: "#410093" }}
-                  >
-                    Crear Cuenta
-                  </button>
-                </form>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <button
-            onClick={() => onNavigate("landing")}
-            className="text-center text-sm text-purple-600 hover:underline mt-4"
-          >
-            &larr; Volver al inicio
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- NUEVO: Página de Inicio (Landing Page) ---
-const LandingPage = ({ onNavigate }) => {
-  const platformLogo = VITE_PLATFORM_LOGO;
-
-  const scrollToSection = (id) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  return (
-    <div className="bg-white text-gray-800 font-sans">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-lg shadow-md z-50">
-        <div className="container mx-auto px-6 py-3 flex justify-between items-center">
-          <img src={platformLogo} alt="Logo" className="h-8" />
-          <nav className="hidden md:flex space-x-8">
-            <button
-              onClick={() => scrollToSection("inicio")}
-              className="hover:text-purple-600 transition-colors"
-            >
-              Inicio
-            </button>
-            <button
-              onClick={() => scrollToSection("nosotros")}
-              className="hover:text-purple-600 transition-colors"
-            >
-              Sobre Nosotros
-            </button>
-            <button
-              onClick={() => scrollToSection("contacto")}
-              className="hover:text-purple-600 transition-colors"
-            >
-              Contacto
-            </button>
-          </nav>
-          <button
-            onClick={() => onNavigate("login")}
-            className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-lg"
-            style={{ backgroundColor: "#410093" }}
-          >
-            Login / Registro
-          </button>
-        </div>
-      </header>
-
-      {/* Hero Section */}
-      <section id="inicio" className="pt-24 md:pt-32 pb-16 bg-gray-50">
-        <div className="container mx-auto px-6 text-center">
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="text-4xl md:text-6xl font-extrabold text-gray-900 mb-4"
-          >
-            Tu Puerta de Acceso a los Mercados Financieros
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-            className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-8"
-          >
-            Descubre una experiencia de trading superior. Opera con acciones,
-            Forex, criptomonedas y más, con herramientas avanzadas y una
-            ejecución ultra rápida.
-          </motion.p>
-          <motion.button
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            onClick={() => onNavigate("login")}
-            className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-8 rounded-lg text-lg transition-colors shadow-xl"
-            style={{ backgroundColor: "#410093" }}
-          >
-            Comienza a Operar Ahora{" "}
-            <Icons.ArrowRight className="inline-block h-5 w-5 ml-2" />
-          </motion.button>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.6 }}
-            className="mt-12 flex flex-col sm:flex-row justify-center items-center gap-8 text-gray-600"
-          >
-            <div className="flex items-center gap-2">
-              <Icons.ShieldCheck className="h-5 w-5 text-green-500" />
-              <span>Plataforma Segura</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Icons.Banknotes className="h-5 w-5 text-green-500" />
-              <span>Comisiones Bajas</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Icons.UserGroup className="h-5 w-5 text-green-500" />
-              <span>Soporte 24/7</span>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Sobre Nosotros Section */}
-      <section id="nosotros" className="py-20">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Diseñada para el Trader Moderno
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Combinamos tecnología de punta, seguridad robusta y una amplia
-              gama de mercados para ofrecerte la experiencia de trading
-              definitiva.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-10">
-            <div className="text-center p-6 bg-gray-50 rounded-lg shadow-md transition-transform hover:-translate-y-2">
-              <div className="inline-block p-4 bg-purple-100 rounded-full mb-4">
-                <Icons.ShieldCheck className="h-8 w-8 text-purple-600" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">
-                Seguridad Inquebrantable
-              </h3>
-              <p className="text-gray-600">
-                Operamos con los más altos estándares. Tus fondos e información
-                personal están protegidos por encriptación avanzada y protocolos
-                robustos.
-              </p>
-            </div>
-            <div className="text-center p-6 bg-gray-50 rounded-lg shadow-md transition-transform hover:-translate-y-2">
-              <div className="inline-block p-4 bg-purple-100 rounded-full mb-4">
-                <Icons.CreditCard className="h-8 w-8 text-purple-600" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">Un Universo de Activos</h3>
-              <p className="text-gray-600">
-                Desde divisas y acciones hasta las criptomonedas más volátiles.
-                Diversifica tu portafolio sin salir de nuestra plataforma.
-              </p>
-            </div>
-            <div className="text-center p-6 bg-gray-50 rounded-lg shadow-md transition-transform hover:-translate-y-2">
-              <div className="inline-block p-4 bg-purple-100 rounded-full mb-4">
-                <Icons.Adjustments className="h-8 w-8 text-purple-600" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">
-                Ejecución y Herramientas Pro
-              </h3>
-              <p className="text-gray-600">
-                Aprovecha nuestra ejecución de baja latencia, gráficos en tiempo
-                real y un conjunto completo de herramientas de análisis para
-                tomar decisiones informadas.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Contacto Section */}
-      <section id="contacto" className="py-20 bg-gray-900 text-white">
-        <div className="container mx-auto px-6 text-center">
-          <h2 className="text-3xl font-bold mb-4">¿Listo para Empezar?</h2>
-          <p className="text-lg text-gray-300 mb-8">
-            Únete a miles de traders que confían en nosotros. Abre tu cuenta hoy
-            mismo.
-          </p>
-          <button
-            onClick={() => onNavigate("login")}
-            className="bg-white hover:bg-gray-200 text-purple-600 font-bold py-3 px-8 rounded-lg text-lg transition-colors"
-          >
-            Abrir Cuenta
-          </button>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-800 text-white py-6">
-        <div className="container mx-auto px-6 text-center text-sm">
-          <p>
-            &copy; {new Date().getFullYear()} Unique 1 Global. Todos los
-            derechos reservados.
-          </p>
-          <p className="text-gray-400 mt-2">
-            El trading implica riesgos. Invierte de manera responsable.
-          </p>
-        </div>
-      </footer>
-    </div>
-  );
-};
-
-const App = () => {
-  const { isAppLoading, isAuthenticated } = useContext(AppContext);
-  const [currentView, setCurrentView] = useState("landing");
-
-  const platformLogo = VITE_PLATFORM_LOGO;
-
-  if (isAppLoading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-xl font-bold animate-pulse">
-          <img src={platformLogo} width="220" alt="Cargando..." />
-        </div>
-      </div>
-    );
-  }
-
-  if (isAuthenticated) {
-    return <DashboardPage />;
-  }
-
-  switch (currentView) {
-    case "login":
-      return <LoginPage onNavigate={setCurrentView} />;
-    case "landing":
-    default:
-      return <LandingPage onNavigate={setCurrentView} />;
-  }
-};
-
-export default function Root() {
-  return (
-    <AppProvider>
-      <App />
-    </AppProvider>
-  );
-}

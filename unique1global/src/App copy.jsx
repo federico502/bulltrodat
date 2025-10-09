@@ -23,8 +23,18 @@ import {
 } from "chart.js";
 import { motion, AnimatePresence } from "framer-motion";
 
+// --- FIX CRÍTICO: Configuración de Entorno Segura (Prevención de Pantalla Blanca) ---
+// Accede a las variables de entorno de forma segura, usando valores por defecto.
+const env = typeof import.meta.env !== "undefined" ? import.meta.env : {};
+const VITE_API_URL = env.VITE_API_URL || "";
+const VITE_WSS_URL = env.VITE_WSS_URL || "";
+const VITE_PLATFORM_LOGO = env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
+const VITE_PLATFORM_LOGO_WHITE =
+  env.VITE_PLATFORM_LOGO_WHITE || "/unique1global-logo-white.png";
+const VITE_PLATFORM_ID = env.VITE_PLATFORM_ID || "unique1global";
+
 // --- Configuración de Axios ---
-axios.defaults.baseURL = import.meta.env.VITE_API_URL;
+axios.defaults.baseURL = VITE_API_URL;
 axios.defaults.withCredentials = true;
 
 // --- Registro de Chart.js ---
@@ -124,60 +134,136 @@ const Icons = {
       className={className}
     />
   ),
+  Adjustments: ({ className }) => (
+    <Icon
+      path="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM12 15a3 3 0 100-6 3 3 0 000 6z"
+      className={className}
+    />
+  ),
+  ArrowRight: ({ className }) => (
+    <Icon path="M17 8l4 4m0 0l-4 4m4-4H3" className={className} />
+  ),
+  CurrencyDollar: ({ className }) => (
+    <Icon
+      path="M12 6v12M12 6c-2.828 0-4.5 1.172-4.5 4.5S9.172 15 12 15s4.5-1.172 4.5-4.5S14.828 6 12 6ZM12 6c2.828 0 4.5 1.172 4.5 4.5S14.828 15 12 15s-4.5-1.172-4.5-4.5S9.172 6 12 6Z"
+      className={className}
+    />
+  ),
 };
 
-// Catálogo de activos para búsqueda y recomendaciones
+// --- Función de Normalización Clave para el Precio ---
+// Esta función debe coincidir con la lógica del backend (server.js: normalizeSymbol)
+const normalizeAssetKey = (symbol) => {
+  if (!symbol) return "";
+  // Reemplaza '-' y '/' para obtener el formato de clave de precio (ej: BTCUSDT o EURUSD)
+  return symbol.toUpperCase().replace(/[-/]/g, "");
+};
+
+// --- Catálogo de Activos ---
+// Este catálogo es la fuente principal de activos para la UI.
 const ASSET_CATALOG = [
-  // Cryptos
+  // Forex
+  { symbol: "EUR/USD", name: "Euro / Dólar Estadounidense" },
+  { symbol: "GBP/USD", name: "Libra Esterlina / Dólar Estadounidense" },
+  { symbol: "EUR/JPY", name: "Euro / Yen Japonés" },
+  { symbol: "USD/JPY", name: "Dólar Estadounidense / Yen Japonés" },
+  { symbol: "AUD/USD", name: "Dólar Australiano / Dólar Estadounidense" },
+  { symbol: "USD/CHF", name: "Dólar Estadounidense / Franco Suizo" },
+  { symbol: "GBP/JPY", name: "Libra Esterlina / Yen Japonés" },
+  { symbol: "USD/CAD", name: "Dólar Estadounidense / Dólar Canadiense" },
+  { symbol: "EUR/GBP", name: "Euro / Libra Esterlina" },
+  { symbol: "EUR/CHF", name: "Euro / Franco Suizo" },
+  { symbol: "AUD/JPY", name: "Dólar Australiano / Yen Japonés" },
+  { symbol: "NZD/USD", name: "Dólar Neozelandés / Dólar Estadounidense" },
+  { symbol: "CHF/JPY", name: "Franco Suizo / Yen Japonés" },
+  { symbol: "EUR/AUD", name: "Euro / Dólar Australiano" },
+  { symbol: "CAD/JPY", name: "Dólar Canadiense / Yen Japonés" },
+  { symbol: "GBP/AUD", name: "Libra Esterlina / Dólar Australiano" },
+  { symbol: "EUR/CAD", name: "Euro / Dólar Canadiense" },
+  { symbol: "AUD/CAD", name: "Dólar Australiano / Dólar Canadiense" },
+  { symbol: "GBP/CAD", name: "Libra Esterlina / Dólar Canadiense" },
+  { symbol: "AUD/NZD", name: "Dólar Australiano / Dólar Neozelandés" },
+  { symbol: "NZD/JPY", name: "Dólar Neozelandés / Yen Japonés" },
+  { symbol: "AUD/CHF", name: "Dólar Australiano / Franco Suizo" },
+  { symbol: "USD/MXN", name: "Dólar Estadounidense / Peso Mexicano" },
+  { symbol: "GBP/NZD", name: "Libra Esterlina / Dólar Neozelandés" },
+  { symbol: "EUR/NZD", name: "Euro / Dólar Neozelandés" },
+  { symbol: "CAD/CHF", name: "Dólar Canadiense / Franco Suizo" },
+  { symbol: "NZD/CAD", name: "Dólar Neozelandés / Dólar Canadiense" },
+  { symbol: "NZD/CHF", name: "Dólar Neozelandés / Franco Suizo" },
+  { symbol: "GBP/CHF", name: "Libra Esterlina / Franco Suizo" },
+  { symbol: "USD/BRL", name: "Dólar Estadounidense / Real Brasileño" },
+
+  // Commodities
+  { symbol: "XAU/USD", name: "Oro (Gold)" },
+  { symbol: "XAG/USD", name: "Plata (Silver)" },
+  { symbol: "WTI/USD", name: "Petróleo Crudo WTI" },
+  { symbol: "BRENT/USD", name: "Petróleo Crudo Brent" }, // Normalizado de BRN/USD
+  { symbol: "XCU/USD", name: "Cobre (Copper)" },
+  { symbol: "NG/USD", name: "Gas Natural" }, // Normalizado de NGC/USD
+
+  // Criptomonedas (normalizadas a -USDT para compatibilidad con el feed)
   { symbol: "BTC-USDT", name: "Bitcoin" },
   { symbol: "ETH-USDT", name: "Ethereum" },
-  { symbol: "SOL-USDT", name: "Solana" },
-  { symbol: "XRP-USDT", name: "Ripple" },
-  { symbol: "DOGE-USDT", name: "Dogecoin" },
-  { symbol: "ADA-USDT", name: "Cardano" },
-  { symbol: "AVAX-USDT", name: "Avalanche" },
   { symbol: "LTC-USDT", name: "Litecoin" },
-  { symbol: "BCH-USDT", name: "Bitcoin Cash" },
+  { symbol: "XRP-USDT", name: "Ripple" },
+  { symbol: "BNB-USDT", name: "BNB" },
+  { symbol: "TRX-USDT", name: "TRON" },
+  { symbol: "ADA-USDT", name: "Cardano" },
+  { symbol: "DOGE-USDT", name: "Dogecoin" },
+  { symbol: "SOL-USDT", name: "Solana" },
+  { symbol: "DOT-USDT", name: "Polkadot" },
   { symbol: "LINK-USDT", name: "Chainlink" },
-  // Stocks
-  { symbol: "AAPL", name: "Apple" },
-  { symbol: "MSFT", name: "Microsoft" },
-  { symbol: "GOOGL", name: "Alphabet (Google)" },
-  { symbol: "AMZN", name: "Amazon" },
-  { symbol: "NVDA", name: "NVIDIA" },
-  { symbol: "TSLA", name: "Tesla" },
-  { symbol: "META", name: "Meta Platforms (Facebook)" },
-  { symbol: "JPM", name: "JPMorgan Chase" },
+  { symbol: "MATIC-USDT", name: "Polygon (MATIC)" }, // Normalizado de POL/USD
+  { symbol: "AVAX-USDT", name: "Avalanche" },
+  { symbol: "PEPE-USDT", name: "Pepe" },
+  { symbol: "SUI-USDT", name: "Sui" },
+  { symbol: "TON-USDT", name: "Toncoin" },
+
+  // Indices
+  { symbol: "DAX", name: "DAX 40 (Alemania)" },
+  { symbol: "FCHI", name: "CAC 40 (Francia)" },
+  { symbol: "FTSE", name: "FTSE 100 (Reino Unido)" },
+  { symbol: "SX5E", name: "EURO STOXX 50" },
+  { symbol: "IBEX", name: "IBEX 35 (España)" },
+  { symbol: "DJI", name: "Dow Jones Industrial Average" },
+  { symbol: "SPX", name: "S&P 500" },
+  { symbol: "NDX", name: "Nasdaq 100" },
+  { symbol: "NI225", name: "Nikkei 225" },
+
+  // Acciones
+  { symbol: "META", name: "Meta Platforms, Inc." },
   { symbol: "JNJ", name: "Johnson & Johnson" },
-  // Forex
-  { symbol: "EUR/USD", name: "Euro / US Dollar" },
-  { symbol: "GBP/USD", name: "British Pound / US Dollar" },
-  { symbol: "USD/JPY", name: "US Dollar / Japanese Yen" },
-  { symbol: "USD/CHF", name: "US Dollar / Swiss Franc" },
-  { symbol: "AUD/USD", name: "Australian Dollar / US Dollar" },
-  { symbol: "USD/CAD", name: "US Dollar / Canadian Dollar" },
-  { symbol: "NZD/USD", name: "New Zealand Dollar / US Dollar" },
-  { symbol: "EUR/GBP", name: "Euro / British Pound" },
-  { symbol: "EUR/JPY", name: "Euro / Japanese Yen" },
-  { symbol: "EUR/CHF", name: "Euro / Swiss Franc" },
-  { symbol: "GBP/JPY", name: "British Pound / Japanese Yen" },
-  { symbol: "GBP/CHF", name: "British Pound / Swiss Franc" },
-  { symbol: "AUD/JPY", name: "Australian Dollar / Japanese Yen" },
-  { symbol: "CAD/JPY", name: "Canadian Dollar / Japanese Yen" },
-  // Commodities
-  { symbol: "XAU/USD", name: "Gold (Oro)" },
-  { symbol: "XAG/USD", name: "Silver (Plata)" },
-  { symbol: "WTI/USD", name: "Crude Oil (Petróleo WTI)" },
-  { symbol: "BRENT/USD", name: "Brent Crude Oil (Petróleo Brent)" },
+  { symbol: "JPM", name: "JPMorgan Chase & Co." },
+  { symbol: "KO", name: "The Coca-Cola Company" },
+  { symbol: "MA", name: "Mastercard Incorporated" },
+  { symbol: "IBM", name: "IBM" },
+  { symbol: "DIS", name: "The Walt Disney Company" },
+  { symbol: "CVX", name: "Chevron Corporation" },
+  { symbol: "AAPL", name: "Apple Inc." },
+  { symbol: "AMZN", name: "Amazon.com, Inc." },
+  { symbol: "BA", name: "The Boeing Company" },
+  { symbol: "BAC", name: "Bank of America Corp" },
+  { symbol: "CSCO", name: "Cisco Systems, Inc." },
+  { symbol: "MCD", name: "McDonald's Corporation" },
+  { symbol: "NVDA", name: "NVIDIA Corporation" },
+  { symbol: "WMT", name: "Walmart Inc." },
+  { symbol: "MSFT", name: "Microsoft Corporation" },
+  { symbol: "NFLX", name: "Netflix, Inc." },
+  { symbol: "NKE", name: "NIKE, Inc." }, // Normalizado de NIKE
+  { symbol: "ORCL", name: "Oracle Corporation" },
+  { symbol: "PG", name: "Procter & Gamble Company" },
+  { symbol: "T", name: "AT&T Inc." },
+  { symbol: "TSLA", name: "Tesla, Inc." },
 ];
 
 const POPULAR_ASSETS = [
   ASSET_CATALOG.find((a) => a.symbol === "BTC-USDT"),
-  ASSET_CATALOG.find((a) => a.symbol === "ETH-USDT"),
-  ASSET_CATALOG.find((a) => a.symbol === "AAPL"),
-  ASSET_CATALOG.find((a) => a.symbol === "TSLA"),
   ASSET_CATALOG.find((a) => a.symbol === "EUR/USD"),
   ASSET_CATALOG.find((a) => a.symbol === "XAU/USD"),
+  ASSET_CATALOG.find((a) => a.symbol === "AAPL"),
+  ASSET_CATALOG.find((a) => a.symbol === "TSLA"),
+  ASSET_CATALOG.find((a) => a.symbol === "NVDA"),
 ].filter(Boolean); // Filter out any potential undefined if symbols change
 
 // --- Contexto de la App ---
@@ -189,6 +275,12 @@ const AppProvider = ({ children }) => {
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [realTimePrices, setRealTimePrices] = useState({});
   const [selectedAsset, setSelectedAsset] = useState("BTC-USDT");
+  // ACTUALIZADO: Estado para las comisiones, spreads y swap
+  const [commissions, setCommissions] = useState({
+    spreadPercentage: 0.01,
+    commissionPercentage: 0.1,
+    swapDailyPercentage: 0.05, // AÑADIDO: Swap diario por defecto
+  });
 
   const checkUser = useCallback(async () => {
     setIsAppLoading(true);
@@ -196,6 +288,16 @@ const AppProvider = ({ children }) => {
       const { data } = await axios.get("/me");
       setUser(data);
       setIsAuthenticated(true);
+
+      // Intentar cargar comisiones si es administrador o usuario regular
+      if (data) {
+        try {
+          const commRes = await axios.get("/commissions");
+          setCommissions(commRes.data);
+        } catch (e) {
+          console.warn("Failed to fetch commissions, using defaults.");
+        }
+      }
     } catch (error) {
       console.log("No authenticated user found.");
       setIsAuthenticated(false);
@@ -233,6 +335,8 @@ const AppProvider = ({ children }) => {
       selectedAsset,
       setSelectedAsset,
       refreshUser: checkUser,
+      commissions, // Exponer comisiones
+      setCommissions, // Exponer setCommissions
     }),
     [
       user,
@@ -242,6 +346,7 @@ const AppProvider = ({ children }) => {
       realTimePrices,
       selectedAsset,
       checkUser,
+      commissions,
     ]
   );
 
@@ -254,6 +359,7 @@ const useFlashOnUpdate = (value) => {
   const prevValueRef = useRef(value);
 
   useEffect(() => {
+    // CRÍTICO: Asegurar que el valor sea un número antes de la comparación
     const currentValue = parseFloat(value);
     const prevValue = parseFloat(prevValueRef.current);
 
@@ -361,11 +467,27 @@ const TradingViewWidget = React.memo(({ symbol }) => {
         "CADCHF",
         "NZDCAD",
         "NZDCHF",
+        "USDMXN",
+        "USDBRL",
       ];
       if (forexPairs.includes(sanitizedSymbol)) {
         return `OANDA:${sanitizedSymbol}`;
       }
     }
+    // Mapeo de índices a sus símbolos en TradingView
+    const indicesMap = {
+      DAX: "DEU40",
+      FCHI: "FRA40",
+      FTSE: "UK100",
+      SX5E: "STOXX50",
+      IBEX: "ESP35",
+      DJI: "US30",
+      SPX: "SPX500",
+      NDX: "NAS100",
+      NI225: "JPN225",
+    };
+    if (indicesMap[s]) return `OANDA:${indicesMap[s]}`;
+
     return `NASDAQ:${s}`;
   }, []);
 
@@ -544,17 +666,23 @@ const StatisticsPanel = ({ stats, performanceData, isLoading }) => (
 
 const AssetPrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
-  const normalizedSymbol = symbol.toUpperCase().replace(/[-/]/g, "");
-  const price = realTimePrices[normalizedSymbol];
+  // FIX CRÍTICO: Usar la función de normalización clave
+  const normalizedSymbol = normalizeAssetKey(symbol);
+  const priceString = realTimePrices[normalizedSymbol];
+
+  // FIX: Convertir explícitamente a número y manejar NaN
+  const price = parseFloat(priceString);
+
   const flashClass = useFlashOnUpdate(price);
-  const baseColor = price ? "text-gray-800" : "text-gray-400";
+  const baseColor = !isNaN(price) ? "text-gray-800" : "text-gray-400";
   const finalColorClass = flashClass || baseColor;
+
   return (
     <div className="px-2 py-1 rounded-md">
       <span
         className={`font-mono text-xs transition-colors duration-300 ${finalColorClass}`}
       >
-        {price ? price.toFixed(4) : "---"}
+        {!isNaN(price) ? price.toFixed(4) : "---"}
       </span>
     </div>
   );
@@ -651,7 +779,15 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (inputValue) {
-      onAddAsset(inputValue);
+      // Find the correct symbol even if the user searched by name
+      const assetToUse =
+        ASSET_CATALOG.find(
+          (asset) =>
+            asset.symbol.toUpperCase() === inputValue.toUpperCase() ||
+            asset.name.toUpperCase() === inputValue.toUpperCase()
+        )?.symbol || inputValue.toUpperCase();
+
+      onAddAsset(assetToUse);
       setInputValue("");
       setIsSuggestionVisible(false);
     }
@@ -737,7 +873,8 @@ const ProfileMenu = React.memo(
     logout,
     onToggleSideMenu,
     onManageUsers,
-    onManageRegCode,
+    onManageLeverage,
+    onManageCommissions, // NUEVA prop
     onOpenProfileModal,
   }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -804,6 +941,21 @@ const ProfileMenu = React.memo(
                       text="Gestionar Usuarios"
                       onClick={() => handleItemClick(onManageUsers)}
                     />
+                    <MenuItem
+                      icon={
+                        <Icons.Adjustments className="h-5 w-5 text-gray-500" />
+                      }
+                      text="Gestionar Apalancamiento"
+                      onClick={() => handleItemClick(onManageLeverage)}
+                    />
+                    {/* NUEVO ITEM DE MENÚ PARA COMISIONES */}
+                    <MenuItem
+                      icon={
+                        <Icons.CurrencyDollar className="h-5 w-5 text-gray-500" />
+                      }
+                      text="Gestionar Comisiones"
+                      onClick={() => handleItemClick(onManageCommissions)}
+                    />
                   </>
                 )}
                 <div className="my-1 h-px bg-gray-200" />
@@ -826,7 +978,8 @@ const ProfileMenu = React.memo(
 const Header = ({
   onOperation,
   onManageUsers,
-  onManageRegCode,
+  onManageLeverage,
+  onManageCommissions, // NUEVA prop
   onToggleSideMenu,
   onToggleMainSidebar,
   onOpenProfileModal,
@@ -863,6 +1016,7 @@ const Header = ({
             whileTap={{ scale: 0.95 }}
             onClick={() => onOperation("buy", volume)}
             className="bg-green-600 hover:bg-green-500 transition-all text-white px-5 py-2 text-sm font-bold rounded-md shadow-lg shadow-green-500/20 hover:shadow-green-500/40 cursor-pointer"
+            style={{ backgroundColor: "#410093" }}
           >
             BUY
           </motion.button>
@@ -882,7 +1036,8 @@ const Header = ({
           logout={logout}
           onToggleSideMenu={onToggleSideMenu}
           onManageUsers={onManageUsers}
-          onManageRegCode={onManageRegCode}
+          onManageLeverage={onManageLeverage}
+          onManageCommissions={onManageCommissions} // Pasa el nuevo handler
           onOpenProfileModal={onOpenProfileModal}
         />
       </div>
@@ -942,20 +1097,28 @@ const LiveProfitCell = ({ operation }) => {
   const { realTimePrices } = useContext(AppContext);
   const calculateProfit = useCallback(() => {
     if (operation.cerrada) return parseFloat(operation.ganancia || 0);
-    const normalizedSymbol = operation.activo
-      .toUpperCase()
-      .replace(/[-/]/g, "");
-    const currentPrice = realTimePrices[normalizedSymbol];
-    if (typeof currentPrice !== "number") return 0;
-    return operation.tipo_operacion.toLowerCase() === "sell"
+    // FIX: Usar la función de normalización clave
+    const normalizedSymbol = normalizeAssetKey(operation.activo);
+
+    // FIX: Asegurar que el precio sea un número
+    const currentPrice = parseFloat(realTimePrices[normalizedSymbol]);
+
+    if (isNaN(currentPrice)) return 0;
+
+    return operation.tipo_operacion.toLowerCase().includes("sell")
       ? (operation.precio_entrada - currentPrice) * operation.volumen
       : (currentPrice - operation.precio_entrada) * operation.volumen;
   }, [realTimePrices, operation]);
 
+  // FIX: Asegurar que el resultado de calculateProfit sea un número para toFixed
   const profit = calculateProfit();
-  const profitColor = profit >= 0 ? "text-green-600" : "text-red-600";
+  const profitNum = parseFloat(profit);
+
+  if (isNaN(profitNum)) return <span className="text-gray-400">---</span>;
+
+  const profitColor = profitNum >= 0 ? "text-green-600" : "text-red-600";
   return (
-    <span className={`font-mono ${profitColor}`}>{profit.toFixed(2)}</span>
+    <span className={`font-mono ${profitColor}`}>{profitNum.toFixed(2)}</span>
   );
 };
 
@@ -1014,6 +1177,7 @@ const OperationsHistory = ({
     "Cierre",
     "TP",
     "SL",
+    "Apalanc.",
     "Margen",
     "G-P",
     "Acción",
@@ -1051,6 +1215,10 @@ const OperationsHistory = ({
           <div>
             <span className="font-semibold text-gray-500">Vol:</span>{" "}
             {op.volumen}
+          </div>
+          <div>
+            <span className="font-semibold text-gray-500">Apalanc:</span> 1:
+            {op.apalancamiento || 1}
           </div>
           <div>
             <span className="font-semibold text-gray-500">Entrada:</span>{" "}
@@ -1168,6 +1336,9 @@ const OperationsHistory = ({
                       {op.stop_loss ? parseFloat(op.stop_loss).toFixed(2) : "-"}
                     </td>
                     <td className="px-3 py-2 font-mono">
+                      1:{op.apalancamiento || 1}
+                    </td>
+                    <td className="px-3 py-2 font-mono">
                       ${parseFloat(op.capital_invertido || 0).toFixed(2)}
                     </td>
                     <td className="px-3 py-2">
@@ -1252,50 +1423,130 @@ const Modal = ({
 
 const ModalLivePrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
-  const normalizedSymbol = symbol?.toUpperCase().replace(/[-/]/g, "");
-  const price = realTimePrices[normalizedSymbol];
+  // FIX: Usar la función de normalización clave
+  const normalizedSymbol = normalizeAssetKey(symbol);
+  const priceString = realTimePrices[normalizedSymbol];
+
+  // FIX: Convertir explícitamente a número
+  const price = parseFloat(priceString);
+
   const flashClass = useFlashOnUpdate(price);
-  const baseColor = price ? "text-gray-900" : "text-yellow-500";
+  const baseColor = !isNaN(price) ? "text-gray-900" : "text-yellow-500";
   const finalColorClass = flashClass || baseColor;
   return (
     <span
       className={`font-mono transition-colors duration-300 ${finalColorClass}`}
     >
-      ${price ? price.toFixed(4) : "Cargando..."}
+      {!isNaN(price) ? `$${price.toFixed(4)}` : "Cargando..."}
     </span>
   );
 });
 
+// Helper para calcular la comisión de forma local para el modal
+const calculateCommissionCost = (price, volume, commissionPercentage) => {
+  if (!price || !volume || !commissionPercentage) return 0;
+  // Comisión: Volumen Nocional * Porcentaje de Comisión
+  const volumenNocional = price * volume;
+  const commissionCost = volumenNocional * (commissionPercentage / 100);
+  return commissionCost;
+};
+
+// NUEVO Helper para estimar el costo de Swap diario
+const calculateSwapDailyCost = (
+  price,
+  volume,
+  swapDailyPercentage,
+  leverage
+) => {
+  if (!price || !volume || !swapDailyPercentage || !leverage || leverage === 0)
+    return 0;
+
+  // El swap se aplica sobre el margen requerido (capital invertido).
+  const margen = (price * volume) / leverage;
+  // Swap se aplica sobre el margen requerido. Usamos valor absoluto.
+  const swapCost = margen * (swapDailyPercentage / 100);
+  return swapCost;
+};
+
 const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const { type, asset, volume } = operationData || {};
-  const { realTimePrices } = useContext(AppContext);
-  const normalizedAsset = asset?.toUpperCase().replace(/[-/]/g, "");
-  const livePrice = realTimePrices[normalizedAsset];
-  const requiredMargin = livePrice ? (livePrice * volume).toFixed(2) : "0.00";
+  const { realTimePrices, commissions } = useContext(AppContext);
+  // FIX: Usar la función de normalización clave
+  const normalizedAsset = normalizeAssetKey(asset);
+  const livePrice = realTimePrices[normalizedAsset]; // Esto es un STRING
+  const livePriceNum = parseFloat(livePrice); // Usar número para cálculos
+
   const [tp, setTp] = useState("");
   const [sl, setSl] = useState("");
+  const [leverage, setLeverage] = useState(1);
+  const [leverageOptions, setLeverageOptions] = useState([1]);
+
+  useEffect(() => {
+    // Cargar opciones de apalancamiento permitidas desde el backend
+    if (isOpen) {
+      axios
+        .get("/leverage-options")
+        .then((res) => {
+          if (res.data && res.data.length > 0) {
+            setLeverageOptions(res.data);
+            // Asegurarse que el apalancamiento seleccionado sea válido
+            if (!res.data.includes(leverage)) {
+              setLeverage(res.data[0]);
+            }
+          }
+        })
+        .catch((err) => console.error("Error fetching leverage options:", err));
+    }
+  }, [isOpen]);
+
+  const commissionCost = useMemo(() => {
+    if (isNaN(livePriceNum) || !volume || !commissions) return 0;
+    return calculateCommissionCost(
+      livePriceNum,
+      volume,
+      commissions.commissionPercentage
+    );
+  }, [livePriceNum, volume, commissions]);
+
+  // NUEVO: Cálculo del costo de Swap diario
+  const swapDailyCost = useMemo(() => {
+    if (isNaN(livePriceNum) || !volume || !commissions || !leverage) return 0;
+    return calculateSwapDailyCost(
+      livePriceNum,
+      volume,
+      commissions.swapDailyPercentage,
+      leverage
+    );
+  }, [livePriceNum, volume, commissions, leverage]);
+
+  const requiredMargin = isNaN(livePriceNum)
+    ? "0.00"
+    : ((livePriceNum * volume) / leverage).toFixed(2);
 
   useEffect(() => {
     if (!isOpen) {
       setTp("");
       setSl("");
+      setLeverage(1);
     }
   }, [isOpen]);
 
   const calculatePotentialProfit = (value, targetType) => {
-    if (!value || !livePrice || !volume) return null;
+    if (!value || isNaN(livePriceNum) || !volume) return null;
     const targetPrice = parseFloat(value);
     if (isNaN(targetPrice)) return null;
 
     if (targetType === "tp") {
+      // Nota: La comisión ya está aplicada en el balance, por lo que solo la restamos
+      // para la estimación de PnL en el modal.
       return type === "buy"
-        ? (targetPrice - livePrice) * volume
-        : (livePrice - targetPrice) * volume;
+        ? (targetPrice - livePriceNum) * volume - commissionCost
+        : (livePriceNum - targetPrice) * volume - commissionCost;
     }
     if (targetType === "sl") {
       return type === "buy"
-        ? (targetPrice - livePrice) * volume
-        : (livePrice - targetPrice) * volume;
+        ? (targetPrice - livePriceNum) * volume - commissionCost
+        : (livePriceNum - targetPrice) * volume - commissionCost;
     }
     return null;
   };
@@ -1309,6 +1560,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
       take_profit: tp ? parseFloat(tp) : null,
       stop_loss: sl ? parseFloat(sl) : null,
       tipo_operacion: type,
+      apalancamiento: leverage,
     });
     onClose();
   };
@@ -1323,16 +1575,50 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
       <div className="space-y-3 mb-4 text-gray-700">
         <p className="flex justify-between">
           <span>Precio Actual:</span>
+          {/* Usamos el símbolo para que ModalLivePrice maneje la conversión */}
           <ModalLivePrice symbol={asset} />
         </p>
         <p className="flex justify-between">
           <span>Volumen:</span>
           <span className="font-mono text-gray-900">{volume}</span>
         </p>
-        <p className="flex justify-between">
-          <span>Margen Requerido:</span>
-          <span className="font-mono text-gray-900">${requiredMargin}</span>
-        </p>
+        <div className="py-2 border-t border-gray-200">
+          <p className="flex justify-between">
+            <span>Margen Requerido:</span>
+            <span className="font-mono text-gray-900">${requiredMargin}</span>
+          </p>
+          <p className="flex justify-between text-red-600 font-semibold">
+            <span>
+              Comisión de Apertura ({commissions.commissionPercentage}%):
+            </span>
+            <span className="font-mono">${commissionCost.toFixed(2)}</span>
+          </p>
+          {/* NUEVO: Costo de Swap Diario */}
+          <p className="flex justify-between text-gray-600 text-sm">
+            <span>
+              Swap Diario Estimado ({commissions.swapDailyPercentage}%):
+            </span>
+            <span className="font-mono text-sm">
+              ${swapDailyCost.toFixed(4)}
+            </span>
+          </p>
+        </div>
+      </div>
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-2 text-gray-700">
+          Seleccionar Apalancamiento
+        </label>
+        <select
+          value={leverage}
+          onChange={(e) => setLeverage(parseInt(e.target.value))}
+          className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+        >
+          {leverageOptions.map((opt) => (
+            <option key={opt} value={opt}>
+              1:{opt}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="mb-4">
         <label className="block text-sm font-medium mb-2 text-gray-700">
@@ -1347,7 +1633,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
         />
         {potentialTpProfit !== null && (
           <p className="text-xs mt-1 text-green-600">
-            Ganancia Potencial: ${potentialTpProfit.toFixed(2)}
+            Ganancia Potencial Estimada: ${potentialTpProfit.toFixed(2)}
           </p>
         )}
       </div>
@@ -1364,16 +1650,16 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
         />
         {potentialSlProfit !== null && (
           <p className="text-xs mt-1 text-red-500">
-            Pérdida Potencial: ${potentialSlProfit.toFixed(2)}
+            Pérdida Potencial Estimada: ${potentialSlProfit.toFixed(2)}
           </p>
         )}
       </div>
       <div className="flex justify-end mt-4">
         <button
           onClick={handleConfirm}
-          disabled={!livePrice}
+          disabled={isNaN(livePriceNum)}
           className={`px-5 py-2 rounded-md text-white font-bold transition-colors cursor-pointer ${
-            !livePrice
+            isNaN(livePriceNum)
               ? "bg-gray-400 cursor-not-allowed"
               : type === "buy"
               ? "bg-green-600 hover:bg-green-500"
@@ -1417,6 +1703,12 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
         <div className="flex justify-between">
           <span>Volumen:</span>
           <span className="font-mono text-gray-900">{operation.volumen}</span>
+        </div>
+        <div className="flex justify-between">
+          <span>Apalancamiento:</span>
+          <span className="font-semibold text-gray-900">
+            1:{operation.apalancamiento || 1}
+          </span>
         </div>
         <div className="flex justify-between">
           <span>Precio de Entrada:</span>
@@ -1479,6 +1771,7 @@ const UserOperationsModal = ({
     currentPage: 1,
     totalPages: 1,
   });
+  const [showAll, setShowAll] = useState(false);
 
   const calculateProfit = (op) => {
     if (!op.cerrada || !op.precio_cierre) return 0;
@@ -1492,32 +1785,45 @@ const UserOperationsModal = ({
 
   const fetchUserOperations = useCallback(
     (page = 1) => {
-      if (isOpen && user) {
-        axios
-          .get(`/admin-operaciones/${user.id}?page=${page}&limit=10`)
-          .then((res) => {
-            setOperations(
-              res.data.operaciones.map((op) => ({
-                ...op,
-                ganancia: calculateProfit(op),
-              }))
-            );
+      if (!isOpen || !user) return;
+
+      const endpoint = showAll
+        ? `/admin-operaciones/${user.id}/all`
+        : `/admin-operaciones/${user.id}?page=${page}&limit=10`;
+
+      axios
+        .get(endpoint)
+        .then((res) => {
+          setOperations(
+            res.data.operaciones.map((op) => ({
+              ...op,
+              ganancia: calculateProfit(op),
+            }))
+          );
+          if (!showAll) {
             setPagination({
               currentPage: res.data.currentPage,
               totalPages: res.data.totalPages,
             });
-          })
-          .catch((err) =>
-            console.error("Error fetching user operations:", err)
-          );
-      }
+          }
+        })
+        .catch((err) => console.error("Error fetching user operations:", err));
     },
-    [isOpen, user]
+    [isOpen, user, showAll]
   );
 
   useEffect(() => {
+    if (isOpen) {
+      // Reset state when modal opens
+      setShowAll(false);
+      fetchUserOperations(1);
+    }
+  }, [isOpen, user]); // Depend only on isOpen and user to reset
+
+  useEffect(() => {
+    // This effect runs when showAll changes
     fetchUserOperations(1);
-  }, [isOpen, user, fetchUserOperations]);
+  }, [showAll]);
 
   const handleInputChange = (opId, field, value) => {
     setOperations((currentOps) =>
@@ -1551,6 +1857,12 @@ const UserOperationsModal = ({
     }
   };
 
+  const handlePageChange = (newPage) => {
+    if (!showAll) {
+      fetchUserOperations(newPage);
+    }
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -1558,6 +1870,14 @@ const UserOperationsModal = ({
       title={`Operaciones de ${user?.nombre}`}
       maxWidth="max-w-7xl"
     >
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => setShowAll((prev) => !prev)}
+          className="bg-blue-600 text-white px-3 py-1 text-xs rounded hover:bg-blue-500 cursor-pointer"
+        >
+          {showAll ? "Ver con Paginación" : "Ver Todas las Operaciones"}
+        </button>
+      </div>
       <div className="overflow-auto">
         <table className="w-full text-sm text-left border-collapse">
           <thead className="bg-gray-200 text-gray-600 sticky top-0">
@@ -1571,6 +1891,7 @@ const UserOperationsModal = ({
                 "P. Cierre",
                 "TP",
                 "SL",
+                "Apalanc.",
                 "Estado",
                 "G/P",
                 "Acción",
@@ -1664,6 +1985,17 @@ const UserOperationsModal = ({
                 </td>
                 <td className="p-1">
                   <input
+                    type="number"
+                    step="1"
+                    value={op.apalancamiento || 1}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "apalancamiento", e.target.value)
+                    }
+                    className="w-full p-1 bg-gray-50 rounded border border-gray-300"
+                  />
+                </td>
+                <td className="p-1">
+                  <input
                     type="checkbox"
                     checked={op.cerrada}
                     onChange={(e) =>
@@ -1692,11 +2024,13 @@ const UserOperationsModal = ({
           </tbody>
         </table>
       </div>
-      <Pagination
-        currentPage={pagination.currentPage}
-        totalPages={pagination.totalPages}
-        onPageChange={(page) => fetchUserOperations(page)}
-      />
+      {!showAll && (
+        <Pagination
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          onPageChange={handlePageChange}
+        />
+      )}
     </Modal>
   );
 };
@@ -2028,21 +2362,22 @@ const ManageUsersModal = ({
   );
 };
 
-const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
-  const [code, setCode] = useState("");
-  const [newCode, setNewCode] = useState("");
+// Modal para Gestionar Apalancamiento
+const ManageLeverageModal = ({ isOpen, onClose, setAlert }) => {
+  const [currentLeverage, setCurrentLeverage] = useState(200);
+  const [newLeverage, setNewLeverage] = useState(200);
 
   useEffect(() => {
     if (isOpen) {
       axios
-        .get("/admin/registration-code")
+        .get("/admin/leverage")
         .then((res) => {
-          setCode(res.data.code);
-          setNewCode(res.data.code);
+          setCurrentLeverage(res.data.maxLeverage);
+          setNewLeverage(res.data.maxLeverage);
         })
-        .catch(() =>
+        .catch((err) =>
           setAlert({
-            message: "No se pudo cargar el código actual",
+            message: "No se pudo cargar el apalancamiento actual",
             type: "error",
           })
         );
@@ -2051,13 +2386,228 @@ const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
 
   const handleSave = async () => {
     try {
-      await axios.post("/admin/registration-code", { newCode });
-      setAlert({ message: "Código de registro actualizado", type: "success" });
+      await axios.post("/admin/leverage", {
+        newLeverage: parseInt(newLeverage),
+      });
+      setAlert({
+        message: "Apalancamiento máximo actualizado con éxito",
+        type: "success",
+      });
       onClose();
     } catch (error) {
-      setAlert({ message: "Error al actualizar el código", type: "error" });
+      setAlert({
+        message: "Error al actualizar el apalancamiento",
+        type: "error",
+      });
     }
   };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Gestionar Apalancamiento Máximo"
+      maxWidth="max-w-md"
+    >
+      <div className="space-y-4">
+        <p className="text-gray-600">
+          Apalancamiento máximo actual:{" "}
+          <span className="font-bold text-gray-900">1:{currentLeverage}</span>
+        </p>
+        <div>
+          <label
+            htmlFor="leverage-select"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Seleccionar nuevo apalancamiento máximo
+          </label>
+          <select
+            id="leverage-select"
+            value={newLeverage}
+            onChange={(e) => setNewLeverage(e.target.value)}
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          >
+            {[1, 5, 10, 25, 50, 100, 200].map((val) => (
+              <option key={val} value={val}>
+                1:{val}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex justify-end pt-4">
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-md hover:bg-indigo-500"
+          >
+            Guardar Cambios
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+// NUEVO MODAL: Gestionar Comisiones y Spreads
+const ManageCommissionsModal = ({ isOpen, onClose, setAlert }) => {
+  const { commissions, setCommissions } = useContext(AppContext);
+  const [spread, setSpread] = useState(commissions.spreadPercentage);
+  const [commission, setCommission] = useState(
+    commissions.commissionPercentage
+  );
+  const [swap, setSwap] = useState(commissions.swapDailyPercentage); // AÑADIDO: Swap
+
+  // Sincronizar estado local al abrir o si el estado global cambia
+  useEffect(() => {
+    setSpread(commissions.spreadPercentage);
+    setCommission(commissions.commissionPercentage);
+    setSwap(commissions.swapDailyPercentage); // AÑADIDO: Swap
+  }, [commissions]);
+
+  const handleSave = async () => {
+    const newSpread = parseFloat(spread);
+    const newCommission = parseFloat(commission);
+    const newSwap = parseFloat(swap); // AÑADIDO: Swap
+
+    if (
+      isNaN(newSpread) ||
+      newSpread < 0 ||
+      isNaN(newCommission) ||
+      newCommission < 0 ||
+      isNaN(newSwap) ||
+      newSwap < 0
+    ) {
+      setAlert({
+        message: "Valores de Spread/Comisión/Swap inválidos.",
+        type: "error",
+      });
+      return;
+    }
+
+    try {
+      const res = await axios.post("/admin/commissions", {
+        // La ruta del backend debe aceptar newSwap
+        newSpread: newSpread,
+        newCommission: newCommission,
+        newSwap: newSwap, // AÑADIDO: Swap
+      });
+
+      // Actualizar estado global en el Context
+      setCommissions({
+        spreadPercentage: res.data.spreadPercentage,
+        commissionPercentage: res.data.commissionPercentage,
+        swapDailyPercentage: res.data.swapDailyPercentage, // ACTUALIZADO: Swap
+      });
+
+      setAlert({
+        message: "Comisiones y Swap actualizados con éxito",
+        type: "success",
+      });
+      onClose();
+    } catch (error) {
+      setAlert({
+        message:
+          error.response?.data?.error || "Error al actualizar comisiones/swap.",
+        type: "error",
+      });
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Gestionar Comisiones y Spread"
+      maxWidth="max-w-md"
+    >
+      <div className="space-y-4">
+        <p className="text-gray-600">
+          Define las tasas de Spread, Comisión y Swap diario para todas las
+          operaciones.
+        </p>
+
+        {/* Campo de Spread */}
+        <div>
+          <label
+            htmlFor="spread-input"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Spread de Mercado (en %)
+          </label>
+          <input
+            id="spread-input"
+            type="number"
+            step="0.001"
+            min="0"
+            value={spread}
+            onChange={(e) => setSpread(e.target.value)}
+            placeholder="Ej: 0.01"
+            className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            El Spread se resta/suma al precio de entrada (Buy/Sell) para simular
+            el diferencial.
+          </p>
+        </div>
+
+        {/* Campo de Comisión */}
+        <div>
+          <label
+            htmlFor="commission-input"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Comisión por Volumen (en %)
+          </label>
+          <input
+            id="commission-input"
+            type="number"
+            step="0.01"
+            min="0"
+            value={commission}
+            onChange={(e) => setCommission(e.target.value)}
+            placeholder="Ej: 0.1"
+            className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            La Comisión se resta del balance al abrir la operación (se calcula
+            sobre el volumen nocional).
+          </p>
+        </div>
+
+        {/* NUEVO: Campo de Swap */}
+        <div>
+          <label
+            htmlFor="swap-input"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Swap Diario (en %)
+          </label>
+          <input
+            id="swap-input"
+            type="number"
+            step="0.001"
+            min="0"
+            value={swap}
+            onChange={(e) => setSwap(e.target.value)}
+            placeholder="Ej: 0.05"
+            className="mt-1 block w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            El Swap (interés nocturno) se aplica diariamente sobre el margen
+            usado.
+          </p>
+        </div>
+
+        <div className="flex justify-end pt-4">
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-md hover:bg-indigo-500"
+          >
+            Guardar Cambios
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
 };
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => (
@@ -2293,10 +2843,7 @@ const SideMenu = React.memo(
               <div className="p-4 border-b border-gray-200 flex-shrink-0">
                 <img
                   className="mb-2"
-                  src={
-                    import.meta.env.VITE_PLATFORM_LOGO ||
-                    "/unique1global-logo.png"
-                  }
+                  src={VITE_PLATFORM_LOGO || "/unique1global-logo.png"}
                   width="220"
                   alt="Logo"
                 />
@@ -2385,7 +2932,13 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
   const depositAddress = "TQmZ1fA2gB4iC3dE5fG6h7J8k9L0mN1oP2q"; // Dirección de ejemplo
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(depositAddress);
+    // Usar execCommand ya que clipboard.writeText puede fallar en iframes
+    const el = document.createElement("textarea");
+    el.value = depositAddress;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand("copy");
+    document.body.removeChild(el);
     onSubmitted();
   };
 
@@ -2518,7 +3071,7 @@ const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => (
   </Modal>
 );
 
-// NUEVO: Modal para pagos con tarjeta
+// Modal para pagos con tarjeta
 const CardPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -2634,35 +3187,52 @@ const DashboardPage = () => {
     setSelectedAsset,
     realTimePrices,
     setRealTimePrices,
+    commissions, // Necesario para el cálculo de margen
   } = useContext(AppContext);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [mobileVolume, setMobileVolume] = useState(0.01);
   const wsRef = useRef(null);
+
+  // FIX CRÍTICO: Nueva función para normalizar activos en la lista inicial
+  const normalizeInitialAssets = useCallback((assets) => {
+    return assets.map((symbol) => {
+      // Si es cripto (BTC-USDT), lo dejamos como está para el display y suscripción
+      if (symbol.endsWith("-USDT")) return symbol;
+      // Si es Forex/Commodity (EUR/USD, XAU/USD), lo dejamos como está
+      if (symbol.includes("/")) return symbol;
+      // Si es una acción/índice, lo dejamos como está
+      return symbol;
+    });
+  }, []);
+
   const initialAssets = useMemo(
-    () => [
-      "BTC-USDT",
-      "ETH-USDT",
-      "SOL-USDT",
-      "AAPL",
-      "TSLA",
-      "NVDA",
-      "AMZN",
-      "EUR/USD",
-      "GBP/USD",
-      "USD/JPY",
-      "XAU/USD",
-      "WTI/USD",
-    ],
-    []
+    () =>
+      normalizeInitialAssets([
+        "BTC-USDT",
+        "ETH-USDT",
+        "SOL-USDT",
+        "AAPL",
+        "TSLA",
+        "NVDA",
+        "AMZN",
+        "EUR/USD",
+        "GBP/USD",
+        "USD/JPY",
+        "XAU/USD",
+        "WTI/USD",
+      ]),
+    [normalizeInitialAssets]
   );
+
   const [userAssets, setUserAssets] = useState(() => {
     try {
       const savedAssets = localStorage.getItem("userTradingAssets");
       const parsedAssets = savedAssets
         ? JSON.parse(savedAssets)
         : initialAssets;
+      // Asegurar que la lista de activos guardada también pase por la normalización inicial
       return Array.isArray(parsedAssets) && parsedAssets.length > 0
-        ? parsedAssets
+        ? normalizeInitialAssets(parsedAssets)
         : initialAssets;
     } catch (error) {
       return initialAssets;
@@ -2690,7 +3260,8 @@ const DashboardPage = () => {
   const [isOpDetailsModalOpen, setIsOpDetailsModalOpen] = useState(false);
   const [currentUserForOps, setCurrentUserForOps] = useState(null);
   const [currentOpDetails, setCurrentOpDetails] = useState(null);
-  const [isRegCodeModalOpen, setIsRegCodeModalOpen] = useState(false);
+  const [isLeverageModalOpen, setIsLeverageModalOpen] = useState(false);
+  const [isCommissionsModalOpen, setIsCommissionsModalOpen] = useState(false); // NUEVO
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -2771,7 +3342,7 @@ const DashboardPage = () => {
     if (!user || !userAssets.length) return;
 
     const connectWebSocket = () => {
-      const wsUrl = import.meta.env.VITE_WSS_URL;
+      const wsUrl = VITE_WSS_URL;
       if (!wsUrl) {
         console.error("WebSocket URL is not defined.");
         return;
@@ -2787,8 +3358,29 @@ const DashboardPage = () => {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.type === "price_update") {
-            setRealTimePrices((prev) => ({ ...prev, ...data.prices }));
+          if (data.type === "price_update" && data.prices) {
+            // --- FIX CRÍTICO: APLICAR VALIDACIÓN RIGUROSA A LOS DATOS DE WS ---
+            const incomingPrices = data.prices;
+            const validatedPrices = {};
+
+            for (const key in incomingPrices) {
+              const value = incomingPrices[key];
+
+              // 1. Asegurar que la clave sea una cadena válida (pre-normalizada por el backend)
+              if (typeof key !== "string" || key.length === 0) continue;
+
+              // 2. Asegurar que el valor sea un número o una cadena que pueda ser un número
+              if (typeof value === "string" || typeof value === "number") {
+                // Almacenar siempre como cadena para consistencia y para que toFixed funcione
+                // correctamente en los componentes AssetPrice
+                validatedPrices[key] = String(value);
+              } else {
+                console.warn(`Valor de precio inválido para ${key}:`, value);
+              }
+            }
+
+            setRealTimePrices((prev) => ({ ...prev, ...validatedPrices }));
+            // --- FIN FIX CRÍTICO ---
           } else if (data.tipo === "operacion_cerrada") {
             setAlert({
               message: `Operación #${data.operacion_id} (${
@@ -2827,7 +3419,7 @@ const DashboardPage = () => {
         wsRef.current.close();
       }
     };
-  }, [user, userAssets]);
+  }, [user, userAssets]); // userAssets es la clave, ya que activa la suscripción WS
 
   useEffect(() => {
     localStorage.setItem("userTradingAssets", JSON.stringify(userAssets));
@@ -2848,9 +3440,13 @@ const DashboardPage = () => {
   useEffect(() => {
     const openOperations = operations.filter((op) => !op.cerrada);
     const pnl = openOperations.reduce((total, op) => {
-      const normalizedSymbol = op.activo.toUpperCase().replace(/[-/]/g, "");
-      const currentPrice = realTimePrices[normalizedSymbol];
-      if (typeof currentPrice !== "number") return total;
+      // FIX: Usar la función de normalización clave
+      const normalizedSymbol = normalizeAssetKey(op.activo);
+      // FIX: Asegurarse de que el precio sea un número para el cálculo
+      const currentPrice = parseFloat(realTimePrices[normalizedSymbol]);
+
+      if (isNaN(currentPrice)) return total;
+
       return (
         total +
         (op.tipo_operacion.toLowerCase() === "sell"
@@ -2858,15 +3454,28 @@ const DashboardPage = () => {
           : (currentPrice - op.precio_entrada) * op.volumen)
       );
     }, 0);
+
+    // Cálculo de Swap diario para PnL flotante (simulado, pero se cobra en el backend)
+    // Se calcula el Swap diario para mostrar un PnL más preciso, aunque el cobro lo hace el backend.
+    const swapCostTotal = openOperations.reduce((total, op) => {
+      const margen = parseFloat(op.capital_invertido || 0);
+      // Usar la comisión del contexto para el cálculo local
+      const swapRate = commissions.swapDailyPercentage / 100;
+      return total + margen * swapRate;
+    }, 0);
+
     const usedMargin = openOperations.reduce(
-      (total, op) => total + op.precio_entrada * op.volumen,
+      (total, op) => total + parseFloat(op.capital_invertido || 0),
       0
     );
+    // El PnL total debe incluir el costo de swap desde que se abrió
+    // NOTA: Para una simulación simplificada, se muestra solo el PnL de mercado.
+    // Los cambios de balance por swap ocurren solo por el intervalo del backend.
     const equity = balance + pnl;
     const freeMargin = equity - usedMargin;
     const marginLevel = usedMargin > 0 ? (equity / usedMargin) * 100 : 0;
     setMetrics({ balance, equity, usedMargin, freeMargin, marginLevel });
-  }, [realTimePrices, operations, balance]);
+  }, [realTimePrices, operations, balance, commissions]); // Añadir commissions como dependencia
 
   useEffect(() => {
     if (alert.message) {
@@ -2890,34 +3499,33 @@ const DashboardPage = () => {
         setAlert({ message: "El volumen debe ser mayor a 0.", type: "error" });
         return;
       }
-      const normalizedAsset = selectedAsset.toUpperCase().replace(/[-/]/g, "");
-      const currentPrice = realTimePrices[normalizedAsset];
-      if (!currentPrice) {
+      // FIX: Usar la función de normalización clave
+      const normalizedAsset = normalizeAssetKey(selectedAsset);
+      // FIX: Asegurarse de que el precio sea un número para la validación
+      const currentPrice = parseFloat(realTimePrices[normalizedAsset]);
+
+      if (isNaN(currentPrice)) {
         setAlert({
           message: "Precio del activo no disponible. Intente de nuevo.",
           type: "error",
         });
         return;
       }
-      const cost = currentPrice * volume;
-      if (cost > metrics.freeMargin) {
-        setAlert({
-          message: "Margen libre insuficiente para esta operación.",
-          type: "error",
-        });
-        return;
-      }
+      // La validación del margen libre se hará en el backend con el apalancamiento
       setNewOpModalData({ type, volume, asset: selectedAsset });
       setIsNewOpModalOpen(true);
     },
-    [realTimePrices, selectedAsset, metrics]
+    [realTimePrices, selectedAsset]
   );
 
   const handleConfirmOperation = useCallback(
     async (opDetails) => {
-      const normalizedAsset = selectedAsset.toUpperCase().replace(/[-/]/g, "");
-      const livePrice = realTimePrices[normalizedAsset];
-      if (!livePrice) {
+      // FIX: Usar la función de normalización clave
+      const normalizedAsset = normalizeAssetKey(selectedAsset);
+      // FIX: Asegurarse de que el precio sea un número para el cálculo
+      const livePrice = parseFloat(realTimePrices[normalizedAsset]);
+
+      if (isNaN(livePrice)) {
         setAlert({
           message: "No se pudo confirmar, el precio no está disponible.",
           type: "error",
@@ -2933,7 +3541,9 @@ const DashboardPage = () => {
         const { data } = await axios.post("/operar", payload);
         if (data.success) {
           setAlert({
-            message: "Operación realizada con éxito",
+            message: `Operación realizada con éxito. Comisión: $${data.comision.toFixed(
+              2
+            )}`,
             type: "success",
           });
           fetchData(1, opHistoryFilter);
@@ -2953,9 +3563,15 @@ const DashboardPage = () => {
   const handleAddAsset = useCallback(
     (symbol) => {
       let upperSymbol = symbol.toUpperCase().trim();
+
+      // Ajustar el formato de cripto para la lista si viene sin guion
       if (upperSymbol.endsWith("USDT") && !upperSymbol.includes("-")) {
+        // Asume que si termina en USDT pero no tiene guion (ej: BTCUSDT),
+        // el usuario quiso ingresar el formato de display (ej: BTC-USDT)
+        // La suscripción debe manejar el formato con guion, ya que el backend lo mapea.
         upperSymbol = `${upperSymbol.slice(0, -4)}-USDT`;
       }
+
       if (upperSymbol && !userAssets.includes(upperSymbol)) {
         const newAssets = [...userAssets, upperSymbol];
         setUserAssets(newAssets);
@@ -2994,15 +3610,19 @@ const DashboardPage = () => {
 
   const handleOpRowClick = useCallback(
     (op) => {
-      const normalizedSymbol = op.activo.toUpperCase().replace(/[-/]/g, "");
-      const currentPrice = realTimePrices[normalizedSymbol];
+      // FIX: Usar la función de normalización clave
+      const normalizedSymbol = normalizeAssetKey(op.activo);
+      // FIX: Asegurarse de que el precio sea un número
+      const currentPrice = parseFloat(realTimePrices[normalizedSymbol]);
+
       const profit = op.cerrada
         ? parseFloat(op.ganancia || 0)
-        : typeof currentPrice === "number"
-        ? op.tipo_operacion.toLowerCase() === "sell"
-          ? (op.precio_entrada - currentPrice) * op.volumen
-          : (currentPrice - op.precio_entrada) * op.volumen
-        : 0;
+        : isNaN(currentPrice)
+        ? 0
+        : op.tipo_operacion.toLowerCase() === "sell"
+        ? (op.precio_entrada - currentPrice) * op.volumen
+        : (currentPrice - op.precio_entrada) * op.volumen;
+
       setCurrentOpDetails({ op, profit });
       setIsOpDetailsModalOpen(true);
     },
@@ -3065,8 +3685,7 @@ const DashboardPage = () => {
     marginLevel: metrics.marginLevel.toFixed(2),
   };
 
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
+  const platformLogo = VITE_PLATFORM_LOGO;
 
   return (
     <div className="flex h-screen bg-gray-50 text-gray-800 font-sans overflow-hidden">
@@ -3206,9 +3825,15 @@ const DashboardPage = () => {
         operation={currentOpDetails?.op}
         profit={currentOpDetails?.profit}
       />
-      <RegistrationCodeModal
-        isOpen={isRegCodeModalOpen}
-        onClose={() => setIsRegCodeModalOpen(false)}
+      <ManageLeverageModal
+        isOpen={isLeverageModalOpen}
+        onClose={() => setIsLeverageModalOpen(false)}
+        setAlert={setAlert}
+      />
+      {/* NUEVO: Renderizado del modal de comisiones */}
+      <ManageCommissionsModal
+        isOpen={isCommissionsModalOpen}
+        onClose={() => setIsCommissionsModalOpen(false)}
         setAlert={setAlert}
       />
       <ProfileModal
@@ -3222,7 +3847,8 @@ const DashboardPage = () => {
         <Header
           onOperation={handleOpenNewOpModal}
           onManageUsers={() => setIsUsersModalOpen(true)}
-          onManageRegCode={() => setIsRegCodeModalOpen(true)}
+          onManageLeverage={() => setIsLeverageModalOpen(true)}
+          onManageCommissions={() => setIsCommissionsModalOpen(true)} // Nuevo handler
           onToggleSideMenu={() => setIsSideMenuOpen(true)}
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
           onOpenProfileModal={() => setIsProfileModalOpen(true)}
@@ -3418,7 +4044,7 @@ const ProfileModal = ({ isOpen, onClose, user, stats }) => {
 };
 
 // --- LOGIN/REGISTER ADAPTADO PARA UNIQUE 1 GLOBAL ---
-const LoginPage = () => {
+const LoginPage = ({ onNavigate }) => {
   const { setUser, setIsAuthenticated } = useContext(AppContext);
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState("");
@@ -3435,7 +4061,7 @@ const LoginPage = () => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    const platform_id = import.meta.env.VITE_PLATFORM_ID || "unique1global";
+    const platform_id = VITE_PLATFORM_ID;
 
     if (action === "login") {
       try {
@@ -3444,7 +4070,7 @@ const LoginPage = () => {
           password: loginPassword,
           platform_id,
         });
-        if (data.success) {
+        if (data.success && data.user) {
           setUser(data.user);
           setIsAuthenticated(true);
         } else {
@@ -3482,8 +4108,7 @@ const LoginPage = () => {
 
   // CAMBIO: Se actualiza la variable para usar un logo blanco específico para el login.
   // Puedes cambiar "/unique1global-logo-white.png" por la ruta correcta de tu logo blanco.
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO_WHITE || "/unique1global-logo-white.png";
+  const platformLogo = VITE_PLATFORM_LOGO_WHITE;
   const formVariants = {
     hidden: { opacity: 0, x: 300 },
     visible: {
@@ -3556,6 +4181,11 @@ const LoginPage = () => {
                 {error && (
                   <p className="text-red-500 text-center text-sm mb-4">
                     {error}
+                  </p>
+                )}
+                {success && (
+                  <p className="text-green-500 text-center text-sm mb-4">
+                    {success}
                   </p>
                 )}
                 <form
@@ -3642,16 +4272,209 @@ const LoginPage = () => {
               </motion.div>
             )}
           </AnimatePresence>
+          <button
+            onClick={() => onNavigate("landing")}
+            className="text-center text-sm text-purple-600 hover:underline mt-4"
+          >
+            &larr; Volver al inicio
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
+// --- NUEVO: Página de Inicio (Landing Page) ---
+const LandingPage = ({ onNavigate }) => {
+  const platformLogo = VITE_PLATFORM_LOGO;
+
+  const scrollToSection = (id) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  return (
+    <div className="bg-white text-gray-800 font-sans">
+      {/* Header */}
+      <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-lg shadow-md z-50">
+        <div className="container mx-auto px-6 py-3 flex justify-between items-center">
+          <img src={platformLogo} alt="Logo" className="h-8" />
+          <nav className="hidden md:flex space-x-8">
+            <button
+              onClick={() => scrollToSection("inicio")}
+              className="hover:text-purple-600 transition-colors"
+            >
+              Inicio
+            </button>
+            <button
+              onClick={() => scrollToSection("nosotros")}
+              className="hover:text-purple-600 transition-colors"
+            >
+              Sobre Nosotros
+            </button>
+            <button
+              onClick={() => scrollToSection("contacto")}
+              className="hover:text-purple-600 transition-colors"
+            >
+              Contacto
+            </button>
+          </nav>
+          <button
+            onClick={() => onNavigate("login")}
+            className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-lg"
+            style={{ backgroundColor: "#410093" }}
+          >
+            Login / Registro
+          </button>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section id="inicio" className="pt-24 md:pt-32 pb-16 bg-gray-50">
+        <div className="container mx-auto px-6 text-center">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            className="text-4xl md:text-6xl font-extrabold text-gray-900 mb-4"
+          >
+            Tu Puerta de Acceso a los Mercados Financieros
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.2 }}
+            className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-8"
+          >
+            Descubre una experiencia de trading superior. Opera con acciones,
+            Forex, criptomonedas y más, con herramientas avanzadas y una
+            ejecución ultra rápida.
+          </motion.p>
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            onClick={() => onNavigate("login")}
+            className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-8 rounded-lg text-lg transition-colors shadow-xl"
+            style={{ backgroundColor: "#410093" }}
+          >
+            Comienza a Operar Ahora{" "}
+            <Icons.ArrowRight className="inline-block h-5 w-5 ml-2" />
+          </motion.button>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.6 }}
+            className="mt-12 flex flex-col sm:flex-row justify-center items-center gap-8 text-gray-600"
+          >
+            <div className="flex items-center gap-2">
+              <Icons.ShieldCheck className="h-5 w-5 text-green-500" />
+              <span>Plataforma Segura</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Icons.Banknotes className="h-5 w-5 text-green-500" />
+              <span>Comisiones Bajas</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Icons.UserGroup className="h-5 w-5 text-green-500" />
+              <span>Soporte 24/7</span>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Sobre Nosotros Section */}
+      <section id="nosotros" className="py-20">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              Diseñada para el Trader Moderno
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Combinamos tecnología de punta, seguridad robusta y una amplia
+              gama de mercados para ofrecerte la experiencia de trading
+              definitiva.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-10">
+            <div className="text-center p-6 bg-gray-50 rounded-lg shadow-md transition-transform hover:-translate-y-2">
+              <div className="inline-block p-4 bg-purple-100 rounded-full mb-4">
+                <Icons.ShieldCheck className="h-8 w-8 text-purple-600" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">
+                Seguridad Inquebrantable
+              </h3>
+              <p className="text-gray-600">
+                Operamos con los más altos estándares. Tus fondos e información
+                personal están protegidos por encriptación avanzada y protocolos
+                robustos.
+              </p>
+            </div>
+            <div className="text-center p-6 bg-gray-50 rounded-lg shadow-md transition-transform hover:-translate-y-2">
+              <div className="inline-block p-4 bg-purple-100 rounded-full mb-4">
+                <Icons.CreditCard className="h-8 w-8 text-purple-600" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Un Universo de Activos</h3>
+              <p className="text-gray-600">
+                Desde divisas y acciones hasta las criptomonedas más volátiles.
+                Diversifica tu portafolio sin salir de nuestra plataforma.
+              </p>
+            </div>
+            <div className="text-center p-6 bg-gray-50 rounded-lg shadow-md transition-transform hover:-translate-y-2">
+              <div className="inline-block p-4 bg-purple-100 rounded-full mb-4">
+                <Icons.Adjustments className="h-8 w-8 text-purple-600" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">
+                Ejecución y Herramientas Pro
+              </h3>
+              <p className="text-gray-600">
+                Aprovecha nuestra ejecución de baja latencia, gráficos en tiempo
+                real y un conjunto completo de herramientas de análisis para
+                tomar decisiones informadas.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Contacto Section */}
+      <section id="contacto" className="py-20 bg-gray-900 text-white">
+        <div className="container mx-auto px-6 text-center">
+          <h2 className="text-3xl font-bold mb-4">¿Listo para Empezar?</h2>
+          <p className="text-lg text-gray-300 mb-8">
+            Únete a miles de traders que confían en nosotros. Abre tu cuenta hoy
+            mismo.
+          </p>
+          <button
+            onClick={() => onNavigate("login")}
+            className="bg-white hover:bg-gray-200 text-purple-600 font-bold py-3 px-8 rounded-lg text-lg transition-colors"
+          >
+            Abrir Cuenta
+          </button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-800 text-white py-6">
+        <div className="container mx-auto px-6 text-center text-sm">
+          <p>
+            &copy; {new Date().getFullYear()} Unique 1 Global. Todos los
+            derechos reservados.
+          </p>
+          <p className="text-gray-400 mt-2">
+            El trading implica riesgos. Invierte de manera responsable.
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
 const App = () => {
   const { isAppLoading, isAuthenticated } = useContext(AppContext);
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
+  const [currentView, setCurrentView] = useState("landing");
+
+  const platformLogo = VITE_PLATFORM_LOGO;
 
   if (isAppLoading) {
     return (
@@ -3662,7 +4485,18 @@ const App = () => {
       </div>
     );
   }
-  return isAuthenticated ? <DashboardPage /> : <LoginPage />;
+
+  if (isAuthenticated) {
+    return <DashboardPage />;
+  }
+
+  switch (currentView) {
+    case "login":
+      return <LoginPage onNavigate={setCurrentView} />;
+    case "landing":
+    default:
+      return <LandingPage onNavigate={setCurrentView} />;
+  }
 };
 
 export default function Root() {
