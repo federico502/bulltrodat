@@ -1016,7 +1016,7 @@ const Header = ({
             whileTap={{ scale: 0.95 }}
             onClick={() => onOperation("buy", volume)}
             className="bg-green-600 hover:bg-green-500 transition-all text-white px-5 py-2 text-sm font-bold rounded-md shadow-lg shadow-green-500/20 hover:shadow-green-500/40 cursor-pointer"
-            style={{ backgroundColor: "#410093" }}
+            style={{ backgroundColor: "#02D13D" }}
           >
             BUY
           </motion.button>
