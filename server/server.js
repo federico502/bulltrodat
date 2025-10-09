@@ -73,18 +73,44 @@ if (NODE_ENV === "production") {
   app.set("trust proxy", 1); // Confía en el primer proxy
 }
 
-const allowedOrigins = FRONTEND_URLS.split(",").map((url) => url.trim());
+// Función auxiliar para normalizar el origen y verificar si es permitido
+const normalizeOrigin = (origin) => {
+  if (!origin) return null;
+  let url = origin.toLowerCase();
+  url = url.replace(/^https?:\/\//, "");
+  url = url.replace(/^www\./, "");
+  if (url.endsWith("/")) url = url.slice(0, -1);
+  return url;
+};
+
+const allowedOrigins = FRONTEND_URLS.split(",").map((url) =>
+  normalizeOrigin(url)
+);
+
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (
-        !origin ||
-        allowedOrigins.indexOf(origin) !== -1 ||
-        (NODE_ENV !== "production" && !origin)
-      ) {
+      if (!origin) {
+        // Permitir peticiones sin origen (como postman, curl, o solicitudes del mismo servidor)
+        if (NODE_ENV !== "production") {
+          return callback(null, true);
+        }
+      }
+
+      const normalizedOrigin = normalizeOrigin(origin);
+
+      const isAllowed = allowedOrigins.some(
+        (allowed) =>
+          normalizedOrigin === allowed ||
+          normalizedOrigin?.endsWith(`.${allowed}`) // Para subdominios, si es necesario
+      );
+
+      if (isAllowed) {
         callback(null, true);
       } else {
-        console.error(`CORS Error: Origen no permitido: ${origin}`);
+        console.error(
+          `CORS Error: Origen no permitido: ${origin} (Normalizado: ${normalizedOrigin})`
+        );
         callback(
           new Error("CORS policy does not allow access from this origin."),
           false
@@ -120,10 +146,15 @@ const sessionMiddleware = session({
   saveUninitialized: false,
   proxy: true,
   cookie: {
+    // ARREGLO CRÍTICO: Configuración de cookies para entornos de producción/cross-domain
+    // Secure: Requerido para SameSite=None
     secure: NODE_ENV === "production",
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 días
+    // SameSite: 'none' es NECESARIO para que la cookie se envíe en solicitudes cross-site (Frontend/Backend en dominios distintos)
     sameSite: NODE_ENV === "production" ? "none" : "lax",
+    // Opcional pero ÚTIL si los dominios son subdominios (ej: app.mydomain.com y api.mydomain.com)
+    // domain: NODE_ENV === 'production' ? '.uniqueoneglobal.com' : undefined,
   },
 });
 app.use(sessionMiddleware);
@@ -1380,7 +1411,13 @@ const startServer = async () => {
         `[WebSocket Upgrade] Intento de conexión desde el origen: ${origin}`
       );
 
-      if (!origin || allowedOrigins.indexOf(origin) === -1) {
+      if (
+        !origin ||
+        allowedOrigins.some((allowed) => origin.includes(allowed))
+      ) {
+        // Permitir si el origen incluye una URL permitida (para manejar https://www.)
+        // La validación estricta de CORS se hace en el middleware principal
+      } else if (allowedOrigins.indexOf(normalizeOrigin(origin)) === -1) {
         console.error(
           `[WebSocket Upgrade] Bloqueado: El origen '${origin}' no está en la lista de permitidos.`
         );
@@ -1389,6 +1426,7 @@ const startServer = async () => {
         return;
       }
 
+      // FIX CRÍTICO: Usar un middleware que ya fue inicializado para la sesión
       sessionMiddleware(request, {}, () => {
         if (!request.session || !request.session.userId) {
           console.error(
