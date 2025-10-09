@@ -151,6 +151,14 @@ const Icons = {
   ),
 };
 
+// --- Función de Normalización Clave para el Precio ---
+// Esta función debe coincidir con la lógica del backend (server.js: normalizeSymbol)
+const normalizeAssetKey = (symbol) => {
+  if (!symbol) return "";
+  // Reemplaza '-' y '/' para obtener el formato de clave de precio (ej: BTCUSDT o EURUSD)
+  return symbol.toUpperCase().replace(/[-/]/g, "");
+};
+
 // --- Catálogo de Activos ---
 // Este catálogo es la fuente principal de activos para la UI.
 const ASSET_CATALOG = [
@@ -658,8 +666,8 @@ const StatisticsPanel = ({ stats, performanceData, isLoading }) => (
 
 const AssetPrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
-  // CRÍTICO: Normalizar el símbolo para la búsqueda
-  const normalizedSymbol = symbol.toUpperCase().replace(/[-/]/g, "");
+  // FIX CRÍTICO: Usar la función de normalización clave
+  const normalizedSymbol = normalizeAssetKey(symbol);
   const priceString = realTimePrices[normalizedSymbol];
 
   // FIX: Convertir explícitamente a número y manejar NaN
@@ -1089,9 +1097,8 @@ const LiveProfitCell = ({ operation }) => {
   const { realTimePrices } = useContext(AppContext);
   const calculateProfit = useCallback(() => {
     if (operation.cerrada) return parseFloat(operation.ganancia || 0);
-    const normalizedSymbol = operation.activo
-      .toUpperCase()
-      .replace(/[-/]/g, "");
+    // FIX: Usar la función de normalización clave
+    const normalizedSymbol = normalizeAssetKey(operation.activo);
 
     // FIX: Asegurar que el precio sea un número
     const currentPrice = parseFloat(realTimePrices[normalizedSymbol]);
@@ -1416,7 +1423,8 @@ const Modal = ({
 
 const ModalLivePrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
-  const normalizedSymbol = symbol?.toUpperCase().replace(/[-/]/g, "");
+  // FIX: Usar la función de normalización clave
+  const normalizedSymbol = normalizeAssetKey(symbol);
   const priceString = realTimePrices[normalizedSymbol];
 
   // FIX: Convertir explícitamente a número
@@ -1463,7 +1471,8 @@ const calculateSwapDailyCost = (
 const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const { type, asset, volume } = operationData || {};
   const { realTimePrices, commissions } = useContext(AppContext);
-  const normalizedAsset = asset?.toUpperCase().replace(/[-/]/g, "");
+  // FIX: Usar la función de normalización clave
+  const normalizedAsset = normalizeAssetKey(asset);
   const livePrice = realTimePrices[normalizedAsset]; // Esto es un STRING
   const livePriceNum = parseFloat(livePrice); // Usar número para cálculos
 
@@ -3178,35 +3187,52 @@ const DashboardPage = () => {
     setSelectedAsset,
     realTimePrices,
     setRealTimePrices,
+    commissions, // Necesario para el cálculo de margen
   } = useContext(AppContext);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [mobileVolume, setMobileVolume] = useState(0.01);
   const wsRef = useRef(null);
+
+  // FIX CRÍTICO: Nueva función para normalizar activos en la lista inicial
+  const normalizeInitialAssets = useCallback((assets) => {
+    return assets.map((symbol) => {
+      // Si es cripto (BTC-USDT), lo dejamos como está para el display y suscripción
+      if (symbol.endsWith("-USDT")) return symbol;
+      // Si es Forex/Commodity (EUR/USD, XAU/USD), lo dejamos como está
+      if (symbol.includes("/")) return symbol;
+      // Si es una acción/índice, lo dejamos como está
+      return symbol;
+    });
+  }, []);
+
   const initialAssets = useMemo(
-    () => [
-      "BTC-USDT",
-      "ETH-USDT",
-      "SOL-USDT",
-      "AAPL",
-      "TSLA",
-      "NVDA",
-      "AMZN",
-      "EUR/USD",
-      "GBP/USD",
-      "USD/JPY",
-      "XAU/USD",
-      "WTI/USD",
-    ],
-    []
+    () =>
+      normalizeInitialAssets([
+        "BTC-USDT",
+        "ETH-USDT",
+        "SOL-USDT",
+        "AAPL",
+        "TSLA",
+        "NVDA",
+        "AMZN",
+        "EUR/USD",
+        "GBP/USD",
+        "USD/JPY",
+        "XAU/USD",
+        "WTI/USD",
+      ]),
+    [normalizeInitialAssets]
   );
+
   const [userAssets, setUserAssets] = useState(() => {
     try {
       const savedAssets = localStorage.getItem("userTradingAssets");
       const parsedAssets = savedAssets
         ? JSON.parse(savedAssets)
         : initialAssets;
+      // Asegurar que la lista de activos guardada también pase por la normalización inicial
       return Array.isArray(parsedAssets) && parsedAssets.length > 0
-        ? parsedAssets
+        ? normalizeInitialAssets(parsedAssets)
         : initialAssets;
     } catch (error) {
       return initialAssets;
@@ -3333,27 +3359,10 @@ const DashboardPage = () => {
         try {
           const data = JSON.parse(event.data);
           if (data.type === "price_update" && data.prices) {
-            // FIX CRÍTICO: Normalizar claves de precios entrantes para coincidir con AssetPrice
-            const normalizedPrices = {};
-            for (const key in data.prices) {
-              // Asegurarse de que el precio se reciba como string y se guarde como string para consistencia,
-              // y se convierta a número en los componentes que lo usan (AssetPrice, LiveProfitCell).
-              const priceValue = data.prices[key];
-              const normalizedKey = key.toUpperCase().replace(/[-/]/g, "");
+            // FIX CRÍTICO: El backend ya envía las claves normalizadas (ej: BTCUSDT).
+            // No necesitamos re-normalizar aquí, solo usar los datos.
 
-              // Guardamos como string para evitar problemas de reactividad si el server no lo envía ya formateado
-              // y para que el parseFloat(priceString) en los componentes sea robusto.
-              if (
-                typeof priceValue === "number" ||
-                typeof priceValue === "string"
-              ) {
-                normalizedPrices[normalizedKey] = String(priceValue);
-              } else {
-                normalizedPrices[normalizedKey] = "0.0000";
-              }
-            }
-
-            setRealTimePrices((prev) => ({ ...prev, ...normalizedPrices }));
+            setRealTimePrices((prev) => ({ ...prev, ...data.prices }));
           } else if (data.tipo === "operacion_cerrada") {
             setAlert({
               message: `Operación #${data.operacion_id} (${
@@ -3392,7 +3401,7 @@ const DashboardPage = () => {
         wsRef.current.close();
       }
     };
-  }, [user, userAssets]);
+  }, [user, userAssets]); // userAssets es la clave, ya que activa la suscripción WS
 
   useEffect(() => {
     localStorage.setItem("userTradingAssets", JSON.stringify(userAssets));
@@ -3413,7 +3422,8 @@ const DashboardPage = () => {
   useEffect(() => {
     const openOperations = operations.filter((op) => !op.cerrada);
     const pnl = openOperations.reduce((total, op) => {
-      const normalizedSymbol = op.activo.toUpperCase().replace(/[-/]/g, "");
+      // FIX: Usar la función de normalización clave
+      const normalizedSymbol = normalizeAssetKey(op.activo);
       // FIX: Asegurarse de que el precio sea un número para el cálculo
       const currentPrice = parseFloat(realTimePrices[normalizedSymbol]);
 
@@ -3426,15 +3436,28 @@ const DashboardPage = () => {
           : (currentPrice - op.precio_entrada) * op.volumen)
       );
     }, 0);
+
+    // Cálculo de Swap diario para PnL flotante (simulado, pero se cobra en el backend)
+    // Se calcula el Swap diario para mostrar un PnL más preciso, aunque el cobro lo hace el backend.
+    const swapCostTotal = openOperations.reduce((total, op) => {
+      const margen = parseFloat(op.capital_invertido || 0);
+      // Usar la comisión del contexto para el cálculo local
+      const swapRate = commissions.swapDailyPercentage / 100;
+      return total + margen * swapRate;
+    }, 0);
+
     const usedMargin = openOperations.reduce(
       (total, op) => total + parseFloat(op.capital_invertido || 0),
       0
     );
+    // El PnL total debe incluir el costo de swap desde que se abrió
+    // NOTA: Para una simulación simplificada, se muestra solo el PnL de mercado.
+    // Los cambios de balance por swap ocurren solo por el intervalo del backend.
     const equity = balance + pnl;
     const freeMargin = equity - usedMargin;
     const marginLevel = usedMargin > 0 ? (equity / usedMargin) * 100 : 0;
     setMetrics({ balance, equity, usedMargin, freeMargin, marginLevel });
-  }, [realTimePrices, operations, balance]);
+  }, [realTimePrices, operations, balance, commissions]); // Añadir commissions como dependencia
 
   useEffect(() => {
     if (alert.message) {
@@ -3458,7 +3481,8 @@ const DashboardPage = () => {
         setAlert({ message: "El volumen debe ser mayor a 0.", type: "error" });
         return;
       }
-      const normalizedAsset = selectedAsset.toUpperCase().replace(/[-/]/g, "");
+      // FIX: Usar la función de normalización clave
+      const normalizedAsset = normalizeAssetKey(selectedAsset);
       // FIX: Asegurarse de que el precio sea un número para la validación
       const currentPrice = parseFloat(realTimePrices[normalizedAsset]);
 
@@ -3478,7 +3502,8 @@ const DashboardPage = () => {
 
   const handleConfirmOperation = useCallback(
     async (opDetails) => {
-      const normalizedAsset = selectedAsset.toUpperCase().replace(/[-/]/g, "");
+      // FIX: Usar la función de normalización clave
+      const normalizedAsset = normalizeAssetKey(selectedAsset);
       // FIX: Asegurarse de que el precio sea un número para el cálculo
       const livePrice = parseFloat(realTimePrices[normalizedAsset]);
 
@@ -3520,7 +3545,12 @@ const DashboardPage = () => {
   const handleAddAsset = useCallback(
     (symbol) => {
       let upperSymbol = symbol.toUpperCase().trim();
+
+      // Ajustar el formato de cripto para la lista si viene sin guion
       if (upperSymbol.endsWith("USDT") && !upperSymbol.includes("-")) {
+        // Asume que si termina en USDT pero no tiene guion (ej: BTCUSDT),
+        // el usuario quiso ingresar el formato de display (ej: BTC-USDT)
+        // La suscripción debe manejar el formato con guion, ya que el backend lo mapea.
         upperSymbol = `${upperSymbol.slice(0, -4)}-USDT`;
       }
 
@@ -3562,7 +3592,8 @@ const DashboardPage = () => {
 
   const handleOpRowClick = useCallback(
     (op) => {
-      const normalizedSymbol = op.activo.toUpperCase().replace(/[-/]/g, "");
+      // FIX: Usar la función de normalización clave
+      const normalizedSymbol = normalizeAssetKey(op.activo);
       // FIX: Asegurarse de que el precio sea un número
       const currentPrice = parseFloat(realTimePrices[normalizedSymbol]);
 
