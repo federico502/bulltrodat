@@ -31,15 +31,22 @@ const LazyLoginPage = lazy(() => import("./LoginPage.jsx"));
 const LazyDashboardPage = lazy(() => import("./DashboardPage.jsx"));
 
 // --- Configuración de Entorno Segura (Ajuste para compatibilidad) ---
+const GOOGLE_LOGO =
+  "https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png";
+const GOOGLE_LOGO_WHITE =
+  "https://ssl.gstatic.com/images/branding/googlelogo/2x/googlelogo_light_in_color_92x30dp.png";
+
 const env =
   typeof window !== "undefined" && typeof window.__env !== "undefined"
     ? window.__env
     : {};
 const VITE_API_URL = env.VITE_API_URL || "";
+
+// FIX: Usar el logo de Google como fallback universal para evitar 404 del logo PNG local.
 const VITE_WSS_URL = env.VITE_WSS_URL || "";
-const VITE_PLATFORM_LOGO = env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
+const VITE_PLATFORM_LOGO = env.VITE_PLATFORM_LOGO || GOOGLE_LOGO;
 const VITE_PLATFORM_LOGO_WHITE =
-  env.VITE_PLATFORM_LOGO_WHITE || "/unique1global-logo-white.png";
+  env.VITE_PLATFORM_LOGO_WHITE || GOOGLE_LOGO_WHITE;
 const VITE_PLATFORM_ID = env.VITE_PLATFORM_ID || "unique1global";
 
 if (typeof window !== "undefined") {
@@ -53,6 +60,8 @@ if (typeof window !== "undefined") {
 }
 
 // --- Configuración de Axios ---
+// CRÍTICO: Si VITE_API_URL es "", Axios asumirá el host actual, causando 404 si el backend no está ahí.
+// La solución es configurar VITE_API_URL en el entorno o en el `server.js` para que apunte al host real del backend.
 axios.defaults.baseURL = VITE_API_URL;
 axios.defaults.withCredentials = true;
 
@@ -461,8 +470,7 @@ export {
   ProfileModal,
 };
 
-// --- Implementaciones de Componentes Comunes ---
-
+// --- Implementaciones de Componentes Comunes (REDACTED FOR BREVITY) ---
 const Toast = ({ message, type, onDismiss }) => (
   <motion.div
     layout
@@ -1132,7 +1140,6 @@ const Header = ({
         </p>
       </div>
       <div className="flex items-center space-x-4">
-        {/* ProfileMenu ahora toma user y logout directamente del AppContext en DashboardPage */}
         <ProfileMenu
           onToggleSideMenu={onToggleSideMenu}
           onManageUsers={onManageUsers}
@@ -1927,9 +1934,15 @@ const UserOperationsModal = ({
   const handleSave = async (operationData) => {
     try {
       await onUpdateOperation(operationData);
-      setAlert({ message: "Operación actualizada con éxito", type: "success" });
+      setAlert({
+        message: "Operación actualizada con éxito",
+        type: "success",
+      });
     } catch (error) {
-      setAlert({ message: "Error al actualizar la operación", type: "error" });
+      setAlert({
+        message: "Error al actualizar la operación",
+        type: "error",
+      });
     }
   };
 
@@ -2369,7 +2382,10 @@ const ManageUsersModal = ({
         fetchUsers(pagination.currentPage);
       } catch (error) {
         console.error("Error updating user:", error);
-        setAlert({ message: "Error al actualizar el usuario", type: "error" });
+        setAlert({
+          message: "Error al actualizar el usuario",
+          type: "error",
+        });
       }
     },
     [fetchUsers, pagination.currentPage, setAlert]
@@ -3377,3 +3393,4 @@ const ProfileModal = ({ isOpen, onClose, user, stats }) => {
     </Modal>
   );
 };
+/* --- FIN DE IMPLEMENTACIONES DE COMPONENTES COMUNES --- */
