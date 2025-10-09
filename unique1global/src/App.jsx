@@ -4410,7 +4410,7 @@ const LandingPage = ({ onNavigate }) => {
       {/* Hero Section */}
       <section
         id="inicio"
-        className="relative pt-32 md:pt-40 pb-20 bg-gray-50 overflow-hidden"
+        className="relative min-h-screen pt-24 pb-16 bg-gray-50 overflow-hidden flex items-center justify-center"
       >
         {/* AÑADIDO: Elemento Dinámico con Movimiento */}
         <HeroVisual />
