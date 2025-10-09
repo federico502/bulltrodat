@@ -4046,11 +4046,11 @@ const ProfileModal = ({ isOpen, onClose, user, stats }) => {
 const TradingVisual = () => {
   const AnimatedLine = motion.div;
   const numLines = 20;
-  // Colores más visibles que combinan con el tema (Púrpura, Verde, Rojo)
+  // Colores que combinan con el tema (Púrpura, Verde, Rojo), ahora en blanco para un fondo oscuro
   const colors = [
-    "rgba(93, 27, 199, 0.25)", // Púrpura medio (Up)
-    "rgba(16, 185, 129, 0.25)", // Verde trading (Up)
-    "rgba(239, 68, 68, 0.25)", // Rojo trading (Down)
+    "rgba(180, 140, 255, 0.4)", // Púrpura claro suave
+    "rgba(52, 211, 163, 0.4)", // Verde trading claro
+    "rgba(251, 113, 133, 0.4)", // Rojo trading claro
   ];
 
   return (
@@ -4062,11 +4062,9 @@ const TradingVisual = () => {
         const size = 180 + i * 40;
         const color = colors[i % colors.length];
 
-        // Mueve hacia la derecha o izquierda aleatoriamente
         const initialX = i % 2 === 0 ? "-150%" : "150%";
         const finalX = i % 2 === 0 ? "150%" : "-150%";
 
-        // Mueve de arriba a abajo o viceversa
         const yStart = (i / numLines) * 100;
         const yEnd = yStart + (i % 4 === 0 ? 10 : -10);
 
@@ -4077,7 +4075,7 @@ const TradingVisual = () => {
             animate={{
               x: finalX,
               y: `${yEnd}vh`,
-              opacity: 0.7, // Opacidad más alta
+              opacity: 0.7, // Opacidad más alta para visibilidad
               transition: {
                 duration: duration,
                 repeat: Infinity,
@@ -4087,20 +4085,18 @@ const TradingVisual = () => {
               },
             }}
             style={{
-              height: `${size / 30}px`, // Líneas más gruesas
+              height: `${size / 30}px`,
               width: `${size}px`,
               background: `linear-gradient(90deg, transparent, ${color}, transparent)`,
               position: "absolute",
               top: 0,
               zIndex: 0,
               transformOrigin: "left center",
-              filter: "blur(3px)", // Mayor desenfoque para suavizar
+              filter: "blur(3px)",
             }}
           />
         );
       })}
-      {/* Velo semitransparente para garantizar la legibilidad del texto */}
-      <div className="absolute inset-0 bg-gray-50/70" />
     </div>
   );
 };
