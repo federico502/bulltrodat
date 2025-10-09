@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useState,
   useRef,
+  useMemo,
 } from "react";
 import axios from "axios";
 import {
@@ -31,7 +32,11 @@ import {
   AssetLists,
   TradingViewWidget,
   Icons,
-} from "./App.jsx"; // Importa todo desde App.jsx
+  ASSET_CATALOG,
+  POPULAR_ASSETS,
+  calculateCommissionCost,
+  calculateSwapDailyCost,
+} from "./App.jsx";
 
 const DashboardPage = () => {
   const {
@@ -39,9 +44,11 @@ const DashboardPage = () => {
     selectedAsset,
     setSelectedAsset,
     realTimePrices,
+    setRealTimePrices,
     commissions,
     VITE_WSS_URL,
     VITE_PLATFORM_LOGO,
+    refreshUser,
   } = useContext(AppContext);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [mobileVolume, setMobileVolume] = useState(0.01);
@@ -171,7 +178,10 @@ const DashboardPage = () => {
         setPerformanceData(performanceRes.data);
       } catch (error) {
         console.error("Failed to fetch data:", error);
-        setAlert({ message: "Error al cargar los datos", type: "error" });
+        setAlert({
+          message: `Error al cargar los datos: ${error.message}`,
+          type: "error",
+        });
       } finally {
         setIsLoadingData(false);
       }
@@ -367,17 +377,18 @@ const DashboardPage = () => {
             type: "success",
           });
           fetchData(1, opHistoryFilter);
+          refreshUser();
         } else {
           setAlert({ message: data.error || "Error al operar", type: "error" });
         }
       } catch (error) {
         setAlert({
-          message: error.response?.data?.error || "Error de red",
+          message: error.response?.data?.error || "Error de red al operar",
           type: "error",
         });
       }
     },
-    [selectedAsset, opHistoryFilter, fetchData, realTimePrices]
+    [selectedAsset, opHistoryFilter, fetchData, realTimePrices, refreshUser]
   );
 
   const handleAddAsset = useCallback(
@@ -448,15 +459,17 @@ const DashboardPage = () => {
         await axios.post("/admin/actualizar-operacion", operationData);
         setAlert({ message: "Operación actualizada", type: "success" });
         fetchData(pagination.currentPage, opHistoryFilter);
+        refreshUser();
       } catch (error) {
         setAlert({
-          message: "Error al actualizar la operación",
+          message:
+            error.response?.data?.error || "Error al actualizar la operación",
           type: "error",
         });
         throw error;
       }
     },
-    [fetchData, pagination.currentPage, opHistoryFilter]
+    [fetchData, pagination.currentPage, opHistoryFilter, refreshUser]
   );
 
   const handleDeleteUser = useCallback((userToDelete) => {

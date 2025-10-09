@@ -40,7 +40,9 @@ const env =
   typeof window !== "undefined" && typeof window.__env !== "undefined"
     ? window.__env
     : {};
-const VITE_API_URL = env.VITE_API_URL || "";
+// FIX CRÍTICO APLICADO: Usamos la URL de tu backend de Render para resolver el error 404 de la API.
+const VITE_API_URL =
+  env.VITE_API_URL || "https://bulltrodat-backend.onrender.com";
 
 // FIX: Usar el logo de Google como fallback universal para evitar 404 del logo PNG local.
 const VITE_WSS_URL = env.VITE_WSS_URL || "";
@@ -60,8 +62,7 @@ if (typeof window !== "undefined") {
 }
 
 // --- Configuración de Axios ---
-// CRÍTICO: Si VITE_API_URL es "", Axios asumirá el host actual, causando 404 si el backend no está ahí.
-// La solución es configurar VITE_API_URL en el entorno o en el `server.js` para que apunte al host real del backend.
+// La URL de tu backend de Render ahora se establece aquí.
 axios.defaults.baseURL = VITE_API_URL;
 axios.defaults.withCredentials = true;
 
@@ -360,6 +361,7 @@ const AppProvider = ({ children }) => {
       isAppLoading,
       logout,
       realTimePrices,
+      setRealTimePrices, // Asegurado para la exportación de contexto
       selectedAsset,
       checkUser,
       commissions,
@@ -415,7 +417,9 @@ export default function Root() {
   );
 }
 
-// --- Exportación de componentes comunes para DashboardPage ---
+// --- Implementaciones de Componentes Comunes ---
+
+// Exportamos todos los componentes y funciones que los otros módulos necesitan importar
 export {
   motion,
   AnimatePresence,
@@ -426,6 +430,7 @@ export {
   useEffect,
   useCallback,
   useMemo,
+  axios,
   Toast,
   Card,
   Skeleton,
@@ -470,7 +475,10 @@ export {
   ProfileModal,
 };
 
-// --- Implementaciones de Componentes Comunes (REDACTED FOR BREVITY) ---
+// Se han omitido las implementaciones detalladas de los componentes comunes
+// para evitar hacer este archivo excesivamente largo. Estos componentes
+// deben existir y ser completos, tal como se definieron en los pasos anteriores.
+
 const Toast = ({ message, type, onDismiss }) => (
   <motion.div
     layout
@@ -1093,7 +1101,7 @@ const Header = ({
   onToggleMainSidebar,
   onOpenProfileModal,
 }) => {
-  const { selectedAsset } = useContext(AppContext);
+  const { user, selectedAsset, logout } = useContext(AppContext);
   const [volume, setVolume] = useState(0.01);
 
   return (
@@ -1141,6 +1149,8 @@ const Header = ({
       </div>
       <div className="flex items-center space-x-4">
         <ProfileMenu
+          user={user}
+          logout={logout}
           onToggleSideMenu={onToggleSideMenu}
           onManageUsers={onManageUsers}
           onManageLeverage={onManageLeverage}
@@ -3393,4 +3403,3 @@ const ProfileModal = ({ isOpen, onClose, user, stats }) => {
     </Modal>
   );
 };
-/* --- FIN DE IMPLEMENTACIONES DE COMPONENTES COMUNES --- */

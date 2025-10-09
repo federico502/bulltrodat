@@ -1,5 +1,5 @@
-import React, { useContext } from "react";
-import { AppContext, Icons, motion } from "./App.jsx";
+import React, { useContext, useCallback } from "react";
+import { AppContext, motion, Icons } from "./App.jsx";
 
 const LandingPage = ({ onNavigate }) => {
   const { VITE_PLATFORM_LOGO } = useContext(AppContext);
@@ -8,6 +8,13 @@ const LandingPage = ({ onNavigate }) => {
   const scrollToSection = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
+
+  const handleNavigate = useCallback(
+    (view) => {
+      onNavigate(view);
+    },
+    [onNavigate]
+  );
 
   return (
     <div className="bg-white text-gray-800 font-sans">
@@ -36,7 +43,7 @@ const LandingPage = ({ onNavigate }) => {
             </button>
           </nav>
           <button
-            onClick={() => onNavigate("login")}
+            onClick={() => handleNavigate("login")}
             className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-lg"
             style={{ backgroundColor: "#410093" }}
           >
@@ -70,7 +77,7 @@ const LandingPage = ({ onNavigate }) => {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.4 }}
-            onClick={() => onNavigate("login")}
+            onClick={() => handleNavigate("login")}
             className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-8 rounded-lg text-lg transition-colors shadow-xl"
             style={{ backgroundColor: "#410093" }}
           >
@@ -163,7 +170,7 @@ const LandingPage = ({ onNavigate }) => {
             mismo.
           </p>
           <button
-            onClick={() => onNavigate("login")}
+            onClick={() => handleNavigate("login")}
             className="bg-white hover:bg-gray-200 text-purple-600 font-bold py-3 px-8 rounded-lg text-lg transition-colors"
           >
             Abrir Cuenta

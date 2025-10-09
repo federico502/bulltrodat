@@ -1,13 +1,13 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useCallback, useMemo } from "react";
 import axios from "axios";
-import { AppContext, motion, AnimatePresence, Icons } from "./App.jsx"; // Aseguramos la importación de todos los hooks y helpers
+import { AppContext, motion, AnimatePresence } from "./App.jsx";
 
 const LoginPage = ({ onNavigate }) => {
   const {
     setUser,
     setIsAuthenticated,
-    VITE_PLATFORM_LOGO_WHITE,
     VITE_PLATFORM_ID,
+    VITE_PLATFORM_LOGO_WHITE,
   } = useContext(AppContext);
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState("");
@@ -20,11 +20,12 @@ const LoginPage = ({ onNavigate }) => {
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
 
+  const platform_id = useMemo(() => VITE_PLATFORM_ID, [VITE_PLATFORM_ID]);
+
   const handleAuth = async (e, action) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    const platform_id = VITE_PLATFORM_ID;
 
     if (action === "login") {
       try {
@@ -42,7 +43,7 @@ const LoginPage = ({ onNavigate }) => {
       } catch (err) {
         setError(
           err.response?.data?.error ||
-            "Ocurrió un error en el inicio de sesión."
+            "Ocurrió un error en el inicio de sesión. Verifique su conexión y la URL del Backend."
         );
       }
     } else {
@@ -69,7 +70,12 @@ const LoginPage = ({ onNavigate }) => {
     }
   };
 
-  const platformLogo = VITE_PLATFORM_LOGO_WHITE;
+  const handleToggle = useCallback(() => {
+    setIsLogin((prev) => !prev);
+    setError("");
+    setSuccess("");
+  }, []);
+
   const formVariants = {
     hidden: { opacity: 0, x: 300 },
     visible: {
@@ -101,7 +107,7 @@ const LoginPage = ({ onNavigate }) => {
             transition={{ delay: 0.2 }}
           >
             <img
-              src={platformLogo}
+              src={VITE_PLATFORM_LOGO_WHITE}
               alt="Logo de la Plataforma"
               className="w-40 sm:w-48 mx-auto mb-4"
             />
@@ -114,11 +120,7 @@ const LoginPage = ({ onNavigate }) => {
                 : "Ingresa tus datos para comenzar tu viaje con nosotros."}
             </p>
             <button
-              onClick={() => {
-                setIsLogin(!isLogin);
-                setError("");
-                setSuccess("");
-              }}
+              onClick={handleToggle}
               className="bg-white/20 hover:bg-white/30 font-bold py-2 px-6 rounded-full transition-all"
             >
               {isLogin ? "Registrarse" : "Iniciar Sesión"}
@@ -158,7 +160,7 @@ const LoginPage = ({ onNavigate }) => {
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     className="w-full p-3 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    autoComplete="username"
+                    autoComplete="email"
                   />
                   <input
                     type="password"
