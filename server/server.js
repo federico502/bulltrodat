@@ -795,18 +795,11 @@ app.post("/operar", async (req, res) => {
     comisionCosto = volumenNocional * (COMISION_PORCENTAJE / 100);
 
     // 3. Validación de margen y comisión
-    // La Equidad (Balance + PnL flotante) - Margen Usado debe ser mayor que el Margen Requerido + Comisión.
-    // Como solo tenemos el Balance (saldo libre), comprobamos que el saldo libre cubra el requerimiento.
-
-    // FIX CRÍTICO: La equidad disponible (balanceActual) debe ser mayor que
-    // el nuevo margen requerido más la comisión, más el margen usado actual.
-    // Usaremos el Margen Disponible (Free Margin) para la comprobación.
-
-    // NOTA: Tu tabla de usuarios solo tiene 'balance'. Asumimos que es el fondo total.
-    // El margen libre real es: Balance - Margen Usado.
+    // El Margen Libre es: Balance Total - Margen Usado Actual.
     const margenLibre = balanceActual - margenUsadoActual;
     const costoTotalRequerido = margenRequerido + comisionCosto;
 
+    // CRÍTICO: Comprobamos si el Margen Libre puede cubrir el Margen Nuevo Y la Comisión.
     if (margenLibre < costoTotalRequerido) {
       await client.query("ROLLBACK");
       return res.status(400).json({
@@ -816,12 +809,15 @@ app.post("/operar", async (req, res) => {
       });
     }
 
-    // 4. Descontar la comisión del Balance (Esta sí es una pérdida inmediata)
+    // 4. Descontar la comisión del Balance (Esta es una PÉRDIDA REAL e inmediata)
     // El balance se reduce por la comisión.
     await client.query(
       "UPDATE usuarios SET balance = balance - $1 WHERE id = $2",
       [comisionCosto, usuario_id]
     );
+
+    // NOTA: No se resta el Margen Requerido. Solo se descuenta la comisión.
+    // El Margen Requerido (capital_invertido) solo se usa para calcular el Margen Libre.
 
     // 5. Insertar la operación con el precio de apertura final y el margen requerido
     await client.query(
