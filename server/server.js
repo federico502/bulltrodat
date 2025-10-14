@@ -795,18 +795,29 @@ app.post("/operar", async (req, res) => {
     comisionCosto = volumenNocional * (COMISION_PORCENTAJE / 100);
 
     // 3. Validación de margen y comisión
-    // La equidad mínima necesaria es: Margen Usado Actual + Margen Requerido + Costo de Comisión
-    // El balance debe ser suficiente para cubrir el nuevo margen y la comisión
-    if (balanceActual < margenUsadoActual + margenRequerido + comisionCosto) {
+    // La Equidad (Balance + PnL flotante) - Margen Usado debe ser mayor que el Margen Requerido + Comisión.
+    // Como solo tenemos el Balance (saldo libre), comprobamos que el saldo libre cubra el requerimiento.
+
+    // FIX CRÍTICO: La equidad disponible (balanceActual) debe ser mayor que
+    // el nuevo margen requerido más la comisión, más el margen usado actual.
+    // Usaremos el Margen Disponible (Free Margin) para la comprobación.
+
+    // NOTA: Tu tabla de usuarios solo tiene 'balance'. Asumimos que es el fondo total.
+    // El margen libre real es: Balance - Margen Usado.
+    const margenLibre = balanceActual - margenUsadoActual;
+    const costoTotalRequerido = margenRequerido + comisionCosto;
+
+    if (margenLibre < costoTotalRequerido) {
       await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
         error:
-          "Fondos insuficientes (Margen Libre bajo o insuficiente para cubrir la comisión).",
+          "Fondos insuficientes. El Margen Libre no cubre el Margen Requerido y la Comisión.",
       });
     }
 
     // 4. Descontar la comisión del Balance (Esta sí es una pérdida inmediata)
+    // El balance se reduce por la comisión.
     await client.query(
       "UPDATE usuarios SET balance = balance - $1 WHERE id = $2",
       [comisionCosto, usuario_id]
