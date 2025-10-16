@@ -22,7 +22,7 @@ import connectPgSimple from "connect-pg-simple";
 import { parse } from "pg-connection-string";
 import bcrypt from "bcryptjs";
 import path from "path";
-import { fileURLToPath } = "url";
+import { fileURLToPath } from "url";
 import cors from "cors";
 import fetch from "node-fetch"; // Importación necesaria para llamadas a APIs externas
 import WebSocket, { WebSocketServer } from "ws";
@@ -447,7 +447,7 @@ async function getLatestPrice(symbol) {
 
 // --- NUEVA LÓGICA: Cobro de Swap Diario y Cierre TP/SL ---
 // Factor de normalización: 24 horas * 3600 segundos/hora / 5 segundos/ejecución = 17280
-const SIMULATION_SWAP_FACTOR = 24 * 3600 / 5;
+const SIMULATION_SWAP_FACTOR = (24 * 3600) / 5;
 
 async function cerrarOperacionesAutomáticamente() {
   const client = await pool.connect();
@@ -506,7 +506,8 @@ async function cerrarOperacionesAutomáticamente() {
         "SELECT id, usuario_id, capital_invertido FROM operaciones WHERE cerrada = false"
       );
       // CORRECCIÓN: Dividir la tasa diaria por el factor de simulación (17280)
-      const swapRatePerExecution = SWAP_DAILY_PORCENTAJE / 100 / SIMULATION_SWAP_FACTOR;
+      const swapRatePerExecution =
+        SWAP_DAILY_PORCENTAJE / 100 / SIMULATION_SWAP_FACTOR;
       const swapCostByUser = {};
 
       for (const op of openOpsResult.rows) {
@@ -529,7 +530,9 @@ async function cerrarOperacionesAutomáticamente() {
         }
         await client.query("COMMIT");
         console.log(
-          `✅ Swap cobrado (${(SWAP_DAILY_PORCENTAJE / SIMULATION_SWAP_FACTOR).toFixed(6)}% por ejecución) a ${
+          `✅ Swap cobrado (${(
+            SWAP_DAILY_PORCENTAJE / SIMULATION_SWAP_FACTOR
+          ).toFixed(6)}% por ejecución) a ${
             Object.keys(swapCostByUser).length
           } usuarios.`
         );
@@ -820,8 +823,8 @@ app.post("/operar", async (req, res) => {
       "UPDATE usuarios SET balance = balance - $1 WHERE id = $2",
       [comisionCosto, usuario_id]
     );
-    
-    // NOTA: No se resta el Margen Requerido. Solo se descuenta la comisión. 
+
+    // NOTA: No se resta el Margen Requerido. Solo se descuenta la comisión.
     // El Margen Requerido (capital_invertido) solo se usa para calcular el Margen Libre.
 
     // 5. Insertar la operación con el precio de apertura final y el margen requerido
