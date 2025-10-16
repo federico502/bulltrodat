@@ -446,8 +446,8 @@ async function getLatestPrice(symbol) {
 }
 
 // --- NUEVA LÓGICA: Cobro de Swap Diario y Cierre TP/SL ---
-// Factor de normalización: 24 horas * 3600 segundos/hora / 5 segundos/ejecución = 17280
-const SIMULATION_SWAP_FACTOR = (24 * 3600) / 5;
+// Factor de normalización: 24 horas * 3600 segundos/hora / 5 segundos/ejecución = 17280 (YA NO SE USA)
+const SWAP_DAILY_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 horas en milisegundos
 
 async function cerrarOperacionesAutomáticamente() {
   const client = await pool.connect();
@@ -500,20 +500,27 @@ async function cerrarOperacionesAutomáticamente() {
       }
     }
 
-    // 2. LÓGICA DE COBRO DE SWAP DIARIO (CORREGIDA)
+    // 2. LÓGICA DE COBRO DE SWAP DIARIO (CORREGIDA PARA REALISMO)
+    // El swap solo se cobra si han pasado 24 horas (u otro intervalo largo) desde la última vez.
+
+    // --- Lógica del Cobro de Swap (Simplificada para ejecución cada 24 horas) ---
+    // NOTA: Para un entorno de producción, esta lógica debería ser gestionada por un CRON
+    // y no por un setInterval simple, pero manteniendo la estructura actual, ejecutaremos
+    // el cobro del 100% de la tasa diaria.
+
+    // Asumimos que esta función se ejecutará a la frecuencia deseada (ej: cada 24 horas)
     if (SWAP_DAILY_PORCENTAJE > 0) {
       const openOpsResult = await client.query(
         "SELECT id, usuario_id, capital_invertido FROM operaciones WHERE cerrada = false"
       );
-      // CORRECCIÓN: Dividir la tasa diaria por el factor de simulación (17280)
-      const swapRatePerExecution =
-        SWAP_DAILY_PORCENTAJE / 100 / SIMULATION_SWAP_FACTOR;
+      // Tasa diaria de swap (el 0.05% completo)
+      const swapRate = SWAP_DAILY_PORCENTAJE / 100;
       const swapCostByUser = {};
 
       for (const op of openOpsResult.rows) {
         const margen = parseFloat(op.capital_invertido);
-        // Aplicar la tasa por ejecución
-        const costoSwap = margen * swapRatePerExecution;
+        // Cobro del swap diario completo
+        const costoSwap = margen * swapRate;
 
         if (!swapCostByUser[op.usuario_id]) swapCostByUser[op.usuario_id] = 0;
         swapCostByUser[op.usuario_id] += costoSwap;
@@ -530,9 +537,7 @@ async function cerrarOperacionesAutomáticamente() {
         }
         await client.query("COMMIT");
         console.log(
-          `✅ Swap cobrado (${(
-            SWAP_DAILY_PORCENTAJE / SIMULATION_SWAP_FACTOR
-          ).toFixed(6)}% por ejecución) a ${
+          `✅ Swap Diario cobrado (${SWAP_DAILY_PORCENTAJE}% completo) a ${
             Object.keys(swapCostByUser).length
           } usuarios.`
         );
@@ -1553,7 +1558,11 @@ const startServer = async () => {
       iniciarWebSocketKuCoin();
       iniciarWebSocketTwelveData();
       // El Swap y TP/SL se aplica cada 5s para prueba.
-      setInterval(() => cerrarOperacionesAutomáticamente(), 5000);
+      // CORRECCIÓN: Se cambia la frecuencia a 24 horas para reflejar un Swap Diario realista.
+      setInterval(
+        () => cerrarOperacionesAutomáticamente(),
+        SWAP_DAILY_INTERVAL_MS
+      );
     });
 
     server.on("upgrade", (request, socket, head) => {
