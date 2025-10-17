@@ -1,6 +1,6 @@
 /*
-IMPORTANTE: Para que la nueva funcionalidad de apalancamiento y notificaciones funcione,
-es necesario modificar la base de datos. Ejecute los siguientes comandos SQL
+IMPORTANTE: Para que la nueva funcionalidad de apalancamiento funcione,
+es necesario modificar la base de datos. Ejecute el siguiente comando SQL
 en su base de datos PostgreSQL:
 
 ALTER TABLE operaciones ADD COLUMN apalancamiento INTEGER DEFAULT 1;
@@ -12,13 +12,8 @@ ALTER TABLE operaciones ADD COLUMN cerrada BOOLEAN DEFAULT FALSE;
 ALTER TABLE operaciones ADD COLUMN take_profit NUMERIC;
 ALTER TABLE operaciones ADD COLUMN stop_loss NUMERIC;
 
-CREATE TABLE IF NOT EXISTS notificaciones (
-    id SERIAL PRIMARY KEY,
-    mensaje TEXT NOT NULL,
-    fecha TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
 
-Este comando añade las columnas y la tabla necesarias para la gestión completa.
+Este comando añade las columnas necesarias para la gestión completa.
 */
 import express from "express";
 import session from "express-session";
@@ -1415,7 +1410,7 @@ app.post("/admin/leverage", async (req, res) => {
   res.json({ success: true, maxLeverage: MAX_LEVERAGE });
 });
 
-// --- RUTA ADMIN: GESTIONAR COMISIONES Y SWAP ---
+// --- NUEVA RUTA ADMIN: GESTIONAR COMISIONES Y SWAP ---
 app.get("/admin/commissions", async (req, res) => {
   if (!req.session.userId || req.session.rol !== "admin") {
     return res.status(403).json({ error: "No autorizado" });
@@ -1474,43 +1469,6 @@ app.post("/admin/commissions", async (req, res) => {
     commissionPercentage: COMISION_PORCENTAJE,
     swapDailyPercentage: SWAP_DAILY_PORCENTAJE, // NUEVO
   });
-});
-
-// --- NUEVA RUTA ADMIN: ENVIAR NOTIFICACIÓN GLOBAL ---
-app.post("/admin/notificar", async (req, res) => {
-  if (!req.session.userId || req.session.rol !== "admin") {
-    return res.status(403).json({ error: "No autorizado" });
-  }
-  const { mensaje } = req.body;
-
-  if (!mensaje || mensaje.length < 5) {
-    return res
-      .status(400)
-      .json({ error: "El mensaje debe tener al menos 5 caracteres." });
-  }
-
-  try {
-    const { rows } = await pool.query(
-      "INSERT INTO notificaciones (mensaje) VALUES ($1) RETURNING *",
-      [mensaje]
-    );
-
-    const notification = rows[0];
-
-    // Enviar notificación en tiempo real a todos los clientes conectados
-    broadcast({
-      type: "admin_notification",
-      message: notification.mensaje,
-      id: notification.id,
-      date: notification.fecha,
-    });
-
-    console.log(`📣 NOTIFICACIÓN GLOBAL ENVIADA: ${mensaje}`);
-    res.json({ success: true, notification });
-  } catch (err) {
-    console.error("Error al enviar notificación:", err);
-    res.status(500).json({ error: "Error interno al enviar la notificación." });
-  }
 });
 
 // Lógica para manejar suscripciones enviadas por el cliente
@@ -1594,25 +1552,16 @@ const startServer = async () => {
         `);
     console.log("Tabla de sesiones verificada/creada.");
 
-    // Establecer la frecuencia de ejecución del Swap/TP/SL
-    // RESTAURADO: Frecuencia fija a 24 horas (modo realista)
-    const intervalMs = SWAP_DAILY_INTERVAL_MS;
-    const modeName = "Producción (Realista)";
-
     // Escuchar en el puerto definido por el entorno (Render)
     server.listen(PORT, () => {
       console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
-      console.log(`🛠️ Modo de Ejecución: ${modeName}`);
-
       iniciarWebSocketKuCoin();
       iniciarWebSocketTwelveData();
-
-      // El Swap y TP/SL se aplica al intervalo definido (24h)
-      setInterval(() => cerrarOperacionesAutomáticamente(), intervalMs);
-      console.log(
-        `⏱️ Auto-cierre y Swap se ejecutan cada ${
-          intervalMs / (1000 * 60 * 60)
-        } horas.`
+      // El Swap y TP/SL se aplica cada 5s para prueba.
+      // CORRECCIÓN: Se cambia la frecuencia a 24 horas para reflejar un Swap Diario realista.
+      setInterval(
+        () => cerrarOperacionesAutomáticamente(),
+        SWAP_DAILY_INTERVAL_MS
       );
     });
 
