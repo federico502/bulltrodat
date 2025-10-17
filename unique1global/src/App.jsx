@@ -25,37 +25,13 @@ import { motion, AnimatePresence } from "framer-motion";
 
 // --- FIX CRÍTICO: Configuración de Entorno Segura (Prevención de Pantalla Blanca) ---
 // Accede a las variables de entorno de forma segura, usando valores por defecto.
-const env =
-  typeof window !== "undefined" && typeof window.__env !== "undefined"
-    ? window.__env
-    : {};
-
-// FIX CRÍTICO: Se establece la URL del backend de Render para evitar 404 en /me y /login
-// RECUERDA: Si cambias tu host de backend, debes cambiar esta línea.
-const VITE_API_URL =
-  env.VITE_API_URL || "https://bulltrodat-backend.onrender.com";
-
-// Usamos Google Logo como fallback universal y la URL de Render para la API
-const GOOGLE_LOGO =
-  "https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png";
-const GOOGLE_LOGO_WHITE =
-  "https://ssl.gstatic.com/images/branding/googlelogo/2x/googlelogo_light_in_color_92x30dp.png";
-
+const env = typeof import.meta.env !== "undefined" ? import.meta.env : {};
+const VITE_API_URL = env.VITE_API_URL || "";
 const VITE_WSS_URL = env.VITE_WSS_URL || "";
-const VITE_PLATFORM_LOGO = env.VITE_PLATFORM_LOGO || GOOGLE_LOGO;
+const VITE_PLATFORM_LOGO = env.VITE_PLATFORM_LOGO || "/unique1global-logo.png";
 const VITE_PLATFORM_LOGO_WHITE =
-  env.VITE_PLATFORM_LOGO_WHITE || GOOGLE_LOGO_WHITE;
+  env.VITE_PLATFORM_LOGO_WHITE || "/unique1global-logo-white.png";
 const VITE_PLATFORM_ID = env.VITE_PLATFORM_ID || "unique1global";
-
-if (typeof window !== "undefined") {
-  window.__env = {
-    VITE_API_URL,
-    VITE_WSS_URL,
-    VITE_PLATFORM_LOGO,
-    VITE_PLATFORM_LOGO_WHITE,
-    VITE_PLATFORM_ID,
-  };
-}
 
 // --- Configuración de Axios ---
 axios.defaults.baseURL = VITE_API_URL;
@@ -74,15 +50,117 @@ ChartJS.register(
   TimeScale
 );
 
-// --- UTILIDADES GLOBALES Y DATOS ---
+// --- Iconos SVG ---
+const Icon = ({ path, className = "h-5 w-5" }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+    strokeWidth={2}
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d={path} />
+  </svg>
+);
 
-// Función de Normalización Clave para el Precio (Debe coincidir con el backend)
+const Icons = {
+  Menu: () => <Icon path="M4 6h16M4 12h16M4 18h16" className="h-6 w-6" />,
+  Plus: () => <Icon path="M12 4v16m8-8H4" className="h-4 w-4" />,
+  UserGroup: ({ className }) => (
+    <Icon
+      path="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"
+      className={className}
+    />
+  ),
+  Logout: ({ className }) => (
+    <Icon
+      path="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+      className={className}
+    />
+  ),
+  X: ({ className = "h-6 w-6" }) => (
+    <Icon path="M6 18L18 6M6 6l12 12" className={className} />
+  ),
+  ViewList: () => (
+    <Icon path="M4 6h16M4 10h16M4 14h16M4 18h16" className="h-4 w-4" />
+  ),
+  Key: ({ className }) => (
+    <Icon
+      path="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a4 4 0 100 8 4 4 0 000-8z"
+      className={className}
+    />
+  ),
+  UserCircle: ({ className }) => (
+    <Icon
+      path="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"
+      className={className}
+    />
+  ),
+  ChevronLeft: () => <Icon path="M15 19l-7-7 7-7" className="h-5 w-5 mr-2" />,
+  ArrowDownTray: ({ className }) => (
+    <Icon
+      path="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+      className={className}
+    />
+  ),
+  ArrowUpTray: ({ className }) => (
+    <Icon
+      path="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
+      className={className}
+    />
+  ),
+  Clipboard: ({ className }) => (
+    <Icon
+      path="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v3.043m-7.416 0v3.043c0 .212.03.418.084.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"
+      className={className}
+    />
+  ),
+  Banknotes: ({ className }) => (
+    <Icon
+      path="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0 .75-.75V9.75M15 13.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+      className={className}
+    />
+  ),
+  CreditCard: ({ className }) => (
+    <Icon
+      path="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 21Z"
+      className={className}
+    />
+  ),
+  ShieldCheck: ({ className }) => (
+    <Icon
+      path="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286Zm-1.12 8.149a.75.75 0 1 0-1.06 1.06l2.12 2.12a.75.75 0 0 0 1.06 0l4.243-4.242a.75.75 0 0 0-1.06-1.06l-3.713 3.713-1.59-1.59Z"
+      className={className}
+    />
+  ),
+  Adjustments: ({ className }) => (
+    <Icon
+      path="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM12 15a3 3 0 100-6 3 3 0 000 6z"
+      className={className}
+    />
+  ),
+  ArrowRight: ({ className }) => (
+    <Icon path="M17 8l4 4m0 0l-4 4m4-4H3" className={className} />
+  ),
+  CurrencyDollar: ({ className }) => (
+    <Icon
+      path="M12 6v12M12 6c-2.828 0-4.5 1.172-4.5 4.5S9.172 15 12 15s4.5-1.172 4.5-4.5S14.828 6 12 6ZM12 6c2.828 0 4.5 1.172 4.5 4.5S14.828 15 12 15s-4.5-1.172-4.5-4.5S9.172 6 12 6Z"
+      className={className}
+    />
+  ),
+};
+
+// --- Función de Normalización Clave para el Precio ---
+// Esta función debe coincidir con la lógica del backend (server.js: normalizeSymbol)
 const normalizeAssetKey = (symbol) => {
   if (!symbol) return "";
+  // Reemplaza '-' y '/' para obtener el formato de clave de precio (ej: BTCUSDT o EURUSD)
   return symbol.toUpperCase().replace(/[-/]/g, "");
 };
 
-// Catálogo de Activos
+// --- Catálogo de Activos ---
+// Este catálogo es la fuente principal de activos para la UI.
 const ASSET_CATALOG = [
   // Forex
   { symbol: "EUR/USD", name: "Euro / Dólar Estadounidense" },
@@ -188,114 +266,6 @@ const POPULAR_ASSETS = [
   ASSET_CATALOG.find((a) => a.symbol === "NVDA"),
 ].filter(Boolean); // Filter out any potential undefined if symbols change
 
-// --- Iconos SVG ---
-const Icon = ({ path, className = "h-5 w-5" }) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeWidth={2}
-  >
-    <path strokeLinecap="round" strokeLinejoin="round" d={path} />
-  </svg>
-);
-
-const Icons = {
-  Menu: () => <Icon path="M4 6h16M4 12h16M4 18h16" className="h-6 w-6" />,
-  Plus: () => <Icon path="M12 4v16m8-8H4" className="h-4 w-4" />,
-  UserGroup: ({ className }) => (
-    <Icon
-      path="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"
-      className={className}
-    />
-  ),
-  Logout: ({ className }) => (
-    <Icon
-      path="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-      className={className}
-    />
-  ),
-  X: ({ className = "h-6 w-6" }) => (
-    <Icon path="M6 18L18 6M6 6l12 12" className={className} />
-  ),
-  ViewList: () => (
-    <Icon path="M4 6h16M4 10h16M4 14h16M4 18h16" className="h-4 w-4" />
-  ),
-  Key: ({ className }) => (
-    <Icon
-      path="M18 8a6 6 0 01-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1118 8zm-6-4a4 4 0 100 8 4 4 0 000-8z"
-      className={className}
-    />
-  ),
-  UserCircle: ({ className }) => (
-    <Icon
-      path="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z"
-      className={className}
-    />
-  ),
-  ChevronLeft: () => <Icon path="M15 19l-7-7 7-7" className="h-5 w-5 mr-2" />,
-  ArrowDownTray: ({ className }) => (
-    <Icon
-      path="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
-      className={className}
-    />
-  ),
-  ArrowUpTray: ({ className }) => (
-    <Icon
-      path="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"
-      className={className}
-    />
-  ),
-  Clipboard: ({ className }) => (
-    <Icon
-      path="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v3.043m-7.416 0v3.043c0 .212.03.418.084.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184"
-      className={className}
-    />
-  ),
-  Banknotes: ({ className }) => (
-    <Icon
-      path="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0 .75-.75V9.75M15 13.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-      className={className}
-    />
-  ),
-  CreditCard: ({ className }) => (
-    <Icon
-      path="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 21Z"
-      className={className}
-    />
-  ),
-  ShieldCheck: ({ className }) => (
-    <Icon
-      path="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.286Zm-1.12 8.149a.75.75 0 1 0-1.06 1.06l2.12 2.12a.75.75 0 0 0 1.06 0l4.243-4.242a.75.75 0 0 0-1.06-1.06l-3.713 3.713-1.59-1.59Z"
-      className={className}
-    />
-  ),
-  Adjustments: ({ className }) => (
-    <Icon
-      path="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065zM12 15a3 3 0 100-6 3 3 0 000 6z"
-      className={className}
-    />
-  ),
-  ArrowRight: ({ className }) => (
-    <Icon path="M17 8l4 4m0 0l-4 4m4-4H3" className={className} />
-  ),
-  CurrencyDollar: ({ className }) => (
-    <Icon
-      path="M12 6v12M12 6c-2.828 0-4.5 1.172-4.5 4.5S9.172 15 12 15s4.5-1.172 4.5-4.5S14.828 6 12 6ZM12 6c2.828 0 4.5 1.172 4.5 4.5S14.828 15 12 15s-4.5-1.172-4.5-4.5S9.172 6 12 6Z"
-      className={className}
-    />
-  ),
-  // NUEVO ICONO: Campana para notificaciones
-  Bell: ({ className }) => (
-    <Icon
-      path="M14.857 17.082a23.848 23.848 0 005.454-1.331 8.967 8.967 0 01-4.436-5.334m4.436 5.334a23.848 23.848 0 01-5.454 1.331m0 0a2.38 2.38 0 01-1.872 0M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-      className={className}
-    />
-  ),
-};
-
 // --- Contexto de la App ---
 const AppContext = createContext();
 
@@ -305,13 +275,12 @@ const AppProvider = ({ children }) => {
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [realTimePrices, setRealTimePrices] = useState({});
   const [selectedAsset, setSelectedAsset] = useState("BTC-USDT");
+  // ACTUALIZADO: Estado para las comisiones, spreads y swap
   const [commissions, setCommissions] = useState({
     spreadPercentage: 0.01,
     commissionPercentage: 0.1,
-    swapDailyPercentage: 0.05,
+    swapDailyPercentage: 0.05, // AÑADIDO: Swap diario por defecto
   });
-  // NUEVO ESTADO: Notificación global del admin
-  const [globalNotification, setGlobalNotification] = useState(null);
 
   const checkUser = useCallback(async () => {
     setIsAppLoading(true);
@@ -320,6 +289,7 @@ const AppProvider = ({ children }) => {
       setUser(data);
       setIsAuthenticated(true);
 
+      // Intentar cargar comisiones si es administrador o usuario regular
       if (data) {
         try {
           const commRes = await axios.get("/commissions");
@@ -365,10 +335,8 @@ const AppProvider = ({ children }) => {
       selectedAsset,
       setSelectedAsset,
       refreshUser: checkUser,
-      commissions,
-      setCommissions,
-      globalNotification, // NUEVO
-      setGlobalNotification, // NUEVO
+      commissions, // Exponer comisiones
+      setCommissions, // Exponer setCommissions
     }),
     [
       user,
@@ -379,15 +347,13 @@ const AppProvider = ({ children }) => {
       selectedAsset,
       checkUser,
       commissions,
-      globalNotification, // DEPENDENCIA
     ]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
-// --- COMPONENTES UI COMPARTIDOS ---
-
+// --- Hooks y Componentes de UI ---
 const useFlashOnUpdate = (value) => {
   const [flashClass, setFlashClass] = useState("");
   const prevValueRef = useRef(value);
@@ -908,8 +874,7 @@ const ProfileMenu = React.memo(
     onToggleSideMenu,
     onManageUsers,
     onManageLeverage,
-    onManageCommissions,
-    onManageNotifications, // NUEVO: Propiedad para el modal de notificaciones
+    onManageCommissions, // NUEVA prop
     onOpenProfileModal,
   }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -983,18 +948,13 @@ const ProfileMenu = React.memo(
                       text="Gestionar Apalancamiento"
                       onClick={() => handleItemClick(onManageLeverage)}
                     />
+                    {/* NUEVO ITEM DE MENÚ PARA COMISIONES */}
                     <MenuItem
                       icon={
                         <Icons.CurrencyDollar className="h-5 w-5 text-gray-500" />
                       }
                       text="Gestionar Comisiones"
                       onClick={() => handleItemClick(onManageCommissions)}
-                    />
-                    {/* NUEVO ITEM: NOTIFICACIONES */}
-                    <MenuItem
-                      icon={<Icons.Bell className="h-5 w-5 text-red-500" />}
-                      text="Enviar Notificación"
-                      onClick={() => handleItemClick(onManageNotifications)}
                     />
                   </>
                 )}
@@ -1019,8 +979,7 @@ const Header = ({
   onOperation,
   onManageUsers,
   onManageLeverage,
-  onManageCommissions,
-  onManageNotifications, // NUEVO: Propiedad para el handler de notificaciones
+  onManageCommissions, // NUEVA prop
   onToggleSideMenu,
   onToggleMainSidebar,
   onOpenProfileModal,
@@ -1078,8 +1037,7 @@ const Header = ({
           onToggleSideMenu={onToggleSideMenu}
           onManageUsers={onManageUsers}
           onManageLeverage={onManageLeverage}
-          onManageCommissions={onManageCommissions}
-          onManageNotifications={onManageNotifications} // NUEVO
+          onManageCommissions={onManageCommissions} // Pasa el nuevo handler
           onOpenProfileModal={onOpenProfileModal}
         />
       </div>
@@ -2652,88 +2610,6 @@ const ManageCommissionsModal = ({ isOpen, onClose, setAlert }) => {
   );
 };
 
-// NUEVO COMPONENTE: Modal para enviar notificaciones (Solo Admin)
-const ManageNotificationsModal = ({ isOpen, onClose, setAlert }) => {
-  const [message, setMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSend = async () => {
-    if (message.length < 5) {
-      setAlert({
-        message: "El mensaje debe ser de al menos 5 caracteres.",
-        type: "error",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await axios.post("/admin/notificar", { mensaje: message });
-      setAlert({
-        message: "Notificación global enviada con éxito.",
-        type: "success",
-      });
-      setMessage("");
-      onClose();
-    } catch (error) {
-      setAlert({
-        message:
-          error.response?.data?.error || "Error al enviar la notificación.",
-        type: "error",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Enviar Notificación Global"
-      maxWidth="max-w-md"
-    >
-      <div className="space-y-4">
-        <p className="text-gray-600">
-          Este mensaje aparecerá en la parte superior del dashboard de todos los
-          usuarios en tiempo real. Úsalo para avisos críticos como mantenimiento
-          o actualizaciones.
-        </p>
-        <div>
-          <label
-            htmlFor="notification-message"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Mensaje (máx. 200 caracteres)
-          </label>
-          <textarea
-            id="notification-message"
-            rows="4"
-            maxLength={200}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-            placeholder="Ej: Aviso de mantenimiento programado para las 2:00 AM UTC."
-          />
-          <p className="text-xs text-gray-500 mt-1 text-right">
-            {message.length} / 200
-          </p>
-        </div>
-
-        <div className="flex justify-end pt-4">
-          <button
-            onClick={handleSend}
-            disabled={isLoading || message.length < 5}
-            className="px-4 py-2 bg-red-600 text-white font-bold rounded-md hover:bg-red-500 transition-colors disabled:bg-gray-400"
-          >
-            {isLoading ? "Enviando..." : "Enviar Notificación"}
-          </button>
-        </div>
-      </div>
-    </Modal>
-  );
-};
-
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => (
   <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="max-w-sm">
     <div className="text-gray-700 mb-6">{children}</div>
@@ -2943,7 +2819,6 @@ const SideMenu = React.memo(
     }, [isOpen]);
 
     const handleSelectMethod = (method, type) => {
-      onClose(); // Cerrar SideMenu al abrir modal de pago
       onSelectPaymentMethod(method, type);
     };
 
@@ -3305,32 +3180,6 @@ const SecurityView = React.memo(({ onBack }) => {
   );
 });
 
-// NUEVO COMPONENTE: Banner de Notificación Global
-const GlobalNotificationBanner = () => {
-  const { globalNotification, setGlobalNotification } = useContext(AppContext);
-
-  if (!globalNotification) return null;
-
-  return (
-    <motion.div
-      initial={{ y: -50, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: -50, opacity: 0 }}
-      transition={{ duration: 0.3 }}
-      className="fixed top-0 left-0 right-0 z-50 p-3 bg-red-600 text-white shadow-xl flex items-center justify-center text-sm"
-    >
-      <Icons.Bell className="h-5 w-5 mr-3 text-white" />
-      <span className="font-semibold">{globalNotification.message}</span>
-      <button
-        onClick={() => setGlobalNotification(null)}
-        className="ml-auto p-1 rounded-full hover:bg-white/20 transition-colors"
-      >
-        <Icons.X className="h-4 w-4" />
-      </button>
-    </motion.div>
-  );
-};
-
 const DashboardPage = () => {
   const {
     user,
@@ -3339,8 +3188,6 @@ const DashboardPage = () => {
     realTimePrices,
     setRealTimePrices,
     commissions, // Necesario para el cálculo de margen
-    setGlobalNotification, // NUEVO
-    globalNotification, // NUEVO
   } = useContext(AppContext);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [mobileVolume, setMobileVolume] = useState(0.01);
@@ -3414,9 +3261,7 @@ const DashboardPage = () => {
   const [currentUserForOps, setCurrentUserForOps] = useState(null);
   const [currentOpDetails, setCurrentOpDetails] = useState(null);
   const [isLeverageModalOpen, setIsLeverageModalOpen] = useState(false);
-  const [isCommissionsModalOpen, setIsCommissionsModalOpen] = useState(false);
-  const [isNotificationsModalOpen, setIsNotificationsModalOpen] =
-    useState(false); // NUEVO
+  const [isCommissionsModalOpen, setIsCommissionsModalOpen] = useState(false); // NUEVO
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -3536,13 +3381,6 @@ const DashboardPage = () => {
 
             setRealTimePrices((prev) => ({ ...prev, ...validatedPrices }));
             // --- FIN FIX CRÍTICO ---
-          } else if (data.type === "admin_notification" && data.message) {
-            // NUEVO: Manejar notificación del administrador
-            setGlobalNotification({
-              message: data.message,
-              id: data.id,
-              date: data.date,
-            });
           } else if (data.tipo === "operacion_cerrada") {
             setAlert({
               message: `Operación #${data.operacion_id} (${
@@ -3849,15 +3687,8 @@ const DashboardPage = () => {
 
   const platformLogo = VITE_PLATFORM_LOGO;
 
-  const getDashboardPadding = () => {
-    // Ajusta el padding superior del dashboard si hay una notificación global
-    return globalNotification ? "pt-16" : "pt-0";
-  };
-
   return (
-    <div
-      className={`flex h-screen bg-gray-50 text-gray-800 font-sans overflow-hidden ${getDashboardPadding()}`}
-    >
+    <div className="flex h-screen bg-gray-50 text-gray-800 font-sans overflow-hidden">
       <AnimatePresence>
         {alert.message && (
           <Toast
@@ -3866,7 +3697,6 @@ const DashboardPage = () => {
             onDismiss={() => setAlert({ message: "", type: "info" })}
           />
         )}
-        {globalNotification && <GlobalNotificationBanner />}
       </AnimatePresence>
       <SideMenu
         isOpen={isSideMenuOpen}
@@ -3925,7 +3755,7 @@ const DashboardPage = () => {
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
-              transition={{ type: "tween", ease: "circOut", duration: 0.4 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
               className="fixed top-0 left-0 h-full w-72 bg-white p-4 overflow-y-auto flex-shrink-0 border-r border-gray-200 flex flex-col z-40 lg:hidden"
             >
               <div className="flex-grow">
@@ -4000,14 +3830,10 @@ const DashboardPage = () => {
         onClose={() => setIsLeverageModalOpen(false)}
         setAlert={setAlert}
       />
+      {/* NUEVO: Renderizado del modal de comisiones */}
       <ManageCommissionsModal
         isOpen={isCommissionsModalOpen}
         onClose={() => setIsCommissionsModalOpen(false)}
-        setAlert={setAlert}
-      />
-      <ManageNotificationsModal // NUEVO MODAL
-        isOpen={isNotificationsModalOpen}
-        onClose={() => setIsNotificationsModalOpen(false)}
         setAlert={setAlert}
       />
       <ProfileModal
@@ -4022,8 +3848,7 @@ const DashboardPage = () => {
           onOperation={handleOpenNewOpModal}
           onManageUsers={() => setIsUsersModalOpen(true)}
           onManageLeverage={() => setIsLeverageModalOpen(true)}
-          onManageCommissions={() => setIsCommissionsModalOpen(true)}
-          onManageNotifications={() => setIsNotificationsModalOpen(true)} // NUEVO HANDLER
+          onManageCommissions={() => setIsCommissionsModalOpen(true)} // Nuevo handler
           onToggleSideMenu={() => setIsSideMenuOpen(true)}
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
           onOpenProfileModal={() => setIsProfileModalOpen(true)}
@@ -4463,7 +4288,6 @@ const LoginPage = ({ onNavigate }) => {
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
                     className="w-full p-3 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    autoComplete="email"
                   />
                   <input
                     type="password"
@@ -4471,7 +4295,6 @@ const LoginPage = ({ onNavigate }) => {
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     className="w-full p-3 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    autoComplete="current-password"
                   />
                   <button
                     type="submit"
@@ -4513,7 +4336,6 @@ const LoginPage = ({ onNavigate }) => {
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
                     className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    autoComplete="name"
                   />
                   <input
                     type="email"
@@ -4521,7 +4343,6 @@ const LoginPage = ({ onNavigate }) => {
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
                     className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    autoComplete="email"
                   />
                   <input
                     type="password"
@@ -4529,7 +4350,6 @@ const LoginPage = ({ onNavigate }) => {
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
                     className="w-full p-2 bg-gray-100 text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    autoComplete="new-password"
                   />
                   <button
                     type="submit"
@@ -4954,16 +4774,10 @@ const LandingPage = ({ onNavigate }) => {
 };
 
 const App = () => {
-  const { isAppLoading, isAuthenticated, globalNotification } =
-    useContext(AppContext);
+  const { isAppLoading, isAuthenticated } = useContext(AppContext);
   const [currentView, setCurrentView] = useState("landing");
 
   const platformLogo = VITE_PLATFORM_LOGO;
-
-  const getDashboardPadding = () => {
-    // Ajusta el padding superior del dashboard si hay una notificación global
-    return globalNotification ? "pt-16" : "pt-0";
-  };
 
   if (isAppLoading) {
     return (
@@ -4976,11 +4790,7 @@ const App = () => {
   }
 
   if (isAuthenticated) {
-    return (
-      <div className={`h-screen ${getDashboardPadding()}`}>
-        <DashboardPage />
-      </div>
-    );
+    return <DashboardPage />;
   }
 
   switch (currentView) {
