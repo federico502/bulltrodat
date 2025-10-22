@@ -948,11 +948,7 @@ const ProfileMenu = React.memo(
                   text="Gestionar Cuenta"
                   onClick={() => handleItemClick(onToggleSideMenu)}
                 />
-                <MenuItem
-                  icon={<Icons.Bell className="h-5 w-5 text-red-500" />}
-                  text="Enviar Notificación"
-                  onClick={() => handleItemClick(onManageNotifications)}
-                />
+
                 {user?.rol === "admin" && (
                   <>
                     <MenuItem
