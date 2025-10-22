@@ -66,6 +66,12 @@ const Icon = ({ path, className = "h-5 w-5" }) => (
 
 const Icons = {
   Menu: () => <Icon path="M4 6h16M4 12h16M4 18h16" className="h-6 w-6" />,
+  Bell: ({ className }) => (
+    <Icon
+      path="M14.857 17.082a23.848 23.848 0 005.454-1.331 8.967 8.967 0 01-4.436-5.334m4.436 5.334a23.848 23.848 0 01-5.454 1.331m0 0a2.38 2.38 0 01-1.872 0M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      className={className}
+    />
+  ),
   Plus: () => <Icon path="M12 4v16m8-8H4" className="h-4 w-4" />,
   UserGroup: ({ className }) => (
     <Icon
@@ -965,6 +971,11 @@ const ProfileMenu = React.memo(
                       text="Gestionar Comisiones"
                       onClick={() => handleItemClick(onManageCommissions)}
                     />
+                    <MenuItem
+                      icon={<Icons.Bell className="h-5 w-5 text-red-500" />}
+                      text="Enviar Notificación"
+                      onClick={() => handleItemClick(onManageNotifications)}
+                    />
                   </>
                 )}
                 <div className="my-1 h-px bg-gray-200" />
@@ -992,6 +1003,7 @@ const Header = ({
   onToggleSideMenu,
   onToggleMainSidebar,
   onOpenProfileModal,
+  onManageNotifications,
 }) => {
   const { user, logout, selectedAsset } = useContext(AppContext);
   const [volume, setVolume] = useState(0.01);
@@ -1047,6 +1059,7 @@ const Header = ({
           onManageUsers={onManageUsers}
           onManageLeverage={onManageLeverage}
           onManageCommissions={onManageCommissions} // Pasa el nuevo handler
+          onManageNotifications={onManageNotifications}
           onOpenProfileModal={onOpenProfileModal}
         />
       </div>
@@ -2635,6 +2648,7 @@ const ManageNotificationsModal = ({ isOpen, onClose, setAlert }) => {
 
     setIsLoading(true);
     try {
+      // El backend necesita la ruta /admin/notificar para funcionar
       await axios.post("/admin/notificar", { mensaje: message });
       setAlert({
         message: "Notificación global enviada con éxito.",
@@ -3305,6 +3319,8 @@ const DashboardPage = () => {
     realTimePrices,
     setRealTimePrices,
     commissions, // Necesario para el cálculo de margen
+    setGlobalNotification,
+    globalNotification,
   } = useContext(AppContext);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [mobileVolume, setMobileVolume] = useState(0.01);
