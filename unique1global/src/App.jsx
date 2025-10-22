@@ -891,6 +891,7 @@ const ProfileMenu = React.memo(
     onManageLeverage,
     onManageCommissions, // NUEVA prop
     onOpenProfileModal,
+    onManageNotifications,
   }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef(null);
@@ -946,6 +947,11 @@ const ProfileMenu = React.memo(
                   icon={<Icons.UserCircle className="h-5 w-5 text-gray-500" />}
                   text="Gestionar Cuenta"
                   onClick={() => handleItemClick(onToggleSideMenu)}
+                />
+                <MenuItem
+                  icon={<Icons.Bell className="h-5 w-5 text-red-500" />}
+                  text="Enviar Notificación"
+                  onClick={() => handleItemClick(onManageNotifications)}
                 />
                 {user?.rol === "admin" && (
                   <>
