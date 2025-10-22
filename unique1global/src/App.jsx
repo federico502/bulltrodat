@@ -79,6 +79,12 @@ const Icons = {
       className={className}
     />
   ),
+  Bell: ({ className }) => (
+    <Icon
+      path="M14.857 17.082a23.848 23.848 0 005.454-1.331 8.967 8.967 0 01-4.436-5.334m4.436 5.334a23.848 23.848 0 01-5.454 1.331m0 0a2.38 2.38 0 01-1.872 0M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      className={className}
+    />
+  ),
   X: ({ className = "h-6 w-6" }) => (
     <Icon path="M6 18L18 6M6 6l12 12" className={className} />
   ),
@@ -281,7 +287,7 @@ const AppProvider = ({ children }) => {
     commissionPercentage: 0.1,
     swapDailyPercentage: 0.05, // AÑADIDO: Swap diario por defecto
   });
-
+  const [globalNotification, setGlobalNotification] = useState(null);
   const checkUser = useCallback(async () => {
     setIsAppLoading(true);
     try {
@@ -337,6 +343,8 @@ const AppProvider = ({ children }) => {
       refreshUser: checkUser,
       commissions, // Exponer comisiones
       setCommissions, // Exponer setCommissions
+      globalNotification, // AÑADIDO
+      setGlobalNotification, // AÑADIDO
     }),
     [
       user,
@@ -347,6 +355,7 @@ const AppProvider = ({ children }) => {
       selectedAsset,
       checkUser,
       commissions,
+      globalNotification, // AÑADIDO
     ]
   );
 
@@ -2610,6 +2619,114 @@ const ManageCommissionsModal = ({ isOpen, onClose, setAlert }) => {
   );
 };
 
+// NUEVO COMPONENTE: Modal para enviar notificaciones (Solo Admin)
+const ManageNotificationsModal = ({ isOpen, onClose, setAlert }) => {
+  const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSend = async () => {
+    if (message.length < 5) {
+      setAlert({
+        message: "El mensaje debe ser de al menos 5 caracteres.",
+        type: "error",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await axios.post("/admin/notificar", { mensaje: message });
+      setAlert({
+        message: "Notificación global enviada con éxito.",
+        type: "success",
+      });
+      setMessage("");
+      onClose();
+    } catch (error) {
+      setAlert({
+        message:
+          error.response?.data?.error || "Error al enviar la notificación.",
+        type: "error",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Enviar Notificación Global"
+      maxWidth="max-w-md"
+    >
+      <div className="space-y-4">
+        <p className="text-gray-600">
+          Este mensaje aparecerá en la parte superior del dashboard de todos los
+          usuarios en tiempo real. Úsalo para avisos críticos como mantenimiento
+          o actualizaciones.
+        </p>
+        <div>
+          <label
+            htmlFor="notification-message"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Mensaje (máx. 200 caracteres)
+          </label>
+          <textarea
+            id="notification-message"
+            rows="4"
+            maxLength={200}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
+            placeholder="Ej: Aviso de mantenimiento programado para las 2:00 AM UTC."
+          />
+          <p className="text-xs text-gray-500 mt-1 text-right">
+            {message.length} / 200
+          </p>
+        </div>
+
+        <div className="flex justify-end pt-4">
+          <button
+            onClick={handleSend}
+            disabled={isLoading || message.length < 5}
+            className="px-4 py-2 bg-red-600 text-white font-bold rounded-md hover:bg-red-500 transition-colors disabled:bg-gray-400"
+          >
+            {isLoading ? "Enviando..." : "Enviar Notificación"}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+// NUEVO COMPONENTE: Banner de Notificación Global (Visible en el Dashboard)
+const GlobalNotificationBanner = () => {
+  const { globalNotification, setGlobalNotification } = useContext(AppContext);
+
+  if (!globalNotification) return null;
+
+  return (
+    <motion.div
+      initial={{ y: -50, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: -50, opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      className="fixed top-0 left-0 right-0 z-50 p-3 bg-red-600 text-white shadow-xl flex items-center justify-center text-sm"
+    >
+      <Icons.Bell className="h-5 w-5 mr-3 text-white" />
+      <span className="font-semibold">{globalNotification.message}</span>
+      <button
+        onClick={() => setGlobalNotification(null)}
+        className="ml-auto p-1 rounded-full hover:bg-white/20 transition-colors"
+      >
+        <Icons.X className="h-4 w-4" />
+      </button>
+    </motion.div>
+  );
+};
+
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => (
   <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="max-w-sm">
     <div className="text-gray-700 mb-6">{children}</div>
@@ -3262,6 +3379,8 @@ const DashboardPage = () => {
   const [currentOpDetails, setCurrentOpDetails] = useState(null);
   const [isLeverageModalOpen, setIsLeverageModalOpen] = useState(false);
   const [isCommissionsModalOpen, setIsCommissionsModalOpen] = useState(false); // NUEVO
+  const [isNotificationsModalOpen, setIsNotificationsModalOpen] =
+    useState(false);
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -3381,6 +3500,13 @@ const DashboardPage = () => {
 
             setRealTimePrices((prev) => ({ ...prev, ...validatedPrices }));
             // --- FIN FIX CRÍTICO ---
+          } else if (data.type === "admin_notification" && data.message) {
+            // AÑADIDO: Manejar notificación del administrador
+            setGlobalNotification({
+              message: data.message,
+              id: data.id,
+              date: data.date,
+            });
           } else if (data.tipo === "operacion_cerrada") {
             setAlert({
               message: `Operación #${data.operacion_id} (${
@@ -3836,6 +3962,12 @@ const DashboardPage = () => {
         onClose={() => setIsCommissionsModalOpen(false)}
         setAlert={setAlert}
       />
+      {/* AÑADIDO: MODAL DE NOTIFICACIONES */}
+      <ManageNotificationsModal
+        isOpen={isNotificationsModalOpen}
+        onClose={() => setIsNotificationsModalOpen(false)}
+        setAlert={setAlert}
+      />
       <ProfileModal
         isOpen={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
@@ -3849,6 +3981,7 @@ const DashboardPage = () => {
           onManageUsers={() => setIsUsersModalOpen(true)}
           onManageLeverage={() => setIsLeverageModalOpen(true)}
           onManageCommissions={() => setIsCommissionsModalOpen(true)} // Nuevo handler
+          onManageNotifications={() => setIsNotificationsModalOpen(true)}
           onToggleSideMenu={() => setIsSideMenuOpen(true)}
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
           onOpenProfileModal={() => setIsProfileModalOpen(true)}
@@ -4779,6 +4912,11 @@ const App = () => {
 
   const platformLogo = VITE_PLATFORM_LOGO;
 
+  const getDashboardPadding = () => {
+    // Si hay notificación global, añade padding para evitar que el contenido la oculte
+    return globalNotification ? "pt-16" : "pt-0";
+  };
+
   if (isAppLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -4790,7 +4928,11 @@ const App = () => {
   }
 
   if (isAuthenticated) {
-    return <DashboardPage />;
+    return (
+      <div className={`h-screen ${getDashboardPadding()}`}>
+        <DashboardPage />
+      </div>
+    );
   }
 
   switch (currentView) {
