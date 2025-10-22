@@ -4923,13 +4923,16 @@ const LandingPage = ({ onNavigate }) => {
 };
 
 const App = () => {
-  const { isAppLoading, isAuthenticated } = useContext(AppContext);
+  // CORRECCIÓN CRÍTICA: Se debe importar 'globalNotification' para usarlo en el scope.
+  const { isAppLoading, isAuthenticated, globalNotification } =
+    useContext(AppContext);
   const [currentView, setCurrentView] = useState("landing");
 
   const platformLogo = VITE_PLATFORM_LOGO;
 
+  // AÑADIDO: Función para calcular padding basado en la notificación
   const getDashboardPadding = () => {
-    // Si hay notificación global, añade padding para evitar que el contenido la oculte
+    // Si hay notificación global, añade padding superior.
     return globalNotification ? "pt-16" : "pt-0";
   };
 
@@ -4944,6 +4947,7 @@ const App = () => {
   }
 
   if (isAuthenticated) {
+    // APLICACIÓN DEL PADDING DINÁMICO Y EL BANNER
     return (
       <div className={`h-screen ${getDashboardPadding()}`}>
         <DashboardPage />
