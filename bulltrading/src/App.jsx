@@ -1227,7 +1227,7 @@ const Header = ({
   onManageLeverage,
   onManageNotifications,
 }) => {
-  const { user, logout, selectedAsset } = useContext(AppContext);
+  const { user, selectedAsset } = useContext(AppContext);
   const [volume, setVolume] = useState(0.01);
 
   return (
@@ -1275,7 +1275,11 @@ const Header = ({
       <div className="flex items-center space-x-4">
         <ProfileMenu
           user={user}
-          logout={logout}
+          // The logout function is passed directly here, but the context's logout is used inside ProfileMenu.
+          // This is fine, but we'll remove it from the destructured props in ProfileMenu to make the dependency clearer.
+          logout={() => {
+            /* Handled by ProfileMenu internal logic, we don't need it explicitly here if we use the prop */
+          }}
           onToggleSideMenu={onToggleSideMenu}
           onManageUsers={onManageUsers}
           onManageRegCode={onManageRegCode}
@@ -1348,7 +1352,7 @@ const LiveProfitCell = ({ operation }) => {
     if (typeof currentPrice !== "number") return 0;
     return operation.tipo_operacion.toLowerCase() === "sell"
       ? (operation.precio_entrada - currentPrice) * operation.volumen
-      : (currentPrice - operation.precio_entrada) * operation.volumen;
+      : (currentPrice - op.precio_entrada) * operation.volumen;
   }, [realTimePrices, operation]);
 
   const profit = calculateProfit();
@@ -2969,7 +2973,9 @@ const DashboardPage = () => {
     setSelectedAsset,
     realTimePrices,
     setRealTimePrices,
-    globalNotification, // ADDED
+    globalNotification,
+    // FIX: Añadido setGlobalNotification para resolver ReferenceError en WebSocket
+    setGlobalNotification,
   } = useContext(AppContext);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [mobileVolume, setMobileVolume] = useState(0.01);
@@ -3604,10 +3610,10 @@ const DashboardPage = () => {
           onManageRegCode={() => setIsRegCodeModalOpen(true)}
           onToggleSideMenu={() => setIsSideMenuOpen(true)}
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
-          onManageCommissions={() => setIsCommissionsModalOpen(true)} // ADDED
-          onManageSwap={() => setIsSwapModalOpen(true)} // ADDED
-          onManageLeverage={() => setIsLeverageModalOpen(true)} // ADDED
-          onManageNotifications={() => setIsNotificationsModalOpen(true)} // ADDED
+          onManageCommissions={() => setIsCommissionsModalOpen(true)}
+          onManageSwap={() => setIsSwapModalOpen(true)}
+          onManageLeverage={() => setIsLeverageModalOpen(true)}
+          onManageNotifications={() => setIsNotificationsModalOpen(true)}
         />
         <div
           className={`flex-1 flex flex-col p-2 sm:p-4 gap-4 overflow-y-auto pb-24 sm:pb-4 ${mainContentPadding}`}
