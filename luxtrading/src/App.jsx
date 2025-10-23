@@ -32,7 +32,7 @@ const env =
     : {};
 const VITE_API_URL = env.VITE_API_URL || "";
 const VITE_WSS_URL = env.VITE_WSS_URL || "";
-// Cambiado a 'amber' para diferenciar de BullTrading/Unique 1 Global si el logo no está presente.
+// Restaurando el color principal a 'cyan' para LuxTrading.
 const VITE_PLATFORM_LOGO = env.VITE_PLATFORM_LOGO || "/luxtrading-logo.png";
 const VITE_PLATFORM_ID = env.VITE_PLATFORM_ID || "luxtrading";
 
@@ -677,7 +677,7 @@ const AssetPrice = React.memo(({ symbol }) => {
   const price = parseFloat(priceString);
 
   const flashClass = useFlashOnUpdate(price);
-  // Usando 'amber' como color principal
+  // Usando 'cyan' como color principal (ya que el original de LuxTrading era cyan)
   const baseColor = !isNaN(price) ? "text-white" : "text-neutral-500";
   const finalColorClass = flashClass || baseColor;
 
@@ -704,7 +704,7 @@ const AssetRow = React.memo(
       onClick={() => onClick(symbol)}
       className={`cursor-pointer transition-all duration-200 rounded-md flex justify-between items-center p-2 group ${
         isSelected
-          ? "bg-amber-500/20 text-white" // Usando amber
+          ? "bg-cyan-500/20 text-white" // Restaurando a cyan
           : "hover:bg-white/10 text-neutral-300"
       }`}
     >
@@ -827,12 +827,12 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
             onChange={handleInputChange}
             onFocus={handleFocus}
             placeholder="Buscar por símbolo o nombre (Ej: Bitcoin, TSLA)"
-            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm" // Usando amber
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm" // Restaurando a cyan
             autoComplete="off"
           />
           <button
             type="submit"
-            className="bg-amber-600 hover:bg-amber-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer" // Usando amber
+            className="bg-cyan-600 hover:bg-cyan-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer" // Restaurando a cyan
           >
             <Icons.Plus />
           </button>
@@ -848,7 +848,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
               <li
                 key={rec.symbol}
                 onClick={() => handleRecommendationClick(rec.symbol)}
-                className="px-3 py-2 text-sm text-neutral-300 hover:bg-amber-500/50 cursor-pointer flex justify-between items-center" // Usando amber
+                className="px-3 py-2 text-sm text-neutral-300 hover:bg-cyan-500/50 cursor-pointer flex justify-between items-center" // Restaurando a cyan
               >
                 <div>
                   <span className="font-semibold">{rec.symbol}</span>
@@ -943,7 +943,7 @@ const ManageNotificationsModal = ({ isOpen, onClose, setAlert }) => {
             onChange={(e) => setMessage(e.target.value)}
             rows="3"
             placeholder="Ej: El servidor estará en mantenimiento esta noche..."
-            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-amber-500" // Usando amber
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-cyan-500" // Restaurando a cyan
           />
         </div>
         <div>
@@ -953,10 +953,10 @@ const ManageNotificationsModal = ({ isOpen, onClose, setAlert }) => {
           <select
             value={color}
             onChange={(e) => setColor(e.target.value)}
-            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-amber-500 cursor-pointer" // Usando amber
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-cyan-500 cursor-pointer" // Restaurando a cyan
           >
             <option value="bg-blue-600">Azul (Informativo)</option>
-            <option value="bg-amber-600">Amarillo (Advertencia)</option>
+            <option value="bg-yellow-600">Amarillo (Advertencia)</option>
             <option value="bg-red-600">Rojo (Urgente)</option>
             <option value="bg-green-600">Verde (Éxito)</option>
           </select>
@@ -1073,7 +1073,6 @@ const CommissionSettingsModal = ({
           newLeverage,
         ].sort((a, b) => a - b);
         // Actualizamos el contexto de leverageOptions (No tenemos setLeverageOptions en el contexto, simulamos la actualización completa del contexto si fuera necesario)
-        // Dado que el contexto solo tiene leverageOptions (sin setter), aquí solo actualizaremos el estado en el backend (simulado)
 
         // En un entorno real: await axios.post("/admin/leverage", { newOptions: updatedOptions });
       }
@@ -1121,7 +1120,7 @@ const CommissionSettingsModal = ({
                 type="text"
                 value={settings.spread}
                 onChange={(e) => handleInputChange("spread", e.target.value)}
-                className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-2 focus:ring-amber-500" // Usando amber
+                className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-2 focus:ring-cyan-500" // Restaurando a cyan
               />
             </div>
             <div>
@@ -1134,7 +1133,7 @@ const CommissionSettingsModal = ({
                 onChange={(e) =>
                   handleInputChange("commission", e.target.value)
                 }
-                className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-2 focus:ring-amber-500" // Usando amber
+                className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-2 focus:ring-cyan-500" // Restaurando a cyan
               />
             </div>
             <div>
@@ -1145,7 +1144,7 @@ const CommissionSettingsModal = ({
                 type="text"
                 value={settings.swap}
                 onChange={(e) => handleInputChange("swap", e.target.value)}
-                className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-2 focus:ring-amber-500" // Usando amber
+                className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-2 focus:ring-cyan-500" // Restaurando a cyan
               />
             </div>
           </div>
@@ -1166,7 +1165,7 @@ const CommissionSettingsModal = ({
           </h3>
           <div className="text-neutral-300 mb-4">
             Máximo Actual:{" "}
-            <span className="font-bold text-amber-400">1:{maxLeverage}</span>
+            <span className="font-bold text-cyan-400">1:{maxLeverage}</span>
           </div>
           <label className="block text-sm font-medium mb-1 text-neutral-300">
             Nuevo Apalancamiento Máximo:
@@ -1177,12 +1176,12 @@ const CommissionSettingsModal = ({
             step="1"
             value={leverageInput}
             onChange={(e) => setLeverageInput(parseInt(e.target.value) || 1)}
-            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-2 focus:ring-amber-500" // Usando amber
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-2 focus:ring-cyan-500" // Restaurando a cyan
           />
           <div className="flex justify-end mt-4">
             <button
               onClick={handleLeverageSave}
-              className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 transition-colors" // Usando amber
+              className="px-5 py-2 rounded-md text-white font-bold bg-cyan-600 hover:bg-cyan-500 transition-colors" // Restaurando a cyan
             >
               Guardar Apalancamiento
             </button>
@@ -1222,7 +1221,7 @@ const ProfileMenu = React.memo(
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="bg-white/10 cursor-pointer text-white p-2 rounded-full hover:bg-amber-500 transition-colors" // Usando amber
+          className="bg-white/10 cursor-pointer text-white p-2 rounded-full hover:bg-cyan-500 transition-colors" // Restaurando a cyan
           title="Cuenta"
         >
           <Icons.UserCircle className="h-6 w-6" />
@@ -1289,7 +1288,7 @@ const ProfileMenu = React.memo(
                 <div className="my-1 h-px bg-white/10" />
                 <MenuItem
                   icon={
-                    <Icons.Logout className="h-5 w-5 cursor-pointer text-amber-400" /> // Usando amber
+                    <Icons.Logout className="h-5 w-5 cursor-pointer text-cyan-400" /> // Restaurando a cyan
                   }
                   text="Cerrar Sesión"
                   onClick={() => handleItemClick(logout)}
@@ -1337,7 +1336,7 @@ const Header = ({
             onChange={(e) => setVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-2 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" // Usando amber
+            className="w-24 p-2 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none" // Restaurando a cyan
           />
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -1588,7 +1587,7 @@ const OperationsHistory = ({
           ) : (
             <button
               onClick={(e) => handleCloseOperation(e, op.id)}
-              className="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded-md text-xs transition-colors cursor-pointer" // Usando amber
+              className="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1 rounded-md text-xs transition-colors cursor-pointer" // Restaurando a cyan
             >
               Cerrar
             </button>
@@ -1612,7 +1611,7 @@ const OperationsHistory = ({
             id="filter"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="bg-white/5 text-white text-sm rounded-md p-1 border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer" // Usando amber
+            className="bg-white/5 text-white text-sm rounded-md p-1 border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer" // Restaurando a cyan
           >
             <option value="todas">Todas</option>
             <option value="abiertas">Abiertas</option>
@@ -1695,7 +1694,7 @@ const OperationsHistory = ({
                       ) : (
                         <button
                           onClick={(e) => handleCloseOperation(e, op.id)}
-                          className="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded-md text-xs w-full transition-colors cursor-pointer" // Usando amber
+                          className="bg-cyan-600 hover:bg-cyan-500 text-white px-2 py-1 rounded-md text-xs w-full transition-colors cursor-pointer" // Restaurando a cyan
                         >
                           Cerrar
                         </button>
@@ -1912,7 +1911,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           <select
             value={leverage}
             onChange={(e) => setLeverage(parseInt(e.target.value))}
-            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer" // Usando amber
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer" // Restaurando a cyan
           >
             {leverageOptions.map((opt) => (
               <option key={opt} value={opt}>
@@ -1923,10 +1922,10 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
         </div>
         <p className="text-neutral-300 flex justify-between font-bold pt-2">
           <span>Margen Requerido (1:{leverage}):</span>
-          <span className="font-mono text-amber-400">
+          <span className="font-mono text-cyan-400">
             ${requiredMargin}
           </span>{" "}
-          {/* Usando amber */}
+          {/* Restaurando a cyan */}
         </p>
         <p className="text-xs text-neutral-500 italic">
           *Este es el capital que se usará de tu margen libre.
@@ -2030,8 +2029,10 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
         </div>
         <div className="flex justify-between">
           <span>Margen Usado:</span>
-          <span className="font-mono text-amber-400">
-            ${parseFloat(operation.capital_invertido || 0).toFixed(2)}
+          <span className="font-mono text-cyan-400">
+            {" "}
+            {/* Restaurando a cyan */}$
+            {parseFloat(operation.capital_invertido || 0).toFixed(2)}
           </span>
         </div>
         <div className="flex justify-between">
@@ -2243,7 +2244,7 @@ const UserOperationsModal = ({
         <h3 className="text-lg font-bold">Listado de Operaciones</h3>
         <button
           onClick={() => setShowAll((prev) => !prev)}
-          className="bg-amber-600 text-white px-3 py-1 text-xs rounded hover:bg-amber-500 cursor-pointer" // Usando amber
+          className="bg-cyan-600 text-white px-3 py-1 text-xs rounded hover:bg-cyan-500 cursor-pointer" // Restaurando a cyan
         >
           {showAll ? "Ver con Paginación" : "Ver Todas las Operaciones"}
         </button>
@@ -2374,7 +2375,7 @@ const UserOperationsModal = ({
                     onChange={(e) =>
                       handleInputChange(op.id, "cerrada", e.target.checked)
                     }
-                    className="form-checkbox h-5 w-5 text-amber-600 bg-neutral-700 border-neutral-600 rounded focus:ring-amber-500 cursor-pointer" // Usando amber
+                    className="form-checkbox h-5 w-5 text-cyan-600 bg-neutral-700 border-neutral-600 rounded focus:ring-cyan-500 cursor-pointer" // Restaurando a cyan
                   />
                 </td>
                 <td
@@ -2388,7 +2389,7 @@ const UserOperationsModal = ({
                 <td className="p-2">
                   <button
                     onClick={() => handleSave(op)}
-                    className="bg-amber-600 text-white px-3 py-1 text-xs rounded hover:bg-amber-500 cursor-pointer" // Usando amber
+                    className="bg-cyan-600 text-white px-3 py-1 text-xs rounded hover:bg-cyan-500 cursor-pointer" // Restaurando a cyan
                   >
                     Guardar
                   </button>
@@ -2425,7 +2426,7 @@ const UserCard = React.memo(
           <span
             className={`px-2 py-0.5 rounded-full text-xs ${
               user.rol === "admin"
-                ? "bg-amber-500/20 text-amber-400" // Usando amber
+                ? "bg-cyan-500/20 text-cyan-400" // Restaurando a cyan
                 : "bg-blue-500/20 text-blue-400"
             }`}
           >
@@ -2799,12 +2800,12 @@ const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
           type="text"
           value={newCode}
           onChange={(e) => setNewCode(e.target.value)}
-          className="w-full p-2 bg-white/5 border border-white/10 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
+          className="w-full p-2 bg-white/5 border border-white/10 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-cyan-500" // Restaurando a cyan
         />
         <div className="flex justify-end mt-4">
           <button
             onClick={handleSave}
-            className="px-5 py-2 rounded-md text-white font-bold transition-colors bg-amber-600 hover:bg-amber-500 cursor-pointer" // Usando amber
+            className="px-5 py-2 rounded-md text-white font-bold transition-colors bg-cyan-600 hover:bg-cyan-500 cursor-pointer" // Restaurando a cyan
           >
             Guardar Código
           </button>
@@ -2826,7 +2827,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => (
       </button>
       <button
         onClick={onConfirm}
-        className="px-4 py-2 rounded-md bg-amber-600 hover:bg-amber-500 text-white font-bold transition-colors" // Usando amber
+        className="px-4 py-2 rounded-md bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition-colors" // Restaurando a cyan
       >
         Confirmar
       </button>
@@ -2861,7 +2862,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
     <div className="p-4">
       <button
         onClick={onBack}
-        className="flex items-center text-amber-400 hover:text-amber-300 mb-4 cursor-pointer" // Usando amber
+        className="flex items-center text-cyan-400 hover:text-cyan-300 mb-4 cursor-pointer" // Restaurando a cyan
       >
         <Icons.ChevronLeft /> Volver al Menú
       </button>
@@ -2872,7 +2873,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
           onClick={() => setProfileView("data")}
           className={`px-4 py-2 font-semibold transition-colors ${
             profileView === "data"
-              ? "text-amber-400 border-b-2 border-amber-400" // Usando amber
+              ? "text-cyan-400 border-b-2 border-cyan-400" // Restaurando a cyan
               : "text-neutral-400 hover:text-white"
           }`}
         >
@@ -2882,7 +2883,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
           onClick={() => setProfileView("password")}
           className={`px-4 py-2 font-semibold transition-colors ${
             profileView === "password"
-              ? "text-amber-400 border-b-2 border-amber-400" // Usando amber
+              ? "text-cyan-400 border-b-2 border-cyan-400" // Restaurando a cyan
               : "text-neutral-400 hover:text-white"
           }`}
         >
@@ -2947,7 +2948,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
           <div className="flex justify-end">
             <button
               onClick={handleSaveProfile}
-              className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 cursor-pointer transition-colors" // Usando amber
+              className="px-5 py-2 rounded-md text-white font-bold bg-cyan-600 hover:bg-cyan-500 cursor-pointer transition-colors" // Restaurando a cyan
             >
               Guardar Cambios
             </button>
@@ -3069,7 +3070,7 @@ const ChangePasswordForm = ({ setAlert, onBack }) => {
       <div className="flex justify-end">
         <button
           type="submit"
-          className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 cursor-pointer transition-colors" // Usando amber
+          className="px-5 py-2 rounded-md text-white font-bold bg-cyan-600 hover:bg-cyan-500 cursor-pointer transition-colors" // Restaurando a cyan
         >
           Cambiar Contraseña
         </button>
@@ -3082,7 +3083,7 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-amber-400 hover:text-amber-300 mb-6 cursor-pointer" // Usando amber
+      className="flex items-center text-cyan-400 hover:text-cyan-300 mb-6 cursor-pointer" // Restaurando a cyan
     >
       <Icons.ChevronLeft /> Volver al Menú Principal
     </button>
@@ -3091,7 +3092,7 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
     </h2>
     <div className="space-y-4">
       <PaymentMethodButton
-        icon={<Icons.CreditCard className="h-8 w-8 text-amber-400" />} // Usando amber
+        icon={<Icons.CreditCard className="h-8 w-8 text-cyan-400" />} // Restaurando a cyan
         text="Criptomonedas"
         onClick={() => onSelectMethod("crypto", "deposit")}
       />
@@ -3108,7 +3109,7 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-amber-400 hover:text-amber-300 mb-6 cursor-pointer" // Usando amber
+      className="flex items-center text-cyan-400 hover:text-cyan-300 mb-6 cursor-pointer" // Restaurando a cyan
     >
       <Icons.ChevronLeft /> Volver al Menú Principal
     </button>
@@ -3117,7 +3118,7 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
     </h2>
     <div className="space-y-4">
       <PaymentMethodButton
-        icon={<Icons.CreditCard className="h-8 w-8 text-amber-400" />} // Usando amber
+        icon={<Icons.CreditCard className="h-8 w-8 text-cyan-400" />} // Restaurando a cyan
         text="Criptomonedas"
         onClick={() => onSelectMethod("crypto", "withdraw")}
       />
@@ -3189,7 +3190,7 @@ const SideMenu = React.memo(
                     />
                     <MenuButton
                       icon={
-                        <Icons.ArrowUpTray className="h-5 w-5 text-amber-400" /> // Usando amber
+                        <Icons.ArrowUpTray className="h-5 w-5 text-cyan-400" /> // Restaurando a cyan
                       }
                       text="Retirar"
                       onClick={() => setView("withdraw")}
@@ -3305,7 +3306,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
               required
               type="text"
               placeholder="Introduce tu dirección de billetera"
-              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500" // Restaurando a cyan
             />
           </div>
           <div>
@@ -3315,7 +3316,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
             <select
               value={network}
               onChange={(e) => setNetwork(e.target.value)}
-              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500" // Restaurando a cyan
             >
               <option value="TRC20">TRON (TRC20)</option>
               <option value="ERC20">Ethereum (ERC20)</option>
@@ -3331,13 +3332,13 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
               type="number"
               step="0.01"
               placeholder="0.00"
-              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500" // Restaurando a cyan
             />
           </div>
           <div className="flex justify-end pt-4">
             <button
               type="submit"
-              className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 transition-colors" // Usando amber
+              className="px-5 py-2 rounded-md text-white font-bold bg-cyan-600 hover:bg-cyan-500 transition-colors" // Restaurando a cyan
             >
               Solicitar Retiro
             </button>
@@ -4055,7 +4056,7 @@ const DashboardPage = () => {
             onChange={(e) => setMobileVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-3 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" // Usando amber
+            className="w-24 p-3 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none" // Restaurando a cyan
           />
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -4170,9 +4171,9 @@ const LoginPage = () => {
     >
       <div className="relative w-full max-w-4xl min-h-[600px] bg-black/50 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
         {/* Panel de Bienvenida */}
-        <div className="w-full md:w-1/2 text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-amber-600 to-amber-800">
+        <div className="w-full md:w-1/2 text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-cyan-600 to-cyan-800">
           {" "}
-          {/* Usando amber */}
+          {/* Restaurando a cyan */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -4232,18 +4233,18 @@ const LoginPage = () => {
                     placeholder="Email"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
+                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500" // Restaurando a cyan
                   />
                   <input
                     type="password"
                     placeholder="Contraseña"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
+                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500" // Restaurando a cyan
                   />
                   <button
                     type="submit"
-                    className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg" // Usando amber
+                    className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg" // Restaurando a cyan
                   >
                     Entrar
                   </button>
@@ -4279,20 +4280,20 @@ const LoginPage = () => {
                     placeholder="Nombre Completo"
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
-                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500" // Restaurando a cyan
                   />
                   <input
                     type="email"
                     placeholder="Email"
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
-                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500" // Restaurando a cyan
                   />
                   <div className="flex gap-2">
                     <select
                       value={countryCode}
                       onChange={(e) => setCountryCode(e.target.value)}
-                      className="p-2 bg-white/5 text-white rounded-l-lg border-r-0 border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer" // Usando amber
+                      className="p-2 bg-white/5 text-white rounded-l-lg border-r-0 border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer" // Restaurando a cyan
                     >
                       {countryCodes.map((c) => (
                         <option key={c.code} value={c.code}>
@@ -4305,7 +4306,7 @@ const LoginPage = () => {
                       placeholder="Teléfono"
                       value={regPhone}
                       onChange={(e) => setRegPhone(e.target.value)}
-                      className="w-full p-2 bg-white/5 text-white rounded-r-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
+                      className="w-full p-2 bg-white/5 text-white rounded-r-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500" // Restaurando a cyan
                     />
                   </div>
                   <input
@@ -4313,11 +4314,11 @@ const LoginPage = () => {
                     placeholder="Contraseña"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
-                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500" // Restaurando a cyan
                   />
                   <button
                     type="submit"
-                    className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg" // Usando amber
+                    className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg" // Restaurando a cyan
                   >
                     Crear Cuenta
                   </button>
