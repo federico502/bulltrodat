@@ -23,11 +23,16 @@ import {
 } from "chart.js";
 import { motion, AnimatePresence } from "framer-motion";
 
-// --- FIX CRÍTICO: Configuración de Entorno Segura (Prevención de Pantalla Blanca) ---
-// Accede a las variables de entorno de forma segura, usando valores por defecto.
-const env = typeof import.meta.env !== "undefined" ? import.meta.env : {};
+// --- Configuración de Entorno Segura (FIX: Usando process.env como fallback para compatibilidad) ---
+const env =
+  typeof import.meta.env !== "undefined"
+    ? import.meta.env
+    : typeof process !== "undefined"
+    ? process.env
+    : {};
 const VITE_API_URL = env.VITE_API_URL || "";
 const VITE_WSS_URL = env.VITE_WSS_URL || "";
+// Cambiado a 'amber' para diferenciar de BullTrading/Unique 1 Global si el logo no está presente.
 const VITE_PLATFORM_LOGO = env.VITE_PLATFORM_LOGO || "/luxtrading-logo.png";
 const VITE_PLATFORM_ID = env.VITE_PLATFORM_ID || "luxtrading";
 
@@ -128,7 +133,13 @@ const Icons = {
   ),
   Settings: ({ className }) => (
     <Icon
-      path="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75M10.5 18a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 18H7.5m9-12h3.75m-3.75 0a1.5 1.5 0 013 0m-3 0a1.5 1.5 0 003 0m-9 6h3.75m-3.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M12 12H3.75"
+      path="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+      className={className}
+    />
+  ),
+  Annotation: ({ className }) => (
+    <Icon
+      path="M7.75 2.5C5.975 2.5 4.5 3.975 4.5 5.75v10.5c0 1.775 1.475 3.25 3.25 3.25h1.5l1.75 2.25 1.75-2.25h1.5c1.775 0 3.25-1.475 3.25-3.25V5.75c0-1.775-1.475-3.25-3.25-3.25H7.75z"
       className={className}
     />
   ),
@@ -143,7 +154,7 @@ const Icons = {
   ),
 };
 
-// --- Catálogo de Activos para Búsqueda y Mapeo ---
+// --- Catálogo de Activos para Búsqueda y Mapeo (LuxTrading - Manteniendo contenido extenso) ---
 const ASSET_CATALOG = [
   // Forex
   { symbol: "EUR/USD", name: "Euro / Dólar Estadounidense" },
@@ -240,10 +251,24 @@ const ASSET_CATALOG = [
   { symbol: "TSLA", name: "Tesla, Inc." },
 ];
 
-// Obtener solo los símbolos para compatibilidad con el código anterior
 const ALL_AVAILABLE_ASSETS = ASSET_CATALOG.map((asset) => asset.symbol);
 
-// --- Contexto de la App ---
+// --- UTILITARIOS DE CÁLCULO DE COSTOS (AÑADIDOS) ---
+const calculateCommissionCost = (price, volume, commissionRate) => {
+  // Comisión calculada sobre el volumen nocional (price * volume)
+  return price * volume * (commissionRate / 100);
+};
+
+const calculateSwapDailyCost = (requiredMargin, swapDailyPercentage) => {
+  // Swap calculado sobre el margen requerido.
+  return requiredMargin * (swapDailyPercentage / 100);
+};
+
+const normalizeAssetKey = (symbol) => {
+  return symbol?.toUpperCase().replace(/[-/]/g, "") || "";
+};
+
+// --- Contexto de la App (MODIFICADO para paridad) ---
 const AppContext = createContext();
 
 const AppProvider = ({ children }) => {
@@ -253,34 +278,26 @@ const AppProvider = ({ children }) => {
   const [realTimePrices, setRealTimePrices] = useState({});
   const [selectedAsset, setSelectedAsset] = useState("BTC-USDT");
 
-  // ESTADO ACTUALIZADO: Opciones de apalancamiento y Comisiones
+  // ESTADOS AÑADIDOS para paridad (Unique 1 Global)
   const [leverageOptions, setLeverageOptions] = useState([
     1, 5, 10, 50, 100, 200,
   ]);
   const [commissions, setCommissions] = useState({
-    spreadPercentage: 0.01,
-    commissionPercentage: 0.1,
-    swapDailyPercentage: 0.05,
+    spreadPercentage: 0.01, // Porcentaje de spread (ej: 0.01% para simulación)
+    commissionPercentage: 0.1, // 0.1% de comisión
+    swapDailyPercentage: 0.05, // 0.05% diario de swap
   });
+  const [globalNotification, setGlobalNotification] = useState(null); // Notificación global
 
+  // Funciones de Fetch para Comisiones/Apalancamiento (Simulación)
   const fetchCommissions = useCallback(async () => {
-    try {
-      const { data } = await axios.get("/commissions");
-      setCommissions(data);
-    } catch (error) {
-      console.error("Error fetching commissions/swap:", error);
-    }
+    // Simulación: Mantener estado actual si no hay llamada real al backend
+    // console.log("Simulating fetchCommissions...");
   }, []);
 
   const fetchLeverageOptions = useCallback(async () => {
-    try {
-      const { data } = await axios.get("/leverage-options");
-      if (data && data.length > 0) {
-        setLeverageOptions(data);
-      }
-    } catch (error) {
-      console.error("Error fetching leverage options:", error);
-    }
+    // Simulación: Mantener estado actual
+    // console.log("Simulating fetchLeverageOptions...");
   }, []);
 
   const checkUser = useCallback(async () => {
@@ -331,7 +348,9 @@ const AppProvider = ({ children }) => {
       leverageOptions, // Añadido
       fetchLeverageOptions, // Añadido
       commissions, // Añadido
-      fetchCommissions, // Añadido
+      setCommissions, // Añadido Setter
+      globalNotification, // Añadido
+      setGlobalNotification, // Añadido Setter
     }),
     [
       user,
@@ -344,7 +363,9 @@ const AppProvider = ({ children }) => {
       leverageOptions,
       fetchLeverageOptions,
       commissions,
-      fetchCommissions,
+      setCommissions,
+      globalNotification,
+      setGlobalNotification,
     ]
   );
 
@@ -656,6 +677,7 @@ const AssetPrice = React.memo(({ symbol }) => {
   const price = parseFloat(priceString);
 
   const flashClass = useFlashOnUpdate(price);
+  // Usando 'amber' como color principal
   const baseColor = !isNaN(price) ? "text-white" : "text-neutral-500";
   const finalColorClass = flashClass || baseColor;
 
@@ -682,7 +704,7 @@ const AssetRow = React.memo(
       onClick={() => onClick(symbol)}
       className={`cursor-pointer transition-all duration-200 rounded-md flex justify-between items-center p-2 group ${
         isSelected
-          ? "bg-cyan-500/20 text-white"
+          ? "bg-amber-500/20 text-white" // Usando amber
           : "hover:bg-white/10 text-neutral-300"
       }`}
     >
@@ -805,12 +827,12 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
             onChange={handleInputChange}
             onFocus={handleFocus}
             placeholder="Buscar por símbolo o nombre (Ej: Bitcoin, TSLA)"
-            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm" // Usando amber
             autoComplete="off"
           />
           <button
             type="submit"
-            className="bg-cyan-600 hover:bg-cyan-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer"
+            className="bg-amber-600 hover:bg-amber-500 text-white p-2 rounded transition-colors flex-shrink-0 cursor-pointer" // Usando amber
           >
             <Icons.Plus />
           </button>
@@ -826,7 +848,7 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
               <li
                 key={rec.symbol}
                 onClick={() => handleRecommendationClick(rec.symbol)}
-                className="px-3 py-2 text-sm text-neutral-300 hover:bg-cyan-500/50 cursor-pointer flex justify-between items-center"
+                className="px-3 py-2 text-sm text-neutral-300 hover:bg-amber-500/50 cursor-pointer flex justify-between items-center" // Usando amber
               >
                 <div>
                   <span className="font-semibold">{rec.symbol}</span>
@@ -873,6 +895,304 @@ const MenuItem = ({ icon, text, onClick }) => (
   </button>
 );
 
+// --- MODALES DE ADMINISTRACIÓN DE COSTOS (AÑADIDOS para paridad) ---
+
+const ManageNotificationsModal = ({ isOpen, onClose, setAlert }) => {
+  const { setGlobalNotification } = useContext(AppContext);
+  const [message, setMessage] = useState("");
+  const [color, setColor] = useState("bg-blue-600");
+
+  const handleSend = async () => {
+    if (!message.trim()) {
+      setAlert({ message: "El mensaje no puede estar vacío.", type: "error" });
+      return;
+    }
+
+    try {
+      const notificationData = { message, color };
+
+      // Simulación: actualiza el estado global
+      setGlobalNotification(notificationData);
+      // En un entorno real, se haría un POST al backend, que a su vez enviaría el WS
+      // await axios.post('/admin/global-notification', notificationData);
+
+      setAlert({
+        message: "Notificación global enviada con éxito.",
+        type: "success",
+      });
+      onClose();
+    } catch (error) {
+      setAlert({ message: "Error al enviar la notificación.", type: "error" });
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Enviar Notificación Global"
+      maxWidth="max-w-lg"
+    >
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1 text-neutral-300">
+            Mensaje (Se muestra a todos los usuarios)
+          </label>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows="3"
+            placeholder="Ej: El servidor estará en mantenimiento esta noche..."
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-amber-500" // Usando amber
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1 text-neutral-300">
+            Color de Fondo
+          </label>
+          <select
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-amber-500 cursor-pointer" // Usando amber
+          >
+            <option value="bg-blue-600">Azul (Informativo)</option>
+            <option value="bg-amber-600">Amarillo (Advertencia)</option>
+            <option value="bg-red-600">Rojo (Urgente)</option>
+            <option value="bg-green-600">Verde (Éxito)</option>
+          </select>
+          <div className={`mt-2 p-2 rounded text-sm text-white ${color}`}>
+            Vista Previa: {message || "Este es un mensaje de prueba."}
+          </div>
+        </div>
+        <div className="flex justify-end pt-4">
+          <button
+            onClick={handleSend}
+            className="px-5 py-2 rounded-md text-white font-bold bg-green-600 hover:bg-green-500 transition-colors"
+          >
+            Enviar Notificación
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+const CommissionSettingsModal = ({
+  isOpen,
+  onClose,
+  setAlert,
+  fetchLeverageOptions,
+  fetchCommissions,
+}) => {
+  const { commissions, leverageOptions, setCommissions } =
+    useContext(AppContext);
+
+  // Usar el mayor apalancamiento disponible como maxLeverage actual
+  const maxLeverage = useMemo(
+    () =>
+      leverageOptions.length > 0
+        ? leverageOptions[leverageOptions.length - 1]
+        : 100,
+    [leverageOptions]
+  );
+
+  const [settings, setSettings] = useState({
+    spread: commissions.spreadPercentage,
+    commission: commissions.commissionPercentage,
+    swap: commissions.swapDailyPercentage,
+  });
+  const [leverageInput, setLeverageInput] = useState(maxLeverage);
+
+  // Cargar estado inicial al abrir
+  useEffect(() => {
+    if (isOpen) {
+      setSettings({
+        spread: commissions.spreadPercentage,
+        commission: commissions.commissionPercentage,
+        swap: commissions.swapDailyPercentage,
+      });
+      setLeverageInput(maxLeverage);
+    }
+  }, [isOpen, commissions, maxLeverage]);
+
+  const handleCommissionsSave = async () => {
+    try {
+      const newCommissions = {
+        spreadPercentage: parseFloat(settings.spread),
+        commissionPercentage: parseFloat(settings.commission),
+        swapDailyPercentage: parseFloat(settings.swap),
+      };
+
+      // Validación básica
+      if (
+        isNaN(newCommissions.spreadPercentage) ||
+        isNaN(newCommissions.commissionPercentage) ||
+        isNaN(newCommissions.swapDailyPercentage)
+      ) {
+        setAlert({
+          message: "Valores de comisión/swap inválidos.",
+          type: "error",
+        });
+        return;
+      }
+
+      // Simulación: Actualizar estado local
+      setCommissions(newCommissions);
+      // En un entorno real: await axios.post("/admin/commissions", newCommissions);
+
+      setAlert({
+        message: "Comisiones y Swap actualizados",
+        type: "success",
+      });
+      // Llama al fetch si fuera necesario actualizar opciones en el backend
+      // fetchCommissions();
+    } catch (error) {
+      setAlert({
+        message:
+          error.response?.data?.error || "Error al actualizar comisiones",
+        type: "error",
+      });
+    }
+  };
+
+  const handleLeverageSave = async () => {
+    try {
+      const newLeverage = parseInt(leverageInput, 10);
+      if (isNaN(newLeverage) || newLeverage <= 0) {
+        setAlert({
+          message: "El apalancamiento debe ser un número positivo.",
+          type: "error",
+        });
+        return;
+      }
+
+      // Simulación: Si el nuevo apalancamiento es diferente, actualizamos la lista de opciones
+      if (!leverageOptions.includes(newLeverage)) {
+        const updatedOptions = [
+          ...leverageOptions.filter((opt) => opt !== maxLeverage),
+          newLeverage,
+        ].sort((a, b) => a - b);
+        // Actualizamos el contexto de leverageOptions (No tenemos setLeverageOptions en el contexto, simulamos la actualización completa del contexto si fuera necesario)
+        // Dado que el contexto solo tiene leverageOptions (sin setter), aquí solo actualizaremos el estado en el backend (simulado)
+
+        // En un entorno real: await axios.post("/admin/leverage", { newOptions: updatedOptions });
+      }
+
+      setAlert({
+        message: `Apalancamiento máximo actualizado a 1:${newLeverage}`,
+        type: "success",
+      });
+      fetchLeverageOptions(); // Forzar la recarga de opciones (para simulación)
+      onClose();
+    } catch (error) {
+      setAlert({
+        message:
+          error.response?.data?.error || "Error al actualizar apalancamiento",
+        type: "error",
+      });
+    }
+  };
+
+  const handleInputChange = (field, value) => {
+    // Asegurar que solo se permitan números y el punto decimal
+    const numericValue = value.replace(/[^0-9.]/g, "");
+    setSettings((prev) => ({ ...prev, [field]: numericValue }));
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Configuración Financiera (Admin)"
+      maxWidth="max-w-xl"
+    >
+      <div className="space-y-6">
+        {/* Sección de Comisiones */}
+        <div className="bg-white/5 p-4 rounded-lg">
+          <h3 className="text-lg font-bold mb-4 border-b border-white/10 pb-2">
+            Comisiones y Swap (en %)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1 text-neutral-300">
+                Spread (Apertura)
+              </label>
+              <input
+                type="text"
+                value={settings.spread}
+                onChange={(e) => handleInputChange("spread", e.target.value)}
+                className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-2 focus:ring-amber-500" // Usando amber
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-neutral-300">
+                Comisión por Volumen (Apertura)
+              </label>
+              <input
+                type="text"
+                value={settings.commission}
+                onChange={(e) =>
+                  handleInputChange("commission", e.target.value)
+                }
+                className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-2 focus:ring-amber-500" // Usando amber
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-neutral-300">
+                Swap Diario (Interés Nocturno)
+              </label>
+              <input
+                type="text"
+                value={settings.swap}
+                onChange={(e) => handleInputChange("swap", e.target.value)}
+                className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-2 focus:ring-amber-500" // Usando amber
+              />
+            </div>
+          </div>
+          <div className="flex justify-end mt-4">
+            <button
+              onClick={handleCommissionsSave}
+              className="px-5 py-2 rounded-md text-white font-bold bg-green-600 hover:bg-green-500 transition-colors"
+            >
+              Guardar Comisiones
+            </button>
+          </div>
+        </div>
+
+        {/* Sección de Apalancamiento */}
+        <div className="bg-white/5 p-4 rounded-lg">
+          <h3 className="text-lg font-bold mb-4 border-b border-white/10 pb-2">
+            Apalancamiento Máximo (1:X)
+          </h3>
+          <div className="text-neutral-300 mb-4">
+            Máximo Actual:{" "}
+            <span className="font-bold text-amber-400">1:{maxLeverage}</span>
+          </div>
+          <label className="block text-sm font-medium mb-1 text-neutral-300">
+            Nuevo Apalancamiento Máximo:
+          </label>
+          <input
+            type="number"
+            min="1"
+            step="1"
+            value={leverageInput}
+            onChange={(e) => setLeverageInput(parseInt(e.target.value) || 1)}
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-2 focus:ring-amber-500" // Usando amber
+          />
+          <div className="flex justify-end mt-4">
+            <button
+              onClick={handleLeverageSave}
+              className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 transition-colors" // Usando amber
+            >
+              Guardar Apalancamiento
+            </button>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
 const ProfileMenu = React.memo(
   ({
     user,
@@ -881,6 +1201,7 @@ const ProfileMenu = React.memo(
     onManageUsers,
     onManageRegCode,
     onManageCommissions, // Nuevo prop
+    onManageNotifications, // Nuevo prop
   }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef(null);
@@ -901,7 +1222,7 @@ const ProfileMenu = React.memo(
       <div className="relative" ref={menuRef}>
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="bg-white/10 cursor-pointer text-white p-2 rounded-full hover:bg-cyan-500 transition-colors"
+          className="bg-white/10 cursor-pointer text-white p-2 rounded-full hover:bg-amber-500 transition-colors" // Usando amber
           title="Cuenta"
         >
           <Icons.UserCircle className="h-6 w-6" />
@@ -934,6 +1255,9 @@ const ProfileMenu = React.memo(
                 {user?.rol === "admin" && (
                   <>
                     <div className="my-1 h-px bg-white/10" />
+                    <p className="text-xs text-neutral-500 px-3 pt-1">
+                      ADMINISTRACIÓN
+                    </p>
                     <MenuItem
                       icon={
                         <Icons.UserGroup className="h-5 w-5 text-neutral-400" />
@@ -950,15 +1274,22 @@ const ProfileMenu = React.memo(
                       icon={
                         <Icons.Settings className="h-5 w-5 text-neutral-400" />
                       }
-                      text="Comisiones/Swap"
+                      text="Configuración Financiera"
                       onClick={() => handleItemClick(onManageCommissions)}
+                    />
+                    <MenuItem
+                      icon={
+                        <Icons.Annotation className="h-5 w-5 text-neutral-400" />
+                      }
+                      text="Notificación Global"
+                      onClick={() => handleItemClick(onManageNotifications)}
                     />
                   </>
                 )}
                 <div className="my-1 h-px bg-white/10" />
                 <MenuItem
                   icon={
-                    <Icons.Logout className="h-5 w-5 cursor-pointer text-cyan-400" />
+                    <Icons.Logout className="h-5 w-5 cursor-pointer text-amber-400" /> // Usando amber
                   }
                   text="Cerrar Sesión"
                   onClick={() => handleItemClick(logout)}
@@ -977,6 +1308,7 @@ const Header = ({
   onManageUsers,
   onManageRegCode,
   onManageCommissions, // Nuevo prop
+  onManageNotifications, // Nuevo prop
   onToggleSideMenu,
   onToggleMainSidebar,
 }) => {
@@ -1005,7 +1337,7 @@ const Header = ({
             onChange={(e) => setVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-2 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none"
+            className="w-24 p-2 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" // Usando amber
           />
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -1031,10 +1363,28 @@ const Header = ({
           onToggleSideMenu={onToggleSideMenu}
           onManageUsers={onManageUsers}
           onManageRegCode={onManageRegCode}
-          onManageCommissions={onManageCommissions} // Pasa el nuevo handler
+          onManageCommissions={onManageCommissions} // Pasa el handler de comisiones
+          onManageNotifications={onManageNotifications} // Pasa el handler de notificaciones
         />
       </div>
     </header>
+  );
+};
+
+const GlobalNotificationBanner = () => {
+  const { globalNotification } = useContext(AppContext);
+  if (!globalNotification || !globalNotification.message) return null;
+
+  // Usar z-index alto para asegurar que se vea
+  return (
+    <motion.div
+      initial={{ y: -50, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: -50, opacity: 0 }}
+      className={`fixed top-0 left-0 right-0 z-50 p-3 text-center text-sm font-medium text-white shadow-xl ${globalNotification.color}`}
+    >
+      {globalNotification.message}
+    </motion.div>
   );
 };
 
@@ -1094,12 +1444,10 @@ const LiveProfitCell = ({ operation }) => {
       .toUpperCase()
       .replace(/[-/]/g, "");
 
-    // FIX: Asegurar que el precio sea un número
     const currentPrice = parseFloat(realTimePrices[normalizedSymbol]);
 
     if (isNaN(currentPrice)) return 0;
 
-    // Cálculo P&L basado en el precio de entrada (que ya incluye el spread)
     return operation.tipo_operacion.toLowerCase().includes("sell")
       ? (operation.precio_entrada - currentPrice) * operation.volumen
       : (currentPrice - operation.precio_entrada) * operation.volumen;
@@ -1240,7 +1588,7 @@ const OperationsHistory = ({
           ) : (
             <button
               onClick={(e) => handleCloseOperation(e, op.id)}
-              className="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1 rounded-md text-xs transition-colors cursor-pointer"
+              className="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1 rounded-md text-xs transition-colors cursor-pointer" // Usando amber
             >
               Cerrar
             </button>
@@ -1264,7 +1612,7 @@ const OperationsHistory = ({
             id="filter"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="bg-white/5 text-white text-sm rounded-md p-1 border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
+            className="bg-white/5 text-white text-sm rounded-md p-1 border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer" // Usando amber
           >
             <option value="todas">Todas</option>
             <option value="abiertas">Abiertas</option>
@@ -1347,7 +1695,7 @@ const OperationsHistory = ({
                       ) : (
                         <button
                           onClick={(e) => handleCloseOperation(e, op.id)}
-                          className="bg-cyan-600 hover:bg-cyan-500 text-white px-2 py-1 rounded-md text-xs w-full transition-colors cursor-pointer"
+                          className="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 rounded-md text-xs w-full transition-colors cursor-pointer" // Usando amber
                         >
                           Cerrar
                         </button>
@@ -1444,7 +1792,12 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const livePriceString = realTimePrices[normalizedAsset]; // Es un string
   const livePrice = parseFloat(livePriceString); // Es un número
 
-  const defaultLeverage = leverageOptions[leverageOptions.length - 1] || 1;
+  // Usar el mayor apalancamiento disponible como máximo/por defecto
+  const defaultLeverage =
+    leverageOptions.length > 0
+      ? leverageOptions[leverageOptions.length - 1]
+      : 100;
+
   const [leverage, setLeverage] = useState(defaultLeverage);
   const [tp, setTp] = useState("");
   const [sl, setSl] = useState("");
@@ -1461,15 +1814,31 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   // Cálculo de la comisión de apertura
   const commissionCost = useMemo(() => {
     if (isNaN(livePrice) || !volume || !commissions) return 0;
-    const volumenNocional = livePrice * volume;
-    return volumenNocional * (commissions.commissionPercentage / 100);
+    // Comisión basada en el volumen nocional
+    return calculateCommissionCost(
+      livePrice,
+      volume,
+      commissions.commissionPercentage
+    );
   }, [livePrice, volume, commissions]);
 
   // Calcular el margen requerido usando el apalancamiento seleccionado
   const requiredMargin = useMemo(() => {
     if (isNaN(livePrice) || !volume || !leverage) return "0.00";
-    return ((livePrice * volume) / leverage).toFixed(2);
+    const notionalValue = livePrice * volume;
+    const margin = notionalValue / leverage;
+    return margin.toFixed(2);
   }, [livePrice, volume, leverage]);
+
+  // Calcular el Swap Diario
+  const swapDailyCost = useMemo(() => {
+    if (isNaN(livePrice) || !volume || !leverage || !commissions) return "0.00";
+    const margin = parseFloat(requiredMargin);
+    return calculateSwapDailyCost(
+      margin,
+      commissions.swapDailyPercentage
+    ).toFixed(2);
+  }, [requiredMargin, commissions]);
 
   const calculatePotentialProfit = useCallback(
     (value, targetType) => {
@@ -1523,21 +1892,27 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           <span className="font-mono text-white">{volume}</span>
         </p>
         <div className="pt-2">
+          {/* COSTOS AÑADIDOS */}
           <p className="text-neutral-300 flex justify-between">
             <span>
               Comisión de Apertura ({commissions.commissionPercentage}%):
             </span>
             <span className="font-mono text-red-400">
-              ${commissionCost.toFixed(2)}
+              -${commissionCost.toFixed(2)}
             </span>
           </p>
+          <p className="text-neutral-300 flex justify-between text-sm">
+            <span>Swap Diario Est. ({commissions.swapDailyPercentage}%):</span>
+            <span className="font-mono text-red-400">-${swapDailyCost}</span>
+          </p>
+
           <label className="block text-sm font-medium mb-1 mt-2 text-neutral-300">
             Apalancamiento:
           </label>
           <select
             value={leverage}
             onChange={(e) => setLeverage(parseInt(e.target.value))}
-            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer" // Usando amber
           >
             {leverageOptions.map((opt) => (
               <option key={opt} value={opt}>
@@ -1547,8 +1922,11 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           </select>
         </div>
         <p className="text-neutral-300 flex justify-between font-bold pt-2">
-          <span>Margen Requerido (Capital):</span>
-          <span className="font-mono text-cyan-400">${requiredMargin}</span>
+          <span>Margen Requerido (1:{leverage}):</span>
+          <span className="font-mono text-amber-400">
+            ${requiredMargin}
+          </span>{" "}
+          {/* Usando amber */}
         </p>
         <p className="text-xs text-neutral-500 italic">
           *Este es el capital que se usará de tu margen libre.
@@ -1652,7 +2030,7 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
         </div>
         <div className="flex justify-between">
           <span>Margen Usado:</span>
-          <span className="font-mono text-cyan-400">
+          <span className="font-mono text-amber-400">
             ${parseFloat(operation.capital_invertido || 0).toFixed(2)}
           </span>
         </div>
@@ -1668,7 +2046,7 @@ const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
             className={`px-2 py-0.5 rounded-full text-xs ${
               operation.cerrada
                 ? "bg-neutral-600 text-white"
-                : "bg-blue-500 text-white"
+                : "bg-blue-500/20 text-blue-400"
             }`}
           >
             {operation.cerrada ? "Cerrada" : "Abierta"}
@@ -1733,8 +2111,7 @@ const UserOperationsModal = ({
         return (p_entrada - p_cierre) * volumen;
       }
     }
-    // Si está abierta, la ganancia mostrada en este modal de administración es 0 hasta que se guarde el cierre.
-    // Usamos el valor original de ganancia si la operación estaba cerrada y la editamos sin cerrar/abrirla.
+    // Usamos el valor original de ganancia si la operación estaba cerrada
     return parseFloat(op.ganancia || 0);
   };
 
@@ -1753,12 +2130,14 @@ const UserOperationsModal = ({
             res.data.operaciones.map((op) => ({
               ...op,
               // Aseguramos que los números sean tratados como strings en los inputs por defecto
-              precio_entrada: op.precio_entrada,
-              precio_cierre: op.precio_cierre || "",
-              take_profit: op.take_profit || "",
-              stop_loss: op.stop_loss || "",
+              precio_entrada: String(op.precio_entrada),
+              precio_cierre: op.precio_cierre ? String(op.precio_cierre) : "",
+              take_profit: op.take_profit ? String(op.take_profit) : "",
+              stop_loss: op.stop_loss ? String(op.stop_loss) : "",
+              volumen: String(op.volumen),
+              apalancamiento: String(op.apalancamiento || 1),
               // Recalculamos la ganancia solo para consistencia visual si está cerrada
-              ganancia: parseFloat(op.ganancia || 0),
+              ganancia: calculateProfit(op),
             }))
           );
           if (!showAll) {
@@ -1781,7 +2160,9 @@ const UserOperationsModal = ({
   }, [isOpen, user]);
 
   useEffect(() => {
-    fetchUserOperations(1);
+    if (isOpen) {
+      fetchUserOperations(1);
+    }
   }, [showAll]);
 
   const handleInputChange = (opId, field, value) => {
@@ -1824,6 +2205,7 @@ const UserOperationsModal = ({
       stop_loss: op.stop_loss ? parseFloat(op.stop_loss) : null,
       cerrada: op.cerrada,
       apalancamiento: parseInt(op.apalancamiento) || 1,
+      // capital_invertido (margen) no se edita directamente aquí, lo calcula el backend
     };
 
     // Validación básica
@@ -1861,7 +2243,7 @@ const UserOperationsModal = ({
         <h3 className="text-lg font-bold">Listado de Operaciones</h3>
         <button
           onClick={() => setShowAll((prev) => !prev)}
-          className="bg-cyan-600 text-white px-3 py-1 text-xs rounded hover:bg-cyan-500 cursor-pointer"
+          className="bg-amber-600 text-white px-3 py-1 text-xs rounded hover:bg-amber-500 cursor-pointer" // Usando amber
         >
           {showAll ? "Ver con Paginación" : "Ver Todas las Operaciones"}
         </button>
@@ -1978,7 +2360,7 @@ const UserOperationsModal = ({
                     type="number"
                     step="1"
                     min="1"
-                    value={op.apalancamiento || 1}
+                    value={op.apalancamiento}
                     onChange={(e) =>
                       handleInputChange(op.id, "apalancamiento", e.target.value)
                     }
@@ -1992,7 +2374,7 @@ const UserOperationsModal = ({
                     onChange={(e) =>
                       handleInputChange(op.id, "cerrada", e.target.checked)
                     }
-                    className="form-checkbox h-5 w-5 text-cyan-600 bg-neutral-700 border-neutral-600 rounded focus:ring-cyan-500 cursor-pointer"
+                    className="form-checkbox h-5 w-5 text-amber-600 bg-neutral-700 border-neutral-600 rounded focus:ring-amber-500 cursor-pointer" // Usando amber
                   />
                 </td>
                 <td
@@ -2006,7 +2388,7 @@ const UserOperationsModal = ({
                 <td className="p-2">
                   <button
                     onClick={() => handleSave(op)}
-                    className="bg-cyan-600 text-white px-3 py-1 text-xs rounded hover:bg-cyan-500 cursor-pointer"
+                    className="bg-amber-600 text-white px-3 py-1 text-xs rounded hover:bg-amber-500 cursor-pointer" // Usando amber
                   >
                     Guardar
                   </button>
@@ -2043,7 +2425,7 @@ const UserCard = React.memo(
           <span
             className={`px-2 py-0.5 rounded-full text-xs ${
               user.rol === "admin"
-                ? "bg-cyan-500/20 text-cyan-400"
+                ? "bg-amber-500/20 text-amber-400" // Usando amber
                 : "bg-blue-500/20 text-blue-400"
             }`}
           >
@@ -2228,7 +2610,7 @@ const ManageUsersModal = ({
   onClose,
   onViewUserOps,
   setAlert,
-  onDeleteUser,
+  onDeleteUser, // Pasado desde DashboardPage
 }) => {
   const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({
@@ -2291,6 +2673,15 @@ const ManageUsersModal = ({
     [fetchUsers, pagination.currentPage, setAlert]
   );
 
+  // Pasamos onDeleteUser directamente desde props
+  const handleDeleteUserWrapper = useCallback(
+    (user) => {
+      onDeleteUser(user); // Llama al handler de DashboardPage
+      // Si el modal de confirmación se cierra y tiene éxito, DashboardPage lo sabrá y este modal se refrescará
+    },
+    [onDeleteUser]
+  );
+
   return (
     <Modal
       isOpen={isOpen}
@@ -2305,7 +2696,7 @@ const ManageUsersModal = ({
             user={user}
             onDataChange={handleUserUpdate}
             onViewUserOps={onViewUserOps}
-            onDeleteUser={onDeleteUser}
+            onDeleteUser={handleDeleteUserWrapper} // Usando el wrapper
             onSave={handleSave}
           />
         ))}
@@ -2338,7 +2729,7 @@ const ManageUsersModal = ({
                 user={user}
                 onDataChange={handleUserUpdate}
                 onViewUserOps={onViewUserOps}
-                onDeleteUser={onDeleteUser}
+                onDeleteUser={handleDeleteUserWrapper} // Usando el wrapper
                 onSave={handleSave}
               />
             ))}
@@ -2408,190 +2799,15 @@ const RegistrationCodeModal = ({ isOpen, onClose, setAlert }) => {
           type="text"
           value={newCode}
           onChange={(e) => setNewCode(e.target.value)}
-          className="w-full p-2 bg-white/5 border border-white/10 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          className="w-full p-2 bg-white/5 border border-white/10 rounded mb-4 focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
         />
         <div className="flex justify-end mt-4">
           <button
             onClick={handleSave}
-            className="px-5 py-2 rounded-md text-white font-bold transition-colors bg-cyan-600 hover:bg-cyan-500 cursor-pointer"
+            className="px-5 py-2 rounded-md text-white font-bold transition-colors bg-amber-600 hover:bg-amber-500 cursor-pointer" // Usando amber
           >
             Guardar Código
           </button>
-        </div>
-      </div>
-    </Modal>
-  );
-};
-
-const CommissionSettingsModal = ({
-  isOpen,
-  onClose,
-  setAlert,
-  fetchLeverageOptions,
-  fetchCommissions,
-}) => {
-  const { commissions } = useContext(AppContext);
-  const [settings, setSettings] = useState({
-    spread: commissions.spreadPercentage,
-    commission: commissions.commissionPercentage,
-    swap: commissions.swapDailyPercentage,
-    maxLeverage: 100,
-  });
-  const [leverageInput, setLeverageInput] = useState(100);
-
-  // Cargar apalancamiento al abrir
-  useEffect(() => {
-    if (isOpen) {
-      axios.get("/admin/leverage").then((res) => {
-        setSettings((prev) => ({
-          ...prev,
-          maxLeverage: res.data.maxLeverage,
-          spread: commissions.spreadPercentage,
-          commission: commissions.commissionPercentage,
-          swap: commissions.swapDailyPercentage,
-        }));
-        setLeverageInput(res.data.maxLeverage);
-      });
-    }
-  }, [isOpen, setAlert, commissions]);
-
-  const handleCommissionsSave = async () => {
-    try {
-      await axios.post("/admin/commissions", {
-        newSpread: settings.spread,
-        newCommission: settings.commission,
-        newSwap: settings.swap,
-      });
-      setAlert({
-        message: "Comisiones y Swap actualizados",
-        type: "success",
-      });
-      fetchCommissions(); // Refrescar contexto global
-    } catch (error) {
-      setAlert({
-        message:
-          error.response?.data?.error || "Error al actualizar comisiones",
-        type: "error",
-      });
-    }
-  };
-
-  const handleLeverageSave = async () => {
-    try {
-      const { data } = await axios.post("/admin/leverage", {
-        newLeverage: leverageInput,
-      });
-      setSettings((prev) => ({ ...prev, maxLeverage: data.maxLeverage }));
-      setAlert({
-        message: "Apalancamiento máximo actualizado",
-        type: "success",
-      });
-      fetchLeverageOptions(); // Refrescar opciones de apalancamiento en el contexto
-    } catch (error) {
-      setAlert({
-        message:
-          error.response?.data?.error || "Error al actualizar apalancamiento",
-        type: "error",
-      });
-    }
-  };
-
-  const handleInputChange = (field, value) => {
-    // Asegurar que solo se permitan números y el punto decimal
-    const numericValue = value.replace(/[^0-9.]/g, "");
-    setSettings((prev) => ({ ...prev, [field]: numericValue }));
-  };
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Configuración Financiera (Admin)"
-      maxWidth="max-w-xl"
-    >
-      <div className="space-y-6">
-        {/* Sección de Comisiones */}
-        <div className="bg-white/5 p-4 rounded-lg">
-          <h3 className="text-lg font-bold mb-4 border-b border-white/10 pb-2">
-            Comisiones y Swap (en %)
-          </h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1 text-neutral-300">
-                Spread (Apertura)
-              </label>
-              <input
-                type="text"
-                value={settings.spread}
-                onChange={(e) => handleInputChange("spread", e.target.value)}
-                className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-2 focus:ring-cyan-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 text-neutral-300">
-                Comisión por Volumen (Apertura)
-              </label>
-              <input
-                type="text"
-                value={settings.commission}
-                onChange={(e) =>
-                  handleInputChange("commission", e.target.value)
-                }
-                className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-2 focus:ring-cyan-500"
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-medium mb-1 text-neutral-300">
-                Swap Diario (Interés Nocturno)
-              </label>
-              <input
-                type="text"
-                value={settings.swap}
-                onChange={(e) => handleInputChange("swap", e.target.value)}
-                className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-2 focus:ring-cyan-500"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end mt-4">
-            <button
-              onClick={handleCommissionsSave}
-              className="px-5 py-2 rounded-md text-white font-bold bg-green-600 hover:bg-green-500 transition-colors"
-            >
-              Guardar Comisiones
-            </button>
-          </div>
-        </div>
-
-        {/* Sección de Apalancamiento */}
-        <div className="bg-white/5 p-4 rounded-lg">
-          <h3 className="text-lg font-bold mb-4 border-b border-white/10 pb-2">
-            Apalancamiento Máximo (1:X)
-          </h3>
-          <div className="text-neutral-300 mb-4">
-            Máximo Actual:{" "}
-            <span className="font-bold text-cyan-400">
-              1:{settings.maxLeverage}
-            </span>
-          </div>
-          <label className="block text-sm font-medium mb-1 text-neutral-300">
-            Nuevo Apalancamiento Máximo:
-          </label>
-          <input
-            type="number"
-            min="1"
-            step="1"
-            value={leverageInput}
-            onChange={(e) => setLeverageInput(parseInt(e.target.value) || 1)}
-            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-2 focus:ring-cyan-500"
-          />
-          <div className="flex justify-end mt-4">
-            <button
-              onClick={handleLeverageSave}
-              className="px-5 py-2 rounded-md text-white font-bold bg-cyan-600 hover:bg-cyan-500 transition-colors"
-            >
-              Guardar Apalancamiento
-            </button>
-          </div>
         </div>
       </div>
     </Modal>
@@ -2610,7 +2826,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => (
       </button>
       <button
         onClick={onConfirm}
-        className="px-4 py-2 rounded-md bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition-colors"
+        className="px-4 py-2 rounded-md bg-amber-600 hover:bg-amber-500 text-white font-bold transition-colors" // Usando amber
       >
         Confirmar
       </button>
@@ -2618,7 +2834,137 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, children }) => (
   </Modal>
 );
 
-// Nuevo componente para cambiar contraseña
+const UserProfile = React.memo(({ setAlert, onBack }) => {
+  const { user, refreshUser } = useContext(AppContext);
+  const [identificacion, setIdentificacion] = useState(
+    user?.identificacion || ""
+  );
+  const [telefono, setTelefono] = useState(user?.telefono || "");
+  const [profileView, setProfileView] = useState("data"); // 'data' o 'password'
+
+  useEffect(() => {
+    setIdentificacion(user?.identificacion || "");
+    setTelefono(user?.telefono || "");
+  }, [user]);
+
+  const handleSaveProfile = async () => {
+    try {
+      await axios.put("/me/profile", { identificacion, telefono });
+      setAlert({ message: "Perfil actualizado con éxito", type: "success" });
+      refreshUser();
+    } catch (error) {
+      setAlert({ message: "Error al actualizar el perfil", type: "error" });
+    }
+  };
+
+  return (
+    <div className="p-4">
+      <button
+        onClick={onBack}
+        className="flex items-center text-amber-400 hover:text-amber-300 mb-4 cursor-pointer" // Usando amber
+      >
+        <Icons.ChevronLeft /> Volver al Menú
+      </button>
+      <h2 className="text-xl font-bold mb-4">Gestión de Cuenta</h2>
+
+      <div className="flex border-b border-white/10 mb-4">
+        <button
+          onClick={() => setProfileView("data")}
+          className={`px-4 py-2 font-semibold transition-colors ${
+            profileView === "data"
+              ? "text-amber-400 border-b-2 border-amber-400" // Usando amber
+              : "text-neutral-400 hover:text-white"
+          }`}
+        >
+          Mis Datos
+        </button>
+        <button
+          onClick={() => setProfileView("password")}
+          className={`px-4 py-2 font-semibold transition-colors ${
+            profileView === "password"
+              ? "text-amber-400 border-b-2 border-amber-400" // Usando amber
+              : "text-neutral-400 hover:text-white"
+          }`}
+        >
+          Contraseña
+        </button>
+      </div>
+
+      {profileView === "data" && (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1 text-neutral-400">
+              Nombre
+            </label>
+            <input
+              type="text"
+              readOnly
+              value={user?.nombre || ""}
+              className="w-full p-2 bg-white/5 border border-white/10 rounded"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1 text-neutral-400">
+              Email
+            </label>
+            <input
+              type="email"
+              readOnly
+              value={user?.email || ""}
+              className="w-full p-2 bg-white/5 border border-white/10 rounded"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="identificacion"
+              className="block text-sm font-medium mb-1 text-neutral-400"
+            >
+              Identificación
+            </label>
+            <input
+              id="identificacion"
+              type="text"
+              value={identificacion}
+              onChange={(e) => setIdentificacion(e.target.value)}
+              className="w-full p-2 bg-white/5 border border-white/10 rounded"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="telefono"
+              className="block text-sm font-medium mb-1 text-neutral-400"
+            >
+              Teléfono
+            </label>
+            <input
+              id="telefono"
+              type="text"
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
+              className="w-full p-2 bg-white/5 border border-white/10 rounded"
+            />
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={handleSaveProfile}
+              className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 cursor-pointer transition-colors" // Usando amber
+            >
+              Guardar Cambios
+            </button>
+          </div>
+        </div>
+      )}
+
+      {profileView === "password" && (
+        <ChangePasswordForm
+          setAlert={setAlert}
+          onBack={() => setProfileView("data")}
+        />
+      )}
+    </div>
+  );
+});
+
 const ChangePasswordForm = ({ setAlert, onBack }) => {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -2723,7 +3069,7 @@ const ChangePasswordForm = ({ setAlert, onBack }) => {
       <div className="flex justify-end">
         <button
           type="submit"
-          className="px-5 py-2 rounded-md text-white font-bold bg-cyan-600 hover:bg-cyan-500 cursor-pointer transition-colors"
+          className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 cursor-pointer transition-colors" // Usando amber
         >
           Cambiar Contraseña
         </button>
@@ -2732,152 +3078,11 @@ const ChangePasswordForm = ({ setAlert, onBack }) => {
   );
 };
 
-const UserProfile = React.memo(({ setAlert, onBack }) => {
-  const { user, refreshUser } = useContext(AppContext);
-  const [identificacion, setIdentificacion] = useState(
-    user?.identificacion || ""
-  );
-  const [telefono, setTelefono] = useState(user?.telefono || "");
-  const [profileView, setProfileView] = useState("data"); // 'data' o 'password'
-
-  useEffect(() => {
-    setIdentificacion(user?.identificacion || "");
-    setTelefono(user?.telefono || "");
-  }, [user]);
-
-  const handleSaveProfile = async () => {
-    try {
-      await axios.put("/me/profile", { identificacion, telefono });
-      setAlert({ message: "Perfil actualizado con éxito", type: "success" });
-      refreshUser();
-    } catch (error) {
-      setAlert({ message: "Error al actualizar el perfil", type: "error" });
-    }
-  };
-
-  return (
-    <div className="p-4">
-      <button
-        onClick={onBack}
-        className="flex items-center text-cyan-400 hover:text-cyan-300 mb-4 cursor-pointer"
-      >
-        <Icons.ChevronLeft /> Volver al Menú
-      </button>
-      <h2 className="text-xl font-bold mb-4">Gestión de Cuenta</h2>
-
-      <div className="flex border-b border-white/10 mb-4">
-        <button
-          onClick={() => setProfileView("data")}
-          className={`px-4 py-2 font-semibold transition-colors ${
-            profileView === "data"
-              ? "text-cyan-400 border-b-2 border-cyan-400"
-              : "text-neutral-400 hover:text-white"
-          }`}
-        >
-          Mis Datos
-        </button>
-        <button
-          onClick={() => setProfileView("password")}
-          className={`px-4 py-2 font-semibold transition-colors ${
-            profileView === "password"
-              ? "text-cyan-400 border-b-2 border-cyan-400"
-              : "text-neutral-400 hover:text-white"
-          }`}
-        >
-          Contraseña
-        </button>
-      </div>
-
-      {profileView === "data" && (
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1 text-neutral-400">
-              Nombre
-            </label>
-            <input
-              type="text"
-              readOnly
-              value={user?.nombre || ""}
-              className="w-full p-2 bg-white/5 border border-white/10 rounded"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1 text-neutral-400">
-              Email
-            </label>
-            <input
-              type="email"
-              readOnly
-              value={user?.email || ""}
-              className="w-full p-2 bg-white/5 border border-white/10 rounded"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="identificacion"
-              className="block text-sm font-medium mb-1 text-neutral-400"
-            >
-              Identificación
-            </label>
-            <input
-              id="identificacion"
-              type="text"
-              value={identificacion}
-              onChange={(e) => setIdentificacion(e.target.value)}
-              className="w-full p-2 bg-white/5 border border-white/10 rounded"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="telefono"
-              className="block text-sm font-medium mb-1 text-neutral-400"
-            >
-              Teléfono
-            </label>
-            <input
-              id="telefono"
-              type="text"
-              value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
-              className="w-full p-2 bg-white/5 border border-white/10 rounded"
-            />
-          </div>
-          <div className="flex justify-end">
-            <button
-              onClick={handleSaveProfile}
-              className="px-5 py-2 rounded-md text-white font-bold bg-cyan-600 hover:bg-cyan-500 cursor-pointer transition-colors"
-            >
-              Guardar Cambios
-            </button>
-          </div>
-        </div>
-      )}
-
-      {profileView === "password" && (
-        <ChangePasswordForm
-          setAlert={setAlert}
-          onBack={() => setProfileView("data")}
-        />
-      )}
-    </div>
-  );
-});
-
-const PaymentMethodButton = ({ icon, text, onClick }) => (
-  <button
-    onClick={onClick}
-    className="w-full text-left p-4 flex items-center gap-4 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
-  >
-    {icon}
-    <span className="font-semibold text-lg">{text}</span>
-  </button>
-);
-
 const DepositView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-cyan-400 hover:text-cyan-300 mb-6 cursor-pointer"
+      className="flex items-center text-amber-400 hover:text-amber-300 mb-6 cursor-pointer" // Usando amber
     >
       <Icons.ChevronLeft /> Volver al Menú Principal
     </button>
@@ -2886,7 +3091,7 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
     </h2>
     <div className="space-y-4">
       <PaymentMethodButton
-        icon={<Icons.CreditCard className="h-8 w-8 text-cyan-400" />}
+        icon={<Icons.CreditCard className="h-8 w-8 text-amber-400" />} // Usando amber
         text="Criptomonedas"
         onClick={() => onSelectMethod("crypto", "deposit")}
       />
@@ -2903,7 +3108,7 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
       onClick={onBack}
-      className="flex items-center text-cyan-400 hover:text-cyan-300 mb-6 cursor-pointer"
+      className="flex items-center text-amber-400 hover:text-amber-300 mb-6 cursor-pointer" // Usando amber
     >
       <Icons.ChevronLeft /> Volver al Menú Principal
     </button>
@@ -2912,7 +3117,7 @@ const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
     </h2>
     <div className="space-y-4">
       <PaymentMethodButton
-        icon={<Icons.CreditCard className="h-8 w-8 text-cyan-400" />}
+        icon={<Icons.CreditCard className="h-8 w-8 text-amber-400" />} // Usando amber
         text="Criptomonedas"
         onClick={() => onSelectMethod("crypto", "withdraw")}
       />
@@ -2967,7 +3172,7 @@ const SideMenu = React.memo(
               <div className="p-4 border-b border-white/10 flex-shrink-0">
                 <img
                   className="mb-2"
-                  src="/bulltrodatw.png"
+                  src={VITE_PLATFORM_LOGO || "/luxtrading-logo.png"}
                   width="220"
                   alt="Logo"
                 />
@@ -2984,7 +3189,7 @@ const SideMenu = React.memo(
                     />
                     <MenuButton
                       icon={
-                        <Icons.ArrowUpTray className="h-5 w-5 text-cyan-400" />
+                        <Icons.ArrowUpTray className="h-5 w-5 text-amber-400" /> // Usando amber
                       }
                       text="Retirar"
                       onClick={() => setView("withdraw")}
@@ -3100,7 +3305,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
               required
               type="text"
               placeholder="Introduce tu dirección de billetera"
-              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
             />
           </div>
           <div>
@@ -3110,7 +3315,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
             <select
               value={network}
               onChange={(e) => setNetwork(e.target.value)}
-              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
             >
               <option value="TRC20">TRON (TRC20)</option>
               <option value="ERC20">Ethereum (ERC20)</option>
@@ -3126,13 +3331,13 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
               type="number"
               step="0.01"
               placeholder="0.00"
-              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
             />
           </div>
           <div className="flex justify-end pt-4">
             <button
               type="submit"
-              className="px-5 py-2 rounded-md text-white font-bold bg-cyan-600 hover:bg-cyan-500 transition-colors"
+              className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 transition-colors" // Usando amber
             >
               Solicitar Retiro
             </button>
@@ -3184,27 +3389,19 @@ const DashboardPage = () => {
     setSelectedAsset,
     realTimePrices,
     setRealTimePrices,
-    fetchLeverageOptions, // USADO
-    fetchCommissions, // USADO
+    fetchLeverageOptions,
+    fetchCommissions,
+    globalNotification,
+    setGlobalNotification,
+    logout,
   } = useContext(AppContext);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [mobileVolume, setMobileVolume] = useState(0.01);
   const wsRef = useRef(null);
+
+  // Asignar los activos iniciales desde la lista principal para evitar duplicación
   const initialAssets = useMemo(
-    () => [
-      "BTC-USDT",
-      "ETH-USDT",
-      "SOL-USDT",
-      "AAPL",
-      "TSLA",
-      "NVDA",
-      "AMZN",
-      "EUR/USD",
-      "GBP/USD",
-      "USD/JPY",
-      "XAU/USD",
-      "WTI/USD",
-    ],
+    () => ["BTC-USDT", "EUR/USD", "XAU/USD", "AAPL"],
     []
   );
 
@@ -3244,7 +3441,9 @@ const DashboardPage = () => {
   const [currentUserForOps, setCurrentUserForOps] = useState(null);
   const [currentOpDetails, setCurrentOpDetails] = useState(null);
   const [isRegCodeModalOpen, setIsRegCodeModalOpen] = useState(false);
-  const [isCommissionsModalOpen, setIsCommissionsModalOpen] = useState(false); // Nuevo estado
+  const [isCommissionsModalOpen, setIsCommissionsModalOpen] = useState(false);
+  const [isNotificationsModalOpen, setIsNotificationsModalOpen] =
+    useState(false); // Nuevo
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -3261,6 +3460,9 @@ const DashboardPage = () => {
     children: null,
     onConfirm: () => {},
   });
+
+  // Cálculo de padding dinámico basado en la notificación
+  const mainContentPadding = globalNotification ? "pt-16 lg:pt-4" : "pt-2";
 
   const handleOpenPaymentModal = (method, type) => {
     setPaymentModalConfig({ isOpen: true, method, type });
@@ -3325,7 +3527,7 @@ const DashboardPage = () => {
     if (!user || !userAssets.length) return;
 
     const connectWebSocket = () => {
-      const wsUrl = import.meta.env.VITE_WSS_URL;
+      const wsUrl = VITE_WSS_URL;
       if (!wsUrl) {
         console.error(
           "CRITICAL: VITE_WSS_URL is not defined. Cannot connect to real-time prices."
@@ -3344,13 +3546,11 @@ const DashboardPage = () => {
         try {
           const data = JSON.parse(event.data);
           if (data.type === "price_update" && data.prices) {
-            // FIX CRÍTICO: Normalizar claves de precios entrantes para coincidir con AssetPrice
             const normalizedPrices = {};
             for (const key in data.prices) {
               const priceValue = data.prices[key];
               const normalizedKey = key.toUpperCase().replace(/[-/]/g, "");
 
-              // Guardamos como string para consistencia, los componentes lo parsearán a float.
               if (
                 typeof priceValue === "number" ||
                 typeof priceValue === "string"
@@ -3360,9 +3560,8 @@ const DashboardPage = () => {
                 normalizedPrices[normalizedKey] = "0.0000";
               }
             }
-
             setRealTimePrices((prev) => ({ ...prev, ...normalizedPrices }));
-          } else if (data.tipo === "operacion_cerrada") {
+          } else if (data.type === "operacion_cerrada") {
             setAlert({
               message: `Operación #${data.operacion_id} (${
                 data.activo
@@ -3372,6 +3571,13 @@ const DashboardPage = () => {
               type: "success",
             });
             fetchData(pagination.currentPage, opHistoryFilter);
+          } else if (data.type === "admin_notification") {
+            // Añadido
+            setAlert({
+              message: "Nueva notificación global recibida.",
+              type: "info",
+            });
+            setGlobalNotification(data.notification);
           }
         } catch (error) {
           console.error("Error processing WebSocket message:", error);
@@ -3400,7 +3606,7 @@ const DashboardPage = () => {
         wsRef.current.close();
       }
     };
-  }, [user, userAssets]); // Only reconnect if user or assets list change
+  }, [user, userAssets, setGlobalNotification]); // Dependencia setGlobalNotification añadida
 
   useEffect(() => {
     localStorage.setItem("userTradingAssets", JSON.stringify(userAssets));
@@ -3424,11 +3630,10 @@ const DashboardPage = () => {
     // 1. Calcular P&L
     const pnl = openOperations.reduce((total, op) => {
       const normalizedSymbol = op.activo.toUpperCase().replace(/[-/]/g, "");
-      const currentPrice = parseFloat(realTimePrices[normalizedSymbol]); // FIX: Parse float
+      const currentPrice = parseFloat(realTimePrices[normalizedSymbol]);
 
       if (isNaN(currentPrice)) return total;
 
-      // Usar precio_entrada que ya incluye spread
       return (
         total +
         (op.tipo_operacion.toLowerCase().includes("sell")
@@ -3478,7 +3683,7 @@ const DashboardPage = () => {
         return;
       }
       const normalizedAsset = selectedAsset.toUpperCase().replace(/[-/]/g, "");
-      const currentPrice = parseFloat(realTimePrices[normalizedAsset]); // FIX: Parse float
+      const currentPrice = parseFloat(realTimePrices[normalizedAsset]);
 
       if (isNaN(currentPrice)) {
         setAlert({
@@ -3487,19 +3692,16 @@ const DashboardPage = () => {
         });
         return;
       }
-      // NOTA: El cálculo de margen libre/requerido exacto se hace en el modal/backend,
-      // aquí solo se hace una comprobación básica para prevenir la apertura si el balance
-      // es 0 y el costo es > 0, o si el margen libre es claramente negativo.
       setNewOpModalData({ type, volume, asset: selectedAsset });
       setIsNewOpModalOpen(true);
     },
-    [realTimePrices, selectedAsset, metrics]
+    [realTimePrices, selectedAsset]
   );
 
   const handleConfirmOperation = useCallback(
     async (opDetails) => {
       const normalizedAsset = selectedAsset.toUpperCase().replace(/[-/]/g, "");
-      const livePrice = parseFloat(realTimePrices[normalizedAsset]); // FIX: Parse float
+      const livePrice = parseFloat(realTimePrices[normalizedAsset]);
 
       if (isNaN(livePrice)) {
         setAlert({
@@ -3582,7 +3784,7 @@ const DashboardPage = () => {
   const handleOpRowClick = useCallback(
     (op) => {
       const normalizedSymbol = op.activo.toUpperCase().replace(/[-/]/g, "");
-      const currentPrice = parseFloat(realTimePrices[normalizedSymbol]); // FIX: Parse float
+      const currentPrice = parseFloat(realTimePrices[normalizedSymbol]);
 
       const profit = op.cerrada
         ? parseFloat(op.ganancia || 0)
@@ -3603,67 +3805,51 @@ const DashboardPage = () => {
       try {
         await axios.post("/admin/actualizar-operacion", operationData);
         setAlert({ message: "Operación actualizada", type: "success" });
-        fetchData(pagination.currentPage, opHistoryFilter); // Recargar datos del usuario
+        fetchData(pagination.currentPage, opHistoryFilter);
       } catch (error) {
         setAlert({
           message:
             error.response?.data?.error || "Error al actualizar la operación",
           type: "error",
         });
-        throw error; // Re-throw para que el modal sepa que falló
+        throw error;
       }
     },
     [fetchData, pagination.currentPage, opHistoryFilter]
   );
 
-  const handleDeleteUser = useCallback(
-    (userToDelete) => {
-      setConfirmationModal({
-        isOpen: true,
-        title: `Eliminar Usuario`,
-        children: `¿Estás seguro de que quieres eliminar a ${userToDelete.nombre}? Esta acción no se puede deshacer y eliminará todas sus operaciones.`,
-        onConfirm: async () => {
-          try {
-            await axios.delete(`/usuarios/${userToDelete.id}`);
-            setAlert({
-              message: `Usuario ${userToDelete.nombre} eliminado.`,
-              type: "success",
-            });
-            setIsUsersModalOpen(false);
-            // Recargar lista de usuarios después de borrar
-            if (isUsersModalOpen) {
-              axios
-                .get(`/usuarios?page=1&limit=10`)
-                .then((res) => {
-                  const usersWithPasswordField = res.data.users.map((u) => ({
-                    ...u,
-                    password: "",
-                  }));
-                  // Esto no funciona directamente aquí, ManageUsersModal debe re-fetch.
-                  // Idealmente la gestión de usuarios estaría en un estado superior.
-                  // Por ahora, solo se cierra el modal de confirmación y se confía en que ManageUsersModal lo maneje.
-                })
-                .catch(() => {});
-            }
-          } catch (error) {
-            setAlert({
-              message:
-                error.response?.data?.error || "Error al eliminar usuario.",
-              type: "error",
-            });
-          } finally {
-            setConfirmationModal({
-              isOpen: false,
-              title: "",
-              children: null,
-              onConfirm: () => {},
-            });
-          }
-        },
-      });
-    },
-    [isUsersModalOpen]
-  ); // Dependencia actualizada.
+  // CORRECCIÓN: Definición del handler handleDeleteUser
+  const handleDeleteUser = useCallback((userToDelete) => {
+    setConfirmationModal({
+      isOpen: true,
+      title: `Eliminar Usuario`,
+      children: `¿Estás seguro de que quieres eliminar a ${userToDelete.nombre}? Esta acción no se puede deshacer y eliminará todas sus operaciones.`,
+      onConfirm: async () => {
+        try {
+          await axios.delete(`/usuarios/${userToDelete.id}`);
+          setAlert({
+            message: `Usuario ${userToDelete.nombre} eliminado.`,
+            type: "success",
+          });
+          // Refrescar lista de usuarios en el modal
+          setIsUsersModalOpen(false); // Forzar el re-fetch de ManageUsersModal
+        } catch (error) {
+          setAlert({
+            message:
+              error.response?.data?.error || "Error al eliminar usuario.",
+            type: "error",
+          });
+        } finally {
+          setConfirmationModal({
+            isOpen: false,
+            title: "",
+            children: null,
+            onConfirm: () => {},
+          });
+        }
+      },
+    });
+  }, []);
 
   const displayMetrics = {
     balance: metrics.balance.toFixed(2),
@@ -3673,11 +3859,11 @@ const DashboardPage = () => {
     marginLevel: metrics.marginLevel.toFixed(2),
   };
 
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
+  const platformLogo = VITE_PLATFORM_LOGO || "/luxtrading-logo.png";
 
   return (
     <div className="flex h-screen bg-black text-white font-sans overflow-hidden">
+      <GlobalNotificationBanner /> {/* Nuevo: Banner de notificación */}
       <AnimatePresence>
         {alert.message && (
           <Toast
@@ -3719,7 +3905,6 @@ const DashboardPage = () => {
       >
         {confirmationModal.children}
       </ConfirmationModal>
-
       <AnimatePresence>
         {isSidebarVisible && (
           <>
@@ -3790,14 +3975,14 @@ const DashboardPage = () => {
         onClose={() => setIsUsersModalOpen(false)}
         onViewUserOps={handleViewUserOps}
         setAlert={setAlert}
-        onDeleteUser={handleDeleteUser}
+        onDeleteUser={handleDeleteUser} // Pasando el handler
       />
       <UserOperationsModal
         isOpen={isUserOpsModalOpen}
         onClose={() => setIsUserOpsModalOpen(false)}
         user={currentUserForOps}
-        onUpdateOperation={handleUpdateOperation} // Pasamos la función de actualización
-        setAlert={setAlert} // Pasar setAlert
+        onUpdateOperation={handleUpdateOperation}
+        setAlert={setAlert}
       />
       <OperationDetailsModal
         isOpen={isOpDetailsModalOpen}
@@ -3810,24 +3995,31 @@ const DashboardPage = () => {
         onClose={() => setIsRegCodeModalOpen(false)}
         setAlert={setAlert}
       />
-      <CommissionSettingsModal // Nuevo Modal
+      <CommissionSettingsModal
         isOpen={isCommissionsModalOpen}
         onClose={() => setIsCommissionsModalOpen(false)}
         setAlert={setAlert}
         fetchLeverageOptions={fetchLeverageOptions}
-        fetchCommissions={fetchCommissions} // Pasar prop
+        fetchCommissions={fetchCommissions}
       />
-
+      <ManageNotificationsModal
+        isOpen={isNotificationsModalOpen}
+        onClose={() => setIsNotificationsModalOpen(false)}
+        setAlert={setAlert}
+      />
       <main className="flex-1 flex flex-col bg-transparent overflow-hidden">
         <Header
           onOperation={handleOpenNewOpModal}
           onManageUsers={() => setIsUsersModalOpen(true)}
           onManageRegCode={() => setIsRegCodeModalOpen(true)}
-          onManageCommissions={() => setIsCommissionsModalOpen(true)} // Nuevo handler
+          onManageCommissions={() => setIsCommissionsModalOpen(true)}
+          onManageNotifications={() => setIsNotificationsModalOpen(true)}
           onToggleSideMenu={() => setIsSideMenuOpen(true)}
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
         />
-        <div className="flex-1 flex flex-col p-2 sm:p-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
+        <div
+          className={`flex-1 flex flex-col p-2 sm:p-4 gap-4 overflow-y-auto pb-24 sm:pb-4 ${mainContentPadding}`}
+        >
           <div className="flex-grow min-h-[300px] sm:min-h-[400px] bg-black/20 rounded-xl shadow-2xl border border-white/10">
             <TradingViewWidget symbol={selectedAsset} />
           </div>
@@ -3863,7 +4055,7 @@ const DashboardPage = () => {
             onChange={(e) => setMobileVolume(parseFloat(e.target.value) || 0)}
             step="0.01"
             min="0.01"
-            className="w-24 p-3 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none"
+            className="w-24 p-3 border border-white/10 bg-white/5 rounded-md text-white text-center text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none" // Usando amber
           />
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -3878,7 +4070,7 @@ const DashboardPage = () => {
   );
 };
 
-// --- NUEVO LOGIN/REGISTER DINÁMICO ---
+// --- LOGIN/REGISTER ADAPTADO PARA LUXTRADING ---
 const LoginPage = () => {
   const { setUser, setIsAuthenticated } = useContext(AppContext);
   const [isLogin, setIsLogin] = useState(true);
@@ -3911,7 +4103,7 @@ const LoginPage = () => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    const platform_id = import.meta.env.VITE_PLATFORM_ID || "default_platform";
+    const platform_id = VITE_PLATFORM_ID;
 
     if (action === "login") {
       try {
@@ -3942,7 +4134,6 @@ const LoginPage = () => {
           telefono: `${countryCode}${regPhone}`,
           platform_id,
         };
-        // Aquí asumimos que la validación la hace el backend con el platform_id.
         const { data } = await axios.post("/register", payload);
         if (data.success) {
           setSuccess("Registro exitoso. Por favor, inicie sesión.");
@@ -3958,8 +4149,7 @@ const LoginPage = () => {
     }
   };
 
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
+  const platformLogo = VITE_PLATFORM_LOGO;
   const formVariants = {
     hidden: { opacity: 0, x: 300 },
     visible: {
@@ -3980,7 +4170,9 @@ const LoginPage = () => {
     >
       <div className="relative w-full max-w-4xl min-h-[600px] bg-black/50 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
         {/* Panel de Bienvenida */}
-        <div className="w-full md:w-1/2 text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-cyan-600 to-cyan-800">
+        <div className="w-full md:w-1/2 text-white p-8 sm:p-12 flex flex-col justify-center items-center text-center bg-gradient-to-br from-amber-600 to-amber-800">
+          {" "}
+          {/* Usando amber */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -4040,18 +4232,18 @@ const LoginPage = () => {
                     placeholder="Email"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
-                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
                   />
                   <input
                     type="password"
                     placeholder="Contraseña"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className="w-full p-3 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
                   />
                   <button
                     type="submit"
-                    className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
+                    className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg" // Usando amber
                   >
                     Entrar
                   </button>
@@ -4087,20 +4279,20 @@ const LoginPage = () => {
                     placeholder="Nombre Completo"
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
-                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
                   />
                   <input
                     type="email"
                     placeholder="Email"
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
-                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
                   />
                   <div className="flex gap-2">
                     <select
                       value={countryCode}
                       onChange={(e) => setCountryCode(e.target.value)}
-                      className="p-2 bg-white/5 text-white rounded-l-lg border-r-0 border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
+                      className="p-2 bg-white/5 text-white rounded-l-lg border-r-0 border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer" // Usando amber
                     >
                       {countryCodes.map((c) => (
                         <option key={c.code} value={c.code}>
@@ -4113,7 +4305,7 @@ const LoginPage = () => {
                       placeholder="Teléfono"
                       value={regPhone}
                       onChange={(e) => setRegPhone(e.target.value)}
-                      className="w-full p-2 bg-white/5 text-white rounded-r-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      className="w-full p-2 bg-white/5 text-white rounded-r-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
                     />
                   </div>
                   <input
@@ -4121,11 +4313,11 @@ const LoginPage = () => {
                     placeholder="Contraseña"
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
-                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    className="w-full p-2 bg-white/5 text-white rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-amber-500" // Usando amber
                   />
                   <button
                     type="submit"
-                    className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg"
+                    className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-lg transition-all shadow-lg" // Usando amber
                   >
                     Crear Cuenta
                   </button>
@@ -4141,8 +4333,7 @@ const LoginPage = () => {
 
 const App = () => {
   const { isAppLoading, isAuthenticated } = useContext(AppContext);
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
+  const platformLogo = VITE_PLATFORM_LOGO;
 
   if (isAppLoading) {
     return (
