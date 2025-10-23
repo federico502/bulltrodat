@@ -1088,6 +1088,7 @@ const ManageNotificationsModal = ({ isOpen, onClose, setAlert }) => {
 
 // --- PROFILE MENU (MODIFICADO para incluir nuevos modales admin) ---
 const ProfileMenu = React.memo(
+  // CORRECCIÓN: Aseguramos que 'logout' sea recibido como un prop.
   ({
     user,
     logout,
@@ -1227,7 +1228,7 @@ const Header = ({
   onManageLeverage,
   onManageNotifications,
 }) => {
-  const { user, selectedAsset } = useContext(AppContext);
+  const { user, logout, selectedAsset } = useContext(AppContext); // CORRECCIÓN: Importar 'logout' del contexto
   const [volume, setVolume] = useState(0.01);
 
   return (
@@ -1275,11 +1276,7 @@ const Header = ({
       <div className="flex items-center space-x-4">
         <ProfileMenu
           user={user}
-          // The logout function is passed directly here, but the context's logout is used inside ProfileMenu.
-          // This is fine, but we'll remove it from the destructured props in ProfileMenu to make the dependency clearer.
-          logout={() => {
-            /* Handled by ProfileMenu internal logic, we don't need it explicitly here if we use the prop */
-          }}
+          logout={logout} // CORRECCIÓN: Pasar la función de logout del contexto
           onToggleSideMenu={onToggleSideMenu}
           onManageUsers={onManageUsers}
           onManageRegCode={onManageRegCode}
@@ -1352,7 +1349,7 @@ const LiveProfitCell = ({ operation }) => {
     if (typeof currentPrice !== "number") return 0;
     return operation.tipo_operacion.toLowerCase() === "sell"
       ? (operation.precio_entrada - currentPrice) * operation.volumen
-      : (currentPrice - op.precio_entrada) * operation.volumen;
+      : (currentPrice - operation.precio_entrada) * operation.volumen;
   }, [realTimePrices, operation]);
 
   const profit = calculateProfit();
@@ -2974,8 +2971,8 @@ const DashboardPage = () => {
     realTimePrices,
     setRealTimePrices,
     globalNotification,
-    // FIX: Añadido setGlobalNotification para resolver ReferenceError en WebSocket
     setGlobalNotification,
+    logout, // CORRECCIÓN: Importar logout para pasarlo a Header
   } = useContext(AppContext);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [mobileVolume, setMobileVolume] = useState(0.01);
