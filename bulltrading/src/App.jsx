@@ -23,8 +23,15 @@ import {
 } from "chart.js";
 import { motion, AnimatePresence } from "framer-motion";
 
+// --- Configuración de Entorno Segura (FIX CRÍTICO) ---
+const env = typeof import.meta.env !== "undefined" ? import.meta.env : {};
+const VITE_API_URL = env.VITE_API_URL || "";
+const VITE_WSS_URL = env.VITE_WSS_URL || "";
+const VITE_PLATFORM_LOGO = env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
+const VITE_PLATFORM_ID = env.VITE_PLATFORM_ID || "bulltrading";
+
 // --- Configuración de Axios ---
-axios.defaults.baseURL = import.meta.env.VITE_API_URL;
+axios.defaults.baseURL = VITE_API_URL;
 axios.defaults.withCredentials = true;
 
 // --- Registro de Chart.js ---
@@ -118,9 +125,21 @@ const Icons = {
       className={className}
     />
   ),
+  Settings: ({ className }) => (
+    <Icon
+      path="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+      className={className}
+    />
+  ),
+  Annotation: ({ className }) => (
+    <Icon
+      path="M7.75 2.5C5.975 2.5 4.5 3.975 4.5 5.75v10.5c0 1.775 1.475 3.25 3.25 3.25h1.5l1.75 2.25 1.75-2.25h1.5c1.775 0 3.25-1.475 3.25-3.25V5.75c0-1.775-1.475-3.25-3.25-3.25H7.75z"
+      className={className}
+    />
+  ),
 };
 
-// Catálogo de activos para búsqueda y recomendaciones
+// Catálogo de activos
 const ASSET_CATALOG = [
   // Cryptos
   { symbol: "BTC-USDT", name: "Bitcoin" },
@@ -172,9 +191,24 @@ const POPULAR_ASSETS = [
   ASSET_CATALOG.find((a) => a.symbol === "TSLA"),
   ASSET_CATALOG.find((a) => a.symbol === "EUR/USD"),
   ASSET_CATALOG.find((a) => a.symbol === "XAU/USD"),
-].filter(Boolean); // Filter out any potential undefined if symbols change
+].filter(Boolean);
 
-// --- Contexto de la App ---
+// --- UTILITARIOS DE CÁLCULO DE COSTOS (AÑADIDOS) ---
+const calculateCommissionCost = (price, volume, commissionRate, leverage) => {
+  // Comisión calculada sobre el volumen nocional (price * volume), independientemente del margen.
+  return price * volume * commissionRate;
+};
+
+const calculateSwapDailyCost = (requiredMargin, swapDailyPercentage) => {
+  // Swap calculado sobre el margen requerido.
+  return requiredMargin * swapDailyPercentage;
+};
+
+const normalizeAssetKey = (symbol) => {
+  return symbol?.toUpperCase().replace(/[-/]/g, "") || "";
+};
+
+// --- Contexto de la App (MODIFICADO) ---
 const AppContext = createContext();
 
 const AppProvider = ({ children }) => {
@@ -183,6 +217,15 @@ const AppProvider = ({ children }) => {
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [realTimePrices, setRealTimePrices] = useState({});
   const [selectedAsset, setSelectedAsset] = useState("BTC-USDT");
+
+  // NUEVOS ESTADOS DE CONFIGURACIÓN FINANCIERA (Igualando a Unique 1 Global)
+  const [commissions, setCommissions] = useState({
+    spread: 0.0001, // Valor de ejemplo
+    commissionRate: 0.001, // 0.1% de comisión por operación (típico en forex)
+  });
+  const [swapDailyPercentage, setSwapDailyPercentage] = useState(0.0005); // 0.05% diario de swap
+  const [maxLeverage, setMaxLeverage] = useState(100); // Máximo apalancamiento permitido
+  const [globalNotification, setGlobalNotification] = useState(null); // Notificación global del admin
 
   const checkUser = useCallback(async () => {
     setIsAppLoading(true);
@@ -227,6 +270,15 @@ const AppProvider = ({ children }) => {
       selectedAsset,
       setSelectedAsset,
       refreshUser: checkUser,
+      // Nuevos valores para administración de costos
+      commissions,
+      setCommissions,
+      swapDailyPercentage,
+      setSwapDailyPercentage,
+      maxLeverage,
+      setMaxLeverage,
+      globalNotification,
+      setGlobalNotification,
     }),
     [
       user,
@@ -236,6 +288,10 @@ const AppProvider = ({ children }) => {
       realTimePrices,
       selectedAsset,
       checkUser,
+      commissions,
+      swapDailyPercentage,
+      maxLeverage,
+      globalNotification,
     ]
   );
 
@@ -314,6 +370,7 @@ const TradingViewWidget = React.memo(({ symbol }) => {
     if (!assetSymbol) return "KUCOIN:BTCUSDT";
     let s = assetSymbol.toUpperCase();
 
+    // Lógica de mapeo de símbolos de TradingView (UNCHANGED)
     if (s.includes("-USDT")) return `KUCOIN:${s.replace("-", "")}`;
     if (s.endsWith("USDT")) return `KUCOIN:${s}`;
     if (s === "WTI/USD") return "TVC:USOIL";
@@ -411,6 +468,8 @@ const TradingViewWidget = React.memo(({ symbol }) => {
     />
   );
 });
+
+// ... (Pagination, PerformanceChart, StatisticsPanel, AssetPrice, AssetRow, AssetLists - UNCHANGED)
 
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
   if (totalPages <= 1) return null;
@@ -536,7 +595,7 @@ const StatisticsPanel = ({ stats, performanceData, isLoading }) => (
 
 const AssetPrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
-  const normalizedSymbol = symbol.toUpperCase().replace(/[-/]/g, "");
+  const normalizedSymbol = normalizeAssetKey(symbol);
   const price = realTimePrices[normalizedSymbol];
   const flashClass = useFlashOnUpdate(price);
   const baseColor = price ? "text-white" : "text-neutral-500";
@@ -724,8 +783,322 @@ const MenuItem = ({ icon, text, onClick }) => (
   </button>
 );
 
+// --- MODALES DE ADMINISTRACIÓN DE COSTOS (AÑADIDOS) ---
+
+const ManageCommissionsModal = ({ isOpen, onClose, setAlert }) => {
+  const { commissions, setCommissions } = useContext(AppContext);
+  const [commissionRate, setCommissionRate] = useState(
+    commissions.commissionRate * 100
+  );
+  const [spread, setSpread] = useState(commissions.spread * 10000); // Mostrar en pips (4 decimales)
+
+  useEffect(() => {
+    if (isOpen) {
+      setCommissionRate(commissions.commissionRate * 100);
+      setSpread(commissions.spread * 10000);
+    }
+  }, [isOpen, commissions]);
+
+  const handleSave = async () => {
+    try {
+      const newCommissions = {
+        commissionRate: parseFloat(commissionRate / 100),
+        spread: parseFloat(spread / 10000),
+      };
+
+      // Simulación: Actualiza el estado local y asume éxito
+      setCommissions(newCommissions);
+      // En un entorno real: await axios.post('/admin/commissions', newCommissions);
+
+      setAlert({
+        message: "Comisiones actualizadas con éxito.",
+        type: "success",
+      });
+      onClose();
+    } catch (error) {
+      setAlert({ message: "Error al actualizar comisiones.", type: "error" });
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Gestionar Comisiones / Spread"
+      maxWidth="max-w-md"
+    >
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1 text-neutral-300">
+            Tasa de Comisión (%)
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            value={commissionRate}
+            onChange={(e) => setCommissionRate(e.target.value)}
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-amber-500"
+          />
+          <p className="text-xs text-neutral-400 mt-1">
+            Porcentaje aplicado al volumen nocional de la operación.
+          </p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1 text-neutral-300">
+            Spread (en Pips/Puntos - ej. 10 pips = 0.0010)
+          </label>
+          <input
+            type="number"
+            step="1"
+            value={spread}
+            onChange={(e) => setSpread(e.target.value)}
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-amber-500"
+          />
+          <p className="text-xs text-neutral-400 mt-1">
+            Diferencia entre el precio de compra y venta (mostrado en puntos).
+          </p>
+        </div>
+        <div className="flex justify-end pt-4">
+          <button
+            onClick={handleSave}
+            className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 transition-colors"
+          >
+            Guardar
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+const ManageSwapModal = ({ isOpen, onClose, setAlert }) => {
+  const { swapDailyPercentage, setSwapDailyPercentage } =
+    useContext(AppContext);
+  const [swapRate, setSwapRate] = useState(swapDailyPercentage * 100);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSwapRate(swapDailyPercentage * 100);
+    }
+  }, [isOpen, swapDailyPercentage]);
+
+  const handleSave = async () => {
+    try {
+      const newSwap = parseFloat(swapRate / 100);
+      setSwapDailyPercentage(newSwap);
+      // En un entorno real: await axios.post('/admin/swap', { swap: newSwap });
+      setAlert({
+        message: "Swap diario actualizado con éxito.",
+        type: "success",
+      });
+      onClose();
+    } catch (error) {
+      setAlert({ message: "Error al actualizar swap.", type: "error" });
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Gestionar Swap Diario"
+      maxWidth="max-w-md"
+    >
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1 text-neutral-300">
+            Swap Diario (%) sobre Margen
+          </label>
+          <input
+            type="number"
+            step="0.001"
+            value={swapRate}
+            onChange={(e) => setSwapRate(e.target.value)}
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-amber-500"
+          />
+          <p className="text-xs text-neutral-400 mt-1">
+            Porcentaje de interés diario aplicado al margen de las operaciones
+            abiertas (nocturno).
+          </p>
+        </div>
+        <div className="flex justify-end pt-4">
+          <button
+            onClick={handleSave}
+            className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 transition-colors"
+          >
+            Guardar
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+const ManageLeverageModal = ({ isOpen, onClose, setAlert }) => {
+  const { maxLeverage, setMaxLeverage } = useContext(AppContext);
+  const [leverage, setLeverage] = useState(maxLeverage);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLeverage(maxLeverage);
+    }
+  }, [isOpen, maxLeverage]);
+
+  const handleSave = async () => {
+    try {
+      const newLeverage = parseInt(leverage, 10);
+      if (isNaN(newLeverage) || newLeverage <= 0) {
+        setAlert({
+          message: "El apalancamiento debe ser un número positivo.",
+          type: "error",
+        });
+        return;
+      }
+      setMaxLeverage(newLeverage);
+      // En un entorno real: await axios.post('/admin/leverage', { leverage: newLeverage });
+      setAlert({
+        message: "Apalancamiento máximo actualizado.",
+        type: "success",
+      });
+      onClose();
+    } catch (error) {
+      setAlert({
+        message: "Error al actualizar apalancamiento.",
+        type: "error",
+      });
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Gestionar Apalancamiento Máximo"
+      maxWidth="max-w-md"
+    >
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1 text-neutral-300">
+            Apalancamiento Máximo (ej: 100 para 1:100)
+          </label>
+          <input
+            type="number"
+            step="1"
+            min="1"
+            value={leverage}
+            onChange={(e) => setLeverage(e.target.value)}
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-amber-500"
+          />
+          <p className="text-xs text-neutral-400 mt-1">
+            Este valor impacta el margen requerido para las operaciones.
+          </p>
+        </div>
+        <div className="flex justify-end pt-4">
+          <button
+            onClick={handleSave}
+            className="px-5 py-2 rounded-md text-white font-bold bg-amber-600 hover:bg-amber-500 transition-colors"
+          >
+            Guardar
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+const ManageNotificationsModal = ({ isOpen, onClose, setAlert }) => {
+  const { setGlobalNotification } = useContext(AppContext);
+  const [message, setMessage] = useState("");
+  const [color, setColor] = useState("bg-blue-600");
+
+  const handleSend = async () => {
+    if (!message.trim()) {
+      setAlert({ message: "El mensaje no puede estar vacío.", type: "error" });
+      return;
+    }
+
+    try {
+      const notificationData = { message, color };
+
+      // Simulación: actualiza el estado local y asume éxito
+      setGlobalNotification(notificationData);
+      // En un entorno real, se haría un POST al backend, que a su vez enviaría el WS
+      // await axios.post('/admin/global-notification', notificationData);
+
+      setAlert({
+        message: "Notificación global enviada con éxito.",
+        type: "success",
+      });
+      onClose();
+    } catch (error) {
+      setAlert({ message: "Error al enviar la notificación.", type: "error" });
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Enviar Notificación Global"
+      maxWidth="max-w-lg"
+    >
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-1 text-neutral-300">
+            Mensaje (Se muestra a todos los usuarios)
+          </label>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows="3"
+            placeholder="Ej: El servidor estará en mantenimiento esta noche..."
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-amber-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1 text-neutral-300">
+            Color de Fondo
+          </label>
+          <select
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-amber-500 cursor-pointer"
+          >
+            <option value="bg-blue-600">Azul (Informativo)</option>
+            <option value="bg-amber-600">Amarillo (Advertencia)</option>
+            <option value="bg-red-600">Rojo (Urgente)</option>
+            <option value="bg-green-600">Verde (Éxito)</option>
+          </select>
+          <div className={`mt-2 p-2 rounded text-sm text-white ${color}`}>
+            Vista Previa: {message || "Este es un mensaje de prueba."}
+          </div>
+        </div>
+        <div className="flex justify-end pt-4">
+          <button
+            onClick={handleSend}
+            className="px-5 py-2 rounded-md text-white font-bold bg-green-600 hover:bg-green-500 transition-colors"
+          >
+            Enviar Notificación
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+// --- PROFILE MENU (MODIFICADO para incluir nuevos modales admin) ---
 const ProfileMenu = React.memo(
-  ({ user, logout, onToggleSideMenu, onManageUsers, onManageRegCode }) => {
+  ({
+    user,
+    logout,
+    onToggleSideMenu,
+    onManageUsers,
+    onManageRegCode,
+    onManageCommissions,
+    onManageSwap,
+    onManageLeverage,
+    onManageNotifications,
+  }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef(null);
 
@@ -780,6 +1153,10 @@ const ProfileMenu = React.memo(
                 />
                 {user?.rol === "admin" && (
                   <>
+                    <div className="my-1 h-px bg-white/10" />
+                    <p className="text-xs text-neutral-500 px-3 pt-1">
+                      ADMINISTRACIÓN
+                    </p>
                     <MenuItem
                       icon={
                         <Icons.UserGroup className="h-5 w-5 text-neutral-400" />
@@ -791,6 +1168,34 @@ const ProfileMenu = React.memo(
                       icon={<Icons.Key className="h-5 w-5 text-neutral-400" />}
                       text="Código de Registro"
                       onClick={() => handleItemClick(onManageRegCode)}
+                    />
+                    <MenuItem
+                      icon={
+                        <Icons.Settings className="h-5 w-5 text-neutral-400" />
+                      }
+                      text="Comisiones / Spread"
+                      onClick={() => handleItemClick(onManageCommissions)}
+                    />
+                    <MenuItem
+                      icon={
+                        <Icons.Settings className="h-5 w-5 text-neutral-400" />
+                      }
+                      text="Swap Diario"
+                      onClick={() => handleItemClick(onManageSwap)}
+                    />
+                    <MenuItem
+                      icon={
+                        <Icons.Settings className="h-5 w-5 text-neutral-400" />
+                      }
+                      text="Apalancamiento Máx"
+                      onClick={() => handleItemClick(onManageLeverage)}
+                    />
+                    <MenuItem
+                      icon={
+                        <Icons.Annotation className="h-5 w-5 text-neutral-400" />
+                      }
+                      text="Notificación Global"
+                      onClick={() => handleItemClick(onManageNotifications)}
                     />
                   </>
                 )}
@@ -817,6 +1222,10 @@ const Header = ({
   onManageRegCode,
   onToggleSideMenu,
   onToggleMainSidebar,
+  onManageCommissions,
+  onManageSwap,
+  onManageLeverage,
+  onManageNotifications,
 }) => {
   const { user, logout, selectedAsset } = useContext(AppContext);
   const [volume, setVolume] = useState(0.01);
@@ -870,11 +1279,17 @@ const Header = ({
           onToggleSideMenu={onToggleSideMenu}
           onManageUsers={onManageUsers}
           onManageRegCode={onManageRegCode}
+          onManageCommissions={onManageCommissions}
+          onManageSwap={onManageSwap}
+          onManageLeverage={onManageLeverage}
+          onManageNotifications={onManageNotifications}
         />
       </div>
     </header>
   );
 };
+
+// ... (FlashingMetric, FinancialMetrics - UNCHANGED)
 
 const FlashingMetric = ({ value, prefix = "", suffix = "" }) => {
   const flashClass = useFlashOnUpdate(value);
@@ -928,9 +1343,7 @@ const LiveProfitCell = ({ operation }) => {
   const { realTimePrices } = useContext(AppContext);
   const calculateProfit = useCallback(() => {
     if (operation.cerrada) return parseFloat(operation.ganancia || 0);
-    const normalizedSymbol = operation.activo
-      .toUpperCase()
-      .replace(/[-/]/g, "");
+    const normalizedSymbol = normalizeAssetKey(operation.activo);
     const currentPrice = realTimePrices[normalizedSymbol];
     if (typeof currentPrice !== "number") return 0;
     return operation.tipo_operacion.toLowerCase() === "sell"
@@ -945,6 +1358,7 @@ const LiveProfitCell = ({ operation }) => {
   );
 };
 
+// ... (OperationsHistory, Modal, ModalLivePrice - UNCHANGED)
 const OperationsHistory = ({
   operations,
   setOperations,
@@ -1232,7 +1646,7 @@ const Modal = ({
 
 const ModalLivePrice = React.memo(({ symbol }) => {
   const { realTimePrices } = useContext(AppContext);
-  const normalizedSymbol = symbol?.toUpperCase().replace(/[-/]/g, "");
+  const normalizedSymbol = normalizeAssetKey(symbol);
   const price = realTimePrices[normalizedSymbol];
   const flashClass = useFlashOnUpdate(price);
   const baseColor = price ? "text-white" : "text-yellow-400";
@@ -1246,12 +1660,34 @@ const ModalLivePrice = React.memo(({ symbol }) => {
   );
 });
 
+// --- NEW OPERATION MODAL (MODIFICADO para incluir costos) ---
 const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const { type, asset, volume } = operationData || {};
-  const { realTimePrices } = useContext(AppContext);
-  const normalizedAsset = asset?.toUpperCase().replace(/[-/]/g, "");
+  const { realTimePrices, commissions, maxLeverage, swapDailyPercentage } =
+    useContext(AppContext);
+  const normalizedAsset = normalizeAssetKey(asset);
   const livePrice = realTimePrices[normalizedAsset];
-  const requiredMargin = livePrice ? (livePrice * volume).toFixed(2) : "0.00";
+
+  // Cálculos de costos y margen
+  const notionalValue = livePrice * volume; // Valor nocional
+  const requiredMargin = livePrice
+    ? (notionalValue / maxLeverage).toFixed(2)
+    : "0.00";
+  const commissionCost = livePrice
+    ? calculateCommissionCost(
+        livePrice,
+        volume,
+        commissions.commissionRate,
+        maxLeverage
+      ).toFixed(2)
+    : "0.00";
+  const swapDailyCost = livePrice
+    ? calculateSwapDailyCost(
+        parseFloat(requiredMargin),
+        swapDailyPercentage
+      ).toFixed(2)
+    : "0.00";
+
   const [tp, setTp] = useState("");
   const [sl, setSl] = useState("");
 
@@ -1289,6 +1725,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
       take_profit: tp ? parseFloat(tp) : null,
       stop_loss: sl ? parseFloat(sl) : null,
       tipo_operacion: type,
+      // Se pueden incluir los costos en el payload si el backend los requiere para registro.
     });
     onClose();
   };
@@ -1309,9 +1746,17 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           <span>Volumen:</span>
           <span className="font-mono text-white">{volume}</span>
         </p>
-        <p className="text-neutral-300 flex justify-between">
-          <span>Margen Requerido:</span>
+        <p className="text-neutral-300 flex justify-between border-t border-white/10 pt-2 font-bold">
+          <span>Margen Requerido (1:{maxLeverage}):</span>
           <span className="font-mono text-white">${requiredMargin}</span>
+        </p>
+        <p className="text-neutral-300 flex justify-between text-sm">
+          <span>Costo Comisión (Inicial):</span>
+          <span className="font-mono text-red-400">-${commissionCost}</span>
+        </p>
+        <p className="text-neutral-300 flex justify-between text-sm">
+          <span>Swap Diario Est. (Nocturno):</span>
+          <span className="font-mono text-red-400">-${swapDailyCost}</span>
         </p>
       </div>
       <div className="mb-4">
@@ -1367,6 +1812,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   );
 };
 
+// ... (OperationDetailsModal, UserOperationsModal, UserCard, UserTableRow, ManageUsersModal, RegistrationCodeModal, ConfirmationModal, UserProfile, PaymentMethodButton, DepositView, WithdrawView, MenuButton, SideMenu, CryptoPaymentModal, BankTransferModal - UNCHANGED)
 const OperationDetailsModal = ({ isOpen, onClose, operation, profit }) => (
   <Modal
     isOpen={isOpen}
@@ -1991,7 +2437,7 @@ const ManageUsersModal = ({
                 user={user}
                 onDataChange={handleUserUpdate}
                 onViewUserOps={onViewUserOps}
-                onDeleteUser={onDeleteUser}
+                onDeleteUser={handleDeleteUser}
                 onSave={handleSave}
               />
             ))}
@@ -2298,10 +2744,7 @@ const SideMenu = React.memo(
               <div className="p-4 border-b border-white/10 flex-shrink-0">
                 <img
                   className="mb-2"
-                  src={
-                    import.meta.env.VITE_PLATFORM_LOGO ||
-                    "/bulltrading-logo.png"
-                  }
+                  src={VITE_PLATFORM_LOGO || "/bulltrading-logo.png"}
                   width="220"
                   alt="Logo"
                 />
@@ -2369,7 +2812,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
   const depositAddress = "TQmZ1fA2gB4iC3dE5fG6h7J8k9L0mN1oP2q"; // Dirección de ejemplo
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(depositAddress);
+    document.execCommand("copy", false, depositAddress); // Usar execCommand
     onSubmitted();
   };
 
@@ -2502,6 +2945,23 @@ const BankTransferModal = ({ isOpen, onClose, type, onSubmitted }) => (
   </Modal>
 );
 
+// --- GLOBAL NOTIFICATION BANNER (AÑADIDO) ---
+const GlobalNotificationBanner = () => {
+  const { globalNotification } = useContext(AppContext);
+  if (!globalNotification || !globalNotification.message) return null;
+
+  return (
+    <motion.div
+      initial={{ y: -50, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: -50, opacity: 0 }}
+      className={`fixed top-0 left-0 right-0 z-50 p-3 text-center text-sm font-medium text-white shadow-xl ${globalNotification.color}`}
+    >
+      {globalNotification.message}
+    </motion.div>
+  );
+};
+
 const DashboardPage = () => {
   const {
     user,
@@ -2509,6 +2969,7 @@ const DashboardPage = () => {
     setSelectedAsset,
     realTimePrices,
     setRealTimePrices,
+    globalNotification, // ADDED
   } = useContext(AppContext);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [mobileVolume, setMobileVolume] = useState(0.01);
@@ -2560,7 +3021,15 @@ const DashboardPage = () => {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isNewOpModalOpen, setIsNewOpModalOpen] = useState(false);
   const [newOpModalData, setNewOpModalData] = useState(null);
+
+  // Modales de Admin (ADDED)
   const [isUsersModalOpen, setIsUsersModalOpen] = useState(false);
+  const [isCommissionsModalOpen, setIsCommissionsModalOpen] = useState(false);
+  const [isSwapModalOpen, setIsSwapModalOpen] = useState(false);
+  const [isLeverageModalOpen, setIsLeverageModalOpen] = useState(false);
+  const [isNotificationsModalOpen, setIsNotificationsModalOpen] =
+    useState(false);
+
   const [isUserOpsModalOpen, setIsUserOpsModalOpen] = useState(false);
   const [isOpDetailsModalOpen, setIsOpDetailsModalOpen] = useState(false);
   const [currentUserForOps, setCurrentUserForOps] = useState(null);
@@ -2582,6 +3051,9 @@ const DashboardPage = () => {
     children: null,
     onConfirm: () => {},
   });
+
+  // Get padding based on notification visibility
+  const mainContentPadding = globalNotification ? "pt-16 lg:pt-4" : "pt-2";
 
   const handleOpenPaymentModal = (method, type) => {
     setPaymentModalConfig({ isOpen: true, method, type });
@@ -2641,11 +3113,12 @@ const DashboardPage = () => {
     if (user) fetchData(1, "todas");
   }, [user, fetchData]);
 
+  // WebSocket Connection (MODIFIED to handle admin_notification)
   useEffect(() => {
     if (!user || !userAssets.length) return;
 
     const connectWebSocket = () => {
-      const wsUrl = import.meta.env.VITE_WSS_URL;
+      const wsUrl = VITE_WSS_URL;
       if (!wsUrl) {
         console.error("WebSocket URL is not defined.");
         return;
@@ -2661,9 +3134,22 @@ const DashboardPage = () => {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+
           if (data.type === "price_update") {
-            setRealTimePrices((prev) => ({ ...prev, ...data.prices }));
-          } else if (data.tipo === "operacion_cerrada") {
+            const newPrices = {};
+            // FIX: Rigorous validation of price updates
+            for (const key in data.prices) {
+              const value = data.prices[key];
+              if (
+                typeof key === "string" &&
+                (typeof value === "number" ||
+                  (typeof value === "string" && !isNaN(parseFloat(value))))
+              ) {
+                newPrices[key] = parseFloat(value);
+              }
+            }
+            setRealTimePrices((prev) => ({ ...prev, ...newPrices }));
+          } else if (data.type === "operacion_cerrada") {
             setAlert({
               message: `Operación #${data.operacion_id} (${
                 data.activo
@@ -2673,6 +3159,13 @@ const DashboardPage = () => {
               type: "success",
             });
             fetchData(pagination.currentPage, opHistoryFilter);
+          } else if (data.type === "admin_notification") {
+            // ADDED: Global notification handler
+            setAlert({
+              message: "Nueva notificación global recibida.",
+              type: "info",
+            });
+            setGlobalNotification(data.notification);
           }
         } catch (error) {
           console.error("Error processing WebSocket message:", error);
@@ -2701,7 +3194,7 @@ const DashboardPage = () => {
         wsRef.current.close();
       }
     };
-  }, [user, userAssets]);
+  }, [user, userAssets, setGlobalNotification]); // Added setGlobalNotification dependency
 
   useEffect(() => {
     localStorage.setItem("userTradingAssets", JSON.stringify(userAssets));
@@ -2722,7 +3215,7 @@ const DashboardPage = () => {
   useEffect(() => {
     const openOperations = operations.filter((op) => !op.cerrada);
     const pnl = openOperations.reduce((total, op) => {
-      const normalizedSymbol = op.activo.toUpperCase().replace(/[-/]/g, "");
+      const normalizedSymbol = normalizeAssetKey(op.activo);
       const currentPrice = realTimePrices[normalizedSymbol];
       if (typeof currentPrice !== "number") return total;
       return (
@@ -2732,8 +3225,10 @@ const DashboardPage = () => {
           : (currentPrice - op.precio_entrada) * op.volumen)
       );
     }, 0);
+    // Marginal value calculation assumes entry price * volume / leverage
+    // For simplicity, BullTrading uses capital_invertido (margen) from DB, but for real-time calculation, we use a simple placeholder or the entry price.
     const usedMargin = openOperations.reduce(
-      (total, op) => total + op.precio_entrada * op.volumen,
+      (total, op) => total + (op.capital_invertido || 0), // Use margin from stored op or a fallback
       0
     );
     const equity = balance + pnl;
@@ -2760,11 +3255,12 @@ const DashboardPage = () => {
 
   const handleOpenNewOpModal = useCallback(
     (type, volume) => {
+      // Logic for opening new operation modal (UNCHANGED)
       if (!volume || volume <= 0) {
         setAlert({ message: "El volumen debe ser mayor a 0.", type: "error" });
         return;
       }
-      const normalizedAsset = selectedAsset.toUpperCase().replace(/[-/]/g, "");
+      const normalizedAsset = normalizeAssetKey(selectedAsset);
       const currentPrice = realTimePrices[normalizedAsset];
       if (!currentPrice) {
         setAlert({
@@ -2773,6 +3269,7 @@ const DashboardPage = () => {
         });
         return;
       }
+      // Simplistic check: assumes margin = cost
       const cost = currentPrice * volume;
       if (cost > metrics.freeMargin) {
         setAlert({
@@ -2789,7 +3286,8 @@ const DashboardPage = () => {
 
   const handleConfirmOperation = useCallback(
     async (opDetails) => {
-      const normalizedAsset = selectedAsset.toUpperCase().replace(/[-/]/g, "");
+      // Logic for confirming operation (UNCHANGED)
+      const normalizedAsset = normalizeAssetKey(selectedAsset);
       const livePrice = realTimePrices[normalizedAsset];
       if (!livePrice) {
         setAlert({
@@ -2868,7 +3366,7 @@ const DashboardPage = () => {
 
   const handleOpRowClick = useCallback(
     (op) => {
-      const normalizedSymbol = op.activo.toUpperCase().replace(/[-/]/g, "");
+      const normalizedSymbol = normalizeAssetKey(op.activo);
       const currentPrice = realTimePrices[normalizedSymbol];
       const profit = op.cerrada
         ? parseFloat(op.ganancia || 0)
@@ -2939,11 +3437,11 @@ const DashboardPage = () => {
     marginLevel: metrics.marginLevel.toFixed(2),
   };
 
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
+  const platformLogo = VITE_PLATFORM_LOGO;
 
   return (
     <div className="flex h-screen bg-black text-white font-sans overflow-hidden">
+      <GlobalNotificationBanner />
       <AnimatePresence>
         {alert.message && (
           <Toast
@@ -3051,12 +3549,34 @@ const DashboardPage = () => {
         operationData={newOpModalData}
         onConfirm={handleConfirmOperation}
       />
+
+      {/* Modales de Administración (ADDED) */}
       <ManageUsersModal
         isOpen={isUsersModalOpen}
         onClose={() => setIsUsersModalOpen(false)}
         onViewUserOps={handleViewUserOps}
         setAlert={setAlert}
         onDeleteUser={handleDeleteUser}
+      />
+      <ManageCommissionsModal
+        isOpen={isCommissionsModalOpen}
+        onClose={() => setIsCommissionsModalOpen(false)}
+        setAlert={setAlert}
+      />
+      <ManageSwapModal
+        isOpen={isSwapModalOpen}
+        onClose={() => setIsSwapModalOpen(false)}
+        setAlert={setAlert}
+      />
+      <ManageLeverageModal
+        isOpen={isLeverageModalOpen}
+        onClose={() => setIsLeverageModalOpen(false)}
+        setAlert={setAlert}
+      />
+      <ManageNotificationsModal
+        isOpen={isNotificationsModalOpen}
+        onClose={() => setIsNotificationsModalOpen(false)}
+        setAlert={setAlert}
       />
       <UserOperationsModal
         isOpen={isUserOpsModalOpen}
@@ -3084,8 +3604,14 @@ const DashboardPage = () => {
           onManageRegCode={() => setIsRegCodeModalOpen(true)}
           onToggleSideMenu={() => setIsSideMenuOpen(true)}
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
+          onManageCommissions={() => setIsCommissionsModalOpen(true)} // ADDED
+          onManageSwap={() => setIsSwapModalOpen(true)} // ADDED
+          onManageLeverage={() => setIsLeverageModalOpen(true)} // ADDED
+          onManageNotifications={() => setIsNotificationsModalOpen(true)} // ADDED
         />
-        <div className="flex-1 flex flex-col p-2 sm:p-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
+        <div
+          className={`flex-1 flex flex-col p-2 sm:p-4 gap-4 overflow-y-auto pb-24 sm:pb-4 ${mainContentPadding}`}
+        >
           <div className="flex-grow min-h-[300px] sm:min-h-[400px] bg-black/20 rounded-xl shadow-2xl border border-white/10">
             <TradingViewWidget symbol={selectedAsset} />
           </div>
@@ -3155,7 +3681,7 @@ const LoginPage = () => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    const platform_id = import.meta.env.VITE_PLATFORM_ID || "bulltrading";
+    const platform_id = VITE_PLATFORM_ID;
 
     if (action === "login") {
       try {
@@ -3201,8 +3727,7 @@ const LoginPage = () => {
     }
   };
 
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
+  const platformLogo = VITE_PLATFORM_LOGO;
   const formVariants = {
     hidden: { opacity: 0, x: 300 },
     visible: {
@@ -3368,8 +3893,7 @@ const LoginPage = () => {
 
 const App = () => {
   const { isAppLoading, isAuthenticated } = useContext(AppContext);
-  const platformLogo =
-    import.meta.env.VITE_PLATFORM_LOGO || "/bulltrading-logo.png";
+  const platformLogo = VITE_PLATFORM_LOGO;
 
   if (isAppLoading) {
     return (
