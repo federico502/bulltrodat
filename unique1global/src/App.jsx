@@ -33,6 +33,94 @@ const VITE_PLATFORM_LOGO_WHITE =
   env.VITE_PLATFORM_LOGO_WHITE || "/unique1global-logo-white.png";
 const VITE_PLATFORM_ID = env.VITE_PLATFORM_ID || "unique1global";
 
+// --- Contenido de Políticas (Importado aquí para renderizar directamente) ---
+const POLICY_MARKDOWN = `# Políticas y Condiciones de Servicio
+
+## 1. Introducción
+
+Bienvenido a Unique 1 Global. Estos términos y condiciones rigen el uso de nuestra plataforma de trading y los servicios asociados. Al acceder o utilizar nuestra plataforma, usted acepta estar sujeto a estos términos.
+
+## 2. Naturaleza de la Plataforma
+
+Unique 1 Global es una plataforma de simulación de trading apalancado. Todas las transacciones realizadas aquí, incluyendo operaciones de compra/venta (Buy/Sell), aplicación de apalancamiento, cálculo de margen, comisiones y swaps, son simuladas. **No se utiliza dinero real ni activos financieros reales.** Los resultados y datos mostrados no reflejan ni garantizan el rendimiento real de los mercados financieros.
+
+## 3. Riesgos del Trading Simulado
+
+Aunque la plataforma es de simulación, la lógica financiera replica los riesgos del trading real. El uso de apalancamiento puede llevar a pérdidas rápidas y sustanciales en su saldo simulado. Usted es responsable de gestionar su riesgo simulado y de entender los conceptos de Stop Loss (SL) y Take Profit (TP).
+
+## 4. Comisiones y Cargos
+
+El sistema aplica los siguientes cargos simulados:
+
+* **Spread:** Un diferencial entre el precio de compra y venta, aplicado al precio de entrada de la operación.
+
+* **Comisión:** Un porcentaje fijo sobre el volumen nocional de la operación, deducido de su balance al abrir la posición.
+
+* **Swap Diario:** Un cargo por intereses nocturnos aplicado al margen usado de las operaciones mantenidas abiertas al final del día.
+
+Estos cargos son ajustables por el administrador de la plataforma.
+
+## 5. Cuentas de Usuario
+
+* **Registro:** El registro requiere un email y una contraseña. La información debe ser veraz.
+
+* **Seguridad:** Usted es responsable de mantener la confidencialidad de su contraseña.
+
+* **Terminación:** Nos reservamos el derecho de suspender o terminar su cuenta si se detecta un abuso.
+
+## 6. Privacidad
+
+Toda la información personal (nombre, email, datos de contacto) se utiliza únicamente para el funcionamiento interno de la plataforma y la comunicación con el usuario. No compartimos datos con terceros.
+
+## 7. Jurisdicción y Ley Aplicable
+
+Estos términos se regirán e interpretarán de acuerdo con las leyes de la jurisdicción donde se registre la entidad operadora de la plataforma simulada.
+
+**Al continuar utilizando Unique 1 Global, usted confirma que ha leído, entendido y aceptado estas Políticas y Condiciones.**
+`;
+
+// --- Renderizador de Markdown simple ---
+// Adaptamos el contenido markdown a HTML para renderizarlo
+const MarkdownRenderer = ({ content }) => {
+  const processMarkdown = (markdown) => {
+    let html = markdown;
+
+    // Encabezados
+    html = html.replace(
+      /^## (.*$)/gim,
+      '<h2 class="text-3xl font-bold mt-8 mb-4 text-gray-900">$1</h2>'
+    );
+    html = html.replace(
+      /^# (.*$)/gim,
+      '<h1 class="text-4xl font-extrabold mb-6 text-purple-600">$1</h1>'
+    );
+
+    // Énfasis (Negrita)
+    html = html.replace(
+      /\*\*(.*?)\*\*/gim,
+      '<strong class="font-extrabold text-red-600">$1</strong>'
+    );
+    html = html.replace(/\*(.*?)\*/gim, "<em>$1</em>");
+
+    // Párrafos (Debe ir después de los encabezados)
+    html = html.replace(
+      /^(?!<h|<ul|<li).*$/gim,
+      '<p class="text-gray-700 mb-4 leading-relaxed">$1</p>'
+    );
+
+    return html;
+  };
+
+  const cleanContent = processMarkdown(content);
+
+  return (
+    <div
+      className="prose max-w-none"
+      dangerouslySetInnerHTML={{ __html: cleanContent }}
+    />
+  );
+};
+
 // --- Configuración de Axios ---
 axios.defaults.baseURL = VITE_API_URL;
 axios.defaults.withCredentials = true;
@@ -153,7 +241,7 @@ const Icons = {
     />
   ),
   ArrowRight: ({ className }) => (
-    <Icon path="M17 8l4 4m0 0l-4 4m4-4H3" className={className} />
+    <Icon path="M17 8l4 4m0 0l-4-4m4-4H3" className={className} />
   ),
   CurrencyDollar: ({ className }) => (
     <Icon
@@ -4525,18 +4613,81 @@ const LoginPage = ({ onNavigate }) => {
   );
 };
 
-// --- NUEVO: Página de Inicio (Landing Page) ---
+// --- NUEVO COMPONENTE: Página de Políticas (Con el estilo del Landing) ---
+const PoliciesPage = ({ onNavigate }) => {
+  const platformLogo = VITE_PLATFORM_LOGO;
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* Header reutilizado de Landing */}
+      <header className="flex-shrink-0 sticky top-0 left-0 right-0 bg-white/80 backdrop-blur-lg shadow-md z-50">
+        <div className="container mx-auto px-6 py-3 flex justify-between items-center">
+          <button
+            onClick={() => onNavigate("landing")}
+            className="cursor-pointer"
+          >
+            <img src={platformLogo} alt="Logo" className="h-8" />
+          </button>
+          <button
+            onClick={() => onNavigate("login")}
+            className="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-lg"
+            style={{ backgroundColor: "#410093" }}
+          >
+            Login / Registro
+          </button>
+        </div>
+      </header>
+
+      {/* Contenido principal (Simulando una sección del landing) */}
+      <main className="flex-grow py-12 md:py-20 bg-gray-50">
+        <div className="container mx-auto px-6 max-w-4xl">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="bg-white p-6 sm:p-10 rounded-2xl shadow-xl border border-gray-200"
+          >
+            <MarkdownRenderer content={POLICY_MARKDOWN} />
+            <button
+              onClick={() => onNavigate("landing")}
+              className="mt-8 flex items-center text-purple-600 hover:text-purple-700 font-semibold transition-colors"
+            >
+              <Icons.ChevronLeft /> Volver al Inicio
+            </button>
+          </motion.div>
+        </div>
+      </main>
+
+      {/* Footer reutilizado de Landing */}
+      <footer className="flex-shrink-0 bg-gray-800 text-white py-6">
+        <div className="container mx-auto px-6 text-center text-sm">
+          <p className="mb-2">
+            &copy; {new Date().getFullYear()} Unique 1 Global. Todos los
+            derechos reservados.
+          </p>
+          <span className="text-white mb-2 cursor-default">
+            Políticas y Condiciones
+          </span>
+          <p className="text-gray-400 mt-2">
+            El trading implica riesgos. Invierte de manera responsable.
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+// --- Antiguo: Página de Inicio (Landing Page) ---
 const LandingPage = ({ onNavigate }) => {
   const platformLogo = VITE_PLATFORM_LOGO;
 
   const scrollToSection = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
-  // NUEVA FUNCIÓN: Abre la pestaña con las políticas
+
+  // FUNCIÓN MODIFICADA: Ahora navega al nuevo componente PoliciesPage
   const openPolicies = () => {
-    // Usamos el filepath del documento markdown para abrirlo en una nueva pestaña.
-    // Esto funciona gracias al entorno de Canvas que lo renderiza.
-    window.open("/policies.md", "_blank");
+    onNavigate("policies");
   };
 
   return (
@@ -4973,6 +5124,8 @@ const App = () => {
   switch (currentView) {
     case "login":
       return <LoginPage onNavigate={setCurrentView} />;
+    case "policies": // NUEVA RUTA
+      return <PoliciesPage onNavigate={setCurrentView} />;
     case "landing":
     default:
       return <LandingPage onNavigate={setCurrentView} />;
