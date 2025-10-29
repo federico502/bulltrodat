@@ -4532,6 +4532,12 @@ const LandingPage = ({ onNavigate }) => {
   const scrollToSection = (id) => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
+  // NUEVA FUNCIÓN: Abre la pestaña con las políticas
+  const openPolicies = () => {
+    // Usamos el filepath del documento markdown para abrirlo en una nueva pestaña.
+    // Esto funciona gracias al entorno de Canvas que lo renderiza.
+    window.open("/policies.md", "_blank");
+  };
 
   return (
     <div className="bg-white text-gray-800 font-sans">
@@ -4908,13 +4914,19 @@ const LandingPage = ({ onNavigate }) => {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* Footer (Añadido el botón de Políticas) */}
       <footer className="bg-gray-800 text-white py-6">
         <div className="container mx-auto px-6 text-center text-sm">
-          <p>
+          <p className="mb-2">
             &copy; {new Date().getFullYear()} Unique 1 Global. Todos los
             derechos reservados.
           </p>
+          <button
+            onClick={openPolicies}
+            className="text-gray-400 hover:text-white transition-colors underline mb-2"
+          >
+            Políticas y Condiciones
+          </button>
           <p className="text-gray-400 mt-2">
             El trading implica riesgos. Invierte de manera responsable.
           </p>
@@ -4952,6 +4964,7 @@ const App = () => {
     // APLICACIÓN DEL PADDING DINÁMICO Y EL BANNER
     return (
       <div className={`h-screen ${getDashboardPadding()}`}>
+        <GlobalNotificationBanner />
         <DashboardPage />
       </div>
     );
