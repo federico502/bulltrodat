@@ -3101,7 +3101,7 @@ const FinancialMetrics = ({ metrics, isLoading }) => (
           <p className="text-gray-500">Equidad</p>
           <FlashingMetric value={metrics.equity} prefix="$" />
         </div>
-        x
+
         <div className="text-center p-2 w-full">
           <p className="text-gray-500">M. Usado</p>
           <FlashingMetric value={metrics.usedMargin} prefix="$" />
