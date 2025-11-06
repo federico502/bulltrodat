@@ -29,7 +29,7 @@ import bcrypt from "bcryptjs";
 import path from "path";
 import { fileURLToPath } from "url";
 import cors from "cors";
-import fetch from "node-fetch"; // Importación necesaria para llamadas a APIs externas
+import fetch from "node-fetch";
 import WebSocket, { WebSocketServer } from "ws";
 import http from "http";
 import helmet from "helmet";
@@ -42,7 +42,7 @@ const wss = new WebSocketServer({ noServer: true });
 const {
   DATABASE_URL,
   SESSION_SECRET,
-  TWELVE_DATA_API_KEY, // Clave para precios reales
+  TWELVE_DATA_API_KEY,
   FRONTEND_URLS,
   NODE_ENV,
   PORT = 3000,
@@ -450,34 +450,167 @@ async function getLatestPrice(symbol) {
   return price !== undefined ? parseFloat(price) : null;
 }
 
-// --- NUEVA LÓGICA: Cobro de Swap Diario y Cierre TP/SL ---
-// Factor de normalización: 24 horas * 3600 segundos/hora / 5 segundos/ejecución = 17280 (YA NO SE USA)
+// --- LÓGICA CLAVE: CERRAR OPERACIONES AUTOMÁTICAMENTE (TP/SL, SWAP y STOP-OUT) ---
 const SWAP_DAILY_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 horas en milisegundos
+const STOP_OUT_LEVEL = 100; // 100% de Nivel de Margen (Equity <= Margen Usado)
+
+async function liquidarOperacion(client, op, precioActual, motivo, ganancia) {
+  await client.query("BEGIN");
+  await client.query(
+    "UPDATE operaciones SET cerrada = true, ganancia = $1, precio_cierre = $2 WHERE id = $3",
+    [ganancia, precioActual, op.id]
+  );
+  await client.query(
+    "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
+    [ganancia, op.usuario_id]
+  );
+  await client.query("COMMIT");
+
+  // Notificar al cliente que la operación se ha cerrado
+  broadcast({
+    type: "operacion_cerrada",
+    operacion_id: op.id,
+    activo: op.activo,
+    ganancia: ganancia,
+    tipoCierre: motivo,
+  });
+}
 
 async function cerrarOperacionesAutomáticamente() {
   const client = await pool.connect();
   try {
-    // 1. Lógica de cierre por TP/SL
-    const result = await client.query(
-      "SELECT * FROM operaciones WHERE cerrada = false AND (take_profit IS NOT NULL OR stop_loss IS NOT NULL)"
+    // 1. Obtener todas las operaciones abiertas por usuario para el Stop-Out
+    const openOpsResult = await client.query(
+      `SELECT op.*, u.balance as user_balance
+       FROM operaciones op
+       JOIN usuarios u ON op.usuario_id = u.id
+       WHERE op.cerrada = false`
     );
-    const operaciones = result.rows;
-    for (const op of operaciones) {
+    const openOperations = openOpsResult.rows;
+
+    // Agrupar operaciones por usuario para calcular Equity y Margen Usado
+    const usersData = {};
+    openOperations.forEach((op) => {
+      const {
+        usuario_id,
+        user_balance,
+        capital_invertido,
+        activo,
+        tipo_operacion,
+        precio_entrada,
+        volumen,
+      } = op;
+      const normalizedSymbol = normalizeSymbol(activo);
+      const precioActual =
+        global.preciosEnTiempoReal[normalizedSymbol] ||
+        parseFloat(op.precio_entrada); // Usar precio de entrada como fallback
+      const precioNum = parseFloat(precioActual);
+
+      // Calcular PnL flotante
+      let pnl = 0;
+      if (tipo_operacion.toLowerCase().includes("buy")) {
+        pnl = (precioNum - parseFloat(precio_entrada)) * parseFloat(volumen);
+      } else {
+        pnl = (parseFloat(precio_entrada) - precioNum) * parseFloat(volumen);
+      }
+
+      const margenUsado = parseFloat(capital_invertido);
+
+      if (!usersData[usuario_id]) {
+        usersData[usuario_id] = {
+          balance: parseFloat(user_balance),
+          usedMargin: 0,
+          pnl: 0,
+          operations: [],
+        };
+      }
+
+      usersData[usuario_id].usedMargin += margenUsado;
+      usersData[usuario_id].pnl += pnl;
+      usersData[usuario_id].operations.push(op);
+    });
+
+    // --- LÓGICA DE STOP-OUT (Nivel de Margen al 100%) ---
+    for (const userId in usersData) {
+      const data = usersData[userId];
+      const equity = data.balance + data.pnl;
+      const marginLevel =
+        data.usedMargin > 0 ? (equity / data.usedMargin) * 100 : Infinity;
+
+      // Si el nivel de margen es <= 100%, liquidar todas las posiciones abiertas
+      if (marginLevel <= STOP_OUT_LEVEL) {
+        console.log(
+          `🚨 [STOP-OUT] Usuario ${userId} liquidado. Nivel de Margen: ${marginLevel.toFixed(
+            2
+          )}%`
+        );
+        for (const op of data.operations) {
+          const precioActual = await getLatestPrice(op.activo);
+          if (precioActual) {
+            const tipo = op.tipo_operacion.toLowerCase();
+            const precio_entrada = parseFloat(op.precio_entrada);
+            const volumen = parseFloat(op.volumen);
+            let ganancia = 0;
+
+            if (tipo === "compra" || tipo === "buy") {
+              ganancia = (precioActual - precio_entrada) * volumen;
+            } else {
+              ganancia = (precio_entrada - precioActual) * volumen;
+            }
+
+            // Liquidar posición
+            await liquidarOperacion(
+              client,
+              op,
+              precioActual,
+              "STOP-OUT",
+              ganancia
+            );
+          }
+        }
+      }
+    }
+
+    // 2. Lógica de cierre por TP/SL
+    // Solo procesamos las operaciones que no han sido liquidadas por Stop-Out
+    const tpSlResult = await client.query(
+      `SELECT * FROM operaciones 
+       WHERE cerrada = false 
+       AND (take_profit IS NOT NULL OR stop_loss IS NOT NULL)`
+    );
+    const operacionesTPSL = tpSlResult.rows;
+
+    for (const op of operacionesTPSL) {
+      // Si la operación ya fue liquidada por Stop-Out, la omitimos
+      if (usersData[op.usuario_id] && usersData[op.usuario_id].liquidated)
+        continue;
+
       const precioActual = await getLatestPrice(op.activo);
       if (!precioActual) continue;
 
       let cerrar = false;
+      let motivo = null;
       const entrada = parseFloat(op.precio_entrada);
       const tp = op.take_profit ? parseFloat(op.take_profit) : null;
       const sl = op.stop_loss ? parseFloat(op.stop_loss) : null;
       const tipo = op.tipo_operacion.toLowerCase();
 
       if (tipo === "buy" || tipo === "compra") {
-        if ((tp && precioActual >= tp) || (sl && precioActual <= sl))
+        if (tp && precioActual >= tp) {
           cerrar = true;
+          motivo = "TP";
+        } else if (sl && precioActual <= sl) {
+          cerrar = true;
+          motivo = "SL";
+        }
       } else if (tipo === "sell" || tipo === "venta") {
-        if ((tp && precioActual <= tp) || (sl && precioActual >= sl))
+        if (tp && precioActual <= tp) {
           cerrar = true;
+          motivo = "TP";
+        } else if (sl && precioActual >= sl) {
+          cerrar = true;
+          motivo = "SL";
+        }
       }
 
       if (cerrar) {
@@ -490,41 +623,21 @@ async function cerrarOperacionesAutomáticamente() {
           ganancia = (entrada - precioActual) * volumen;
         }
 
-        const montoADevolver = ganancia;
-
-        await client.query("BEGIN");
-        await client.query(
-          "UPDATE operaciones SET cerrada = true, ganancia = $1, precio_cierre = $2 WHERE id = $3",
-          [ganancia, precioActual, op.id]
-        );
-        await client.query(
-          "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
-          [montoADevolver, op.usuario_id]
-        );
-        await client.query("COMMIT");
+        await liquidarOperacion(client, op, precioActual, motivo, ganancia);
       }
     }
 
-    // 2. LÓGICA DE COBRO DE SWAP DIARIO (CORREGIDA PARA REALISMO)
-    // El swap solo se cobra si han pasado 24 horas (u otro intervalo largo) desde la última vez.
-
-    // --- Lógica del Cobro de Swap (Simplificada para ejecución cada 24 horas) ---
-    // NOTA: Para un entorno de producción, esta lógica debería ser gestionada por un CRON
-    // y no por un setInterval simple, pero manteniendo la estructura actual, ejecutaremos
-    // el cobro del 100% de la tasa diaria.
-
-    // Asumimos que esta función se ejecutará a la frecuencia deseada (ej: cada 24 horas)
+    // 3. LÓGICA DE COBRO DE SWAP DIARIO
     if (SWAP_DAILY_PORCENTAJE > 0) {
-      const openOpsResult = await client.query(
+      const swapOpenOpsResult = await client.query(
         "SELECT id, usuario_id, capital_invertido FROM operaciones WHERE cerrada = false"
       );
-      // Tasa diaria de swap (el 0.05% completo)
+
       const swapRate = SWAP_DAILY_PORCENTAJE / 100;
       const swapCostByUser = {};
 
-      for (const op of openOpsResult.rows) {
+      for (const op of swapOpenOpsResult.rows) {
         const margen = parseFloat(op.capital_invertido);
-        // Cobro del swap diario completo
         const costoSwap = margen * swapRate;
 
         if (!swapCostByUser[op.usuario_id]) swapCostByUser[op.usuario_id] = 0;
@@ -549,13 +662,13 @@ async function cerrarOperacionesAutomáticamente() {
       }
     }
   } catch (err) {
-    await client.query("ROLLBACK");
-    console.error("❌ Error al procesar Swap o cerrar operaciones:", err);
+    // No hay rollback aquí porque liquidarOperacion maneja transacciones individuales
+    console.error("❌ Error al procesar Swap, TP/SL o Stop-Out:", err);
   } finally {
     client.release();
   }
 }
-// --- FIN LÓGICA DE SWAP Y CIERRE ---
+// --- FIN LÓGICA CLAVE ---
 
 // --- RUTAS DE LA API ---
 app.get("/", (req, res) => res.send("Backend de Trading está funcionando."));
@@ -1594,10 +1707,9 @@ const startServer = async () => {
         `);
     console.log("Tabla de sesiones verificada/creada.");
 
-    // Establecer la frecuencia de ejecución del Swap/TP/SL
-    // RESTAURADO: Frecuencia fija a 24 horas (modo realista)
-    const intervalMs = SWAP_DAILY_INTERVAL_MS;
-    const modeName = "Producción (Realista)";
+    // Establecer la frecuencia de ejecución del Swap/TP/SL/Stop-Out (cada 15s en modo simulación)
+    const intervalMs = 15000; // 15 segundos para Stop-Out/TP/SL
+    const modeName = "Simulación (Rápida)";
 
     // Escuchar en el puerto definido por el entorno (Render)
     server.listen(PORT, () => {
@@ -1607,12 +1719,12 @@ const startServer = async () => {
       iniciarWebSocketKuCoin();
       iniciarWebSocketTwelveData();
 
-      // El Swap y TP/SL se aplica al intervalo definido (24h)
+      // El Swap/TP/SL/Stop-Out se aplica al intervalo definido (15s)
       setInterval(() => cerrarOperacionesAutomáticamente(), intervalMs);
       console.log(
-        `⏱️ Auto-cierre y Swap se ejecutan cada ${
-          intervalMs / (1000 * 60 * 60)
-        } horas.`
+        `⏱️ Auto-cierre y Stop-Out se ejecutan cada ${
+          intervalMs / 1000
+        } segundos. El Swap Diario se aplica una vez en cada ciclo.`
       );
     });
 
@@ -1622,7 +1734,6 @@ const startServer = async () => {
         `[WebSocket Upgrade] Intento de conexión desde el origen: ${origin}`
       );
 
-      // --- ARREGLO CRÍTICO DE AUTENTICACIÓN WS ---
       const normalizedOrigin = normalizeOrigin(origin);
       let originIsAllowed = false;
 
@@ -1647,18 +1758,20 @@ const startServer = async () => {
 
       // FIX CRÍTICO: Usar un middleware que ya fue inicializado para la sesión
       sessionMiddleware(request, {}, () => {
-        // *** ARREGLO TEMPORAL PARA DIAGNÓSTICO: Ignorar error de sesión si el ORIGEN es válido ***
-
+        // --- CORRECCIÓN DE SEGURIDAD: VERIFICACIÓN DE SESIÓN ---
         if (!request.session || !request.session.userId) {
           console.error(
-            `[WebSocket DIAG] WARNING: Sesión no encontrada para el origen válido '${origin}'. Permitida la conexión para diagnóstico.`
+            `[WebSocket SECURITY] Bloqueado: Sesión no autenticada.`
           );
-          // Permitimos que el upgrade continúe sin autenticación de sesión para que los precios fluyan
-        } else {
-          console.log(
-            `[WebSocket Upgrade] Éxito: Sesión validada para el usuario ${request.session.userId}. Actualizando conexión.`
-          );
+          socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+          socket.destroy();
+          return;
         }
+        // --- FIN CORRECCIÓN DE SEGURIDAD ---
+
+        console.log(
+          `[WebSocket Upgrade] Éxito: Sesión validada para el usuario ${request.session.userId}. Actualizando conexión.`
+        );
 
         wss.handleUpgrade(request, socket, head, (ws) => {
           wss.emit("connection", ws, request);

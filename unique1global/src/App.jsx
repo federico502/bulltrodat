@@ -3037,7 +3037,19 @@ const FinancialMetrics = ({ metrics, isLoading }) => (
         </div>
         <div className="text-center p-2 w-full col-span-2 sm:col-span-1 md:col-span-1">
           <p className="text-gray-500">Nivel Margen</p>
-          <FlashingMetric value={metrics.marginLevel} suffix="%" />
+          <span
+            className={`font-bold px-2 py-1 rounded-md transition-colors duration-300 ${
+              parseFloat(metrics.marginLevel) > 200
+                ? "text-green-600"
+                : parseFloat(metrics.marginLevel) > 120
+                ? "text-yellow-600"
+                : parseFloat(metrics.marginLevel) > 0
+                ? "text-red-600 animate-pulse"
+                : "text-gray-400"
+            }`}
+          >
+            {metrics.marginLevel}%
+          </span>
         </div>
       </>
     )}
@@ -5452,15 +5464,17 @@ const DashboardPage = () => {
               id: data.id,
               date: data.date,
             });
-          } else if (data.tipo === "operacion_cerrada") {
+          } else if (data.type === "operacion_cerrada") {
+            // AÑADIDO: Manejar cierre de operación por Stop-Out/TP/SL
             setAlert({
               message: `Operación #${data.operacion_id} (${
                 data.activo
-              }) cerrada por ${
-                data.tipoCierre
-              }. Ganancia: ${data.ganancia.toFixed(2)}`,
+              }) cerrada por ${data.tipoCierre}. G/P: $${parseFloat(
+                data.ganancia
+              ).toFixed(2)}`,
               type: "success",
             });
+            // Recargar el historial y balance para reflejar el cierre
             fetchData(pagination.currentPage, opHistoryFilter);
           }
         } catch (error) {
