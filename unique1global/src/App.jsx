@@ -1924,28 +1924,102 @@ const MarkdownRenderer = ({ content }) => {
   const processMarkdown = (markdown) => {
     let html = markdown;
 
-    // Encabezados
+    // 1. Preprocesamiento de saltos de línea para manejo de párrafos
+    html = html.replace(/\n\s*\n/g, "<!-- PARAGRAPH BREAK -->");
+    html = html.replace(/\n/g, " ");
+    html = html.replace(/<!-- PARAGRAPH BREAK -->/g, "\n\n");
+
+    // 2. Encabezados (H1 y H2)
     html = html.replace(
       /^## (.*$)/gim,
-      '<h2 class="text-3xl font-bold mt-8 mb-4 text-gray-900">$1</h2>'
+      '<h2 class="text-2xl font-bold mt-6 mb-3 text-gray-900">$1</h2>'
     );
     html = html.replace(
       /^# (.*$)/gim,
-      '<h1 class="text-4xl font-extrabold mb-6 text-purple-600">$1</h1>'
+      '<h1 class="text-3xl font-extrabold mb-5 text-purple-600">$1</h1>'
     );
 
-    // Énfasis (Negrita)
+    // 3. Listas (Básico)
+    html = html.replace(/^\* (.*$)/gim, "<li>$1</li>");
+    if (html.includes("<li>")) {
+      // Unir elementos <li> consecutivos
+      html = html.replace(/<\/li>\s*<li>/g, "</li><li>");
+      // Envolver los bloques de <li> en <ul>
+      html = html.replace(/([^>]*)<li>/g, "$1<ul><li>");
+      html = html.replace(/<\/li>([^<]*$|[^<]*<h)/g, "</li></ul>$1");
+
+      // Limpieza final de la lista
+      html = html.replace(/<ul>(.*?)<\/ul>/gs, (match, content) => {
+        // Eliminar cualquier etiqueta de párrafo residual dentro de la lista
+        content = content.replace(/<p[^>]*>/g, "").replace(/<\/p>/g, "");
+        return `<ul class="list-disc ml-6 space-y-1 mb-4">${content}</ul>`;
+      });
+    }
+
+    // 4. Tablas (Específico para el formato de la política)
+    const tableRegex =
+      /\|\s*([^|]*)\s*\|\s*([^|]*)\s*\|\s*([^|]*)\s*\|\n(?:\|[-:]+\s*\|[-:]+\s*\|[-:]+\s*\|\n)((\s*\|.*\|.*\|.*\|\n?)*)/gi;
+    html = html.replace(
+      tableRegex,
+      (match, header1, header2, header3, rows) => {
+        let tableHtml = `<table class="min-w-full divide-y divide-gray-300 rounded-lg overflow-hidden shadow-md my-4">
+                        <thead class="bg-purple-100">
+                          <tr>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-purple-800 uppercase tracking-wider">${header1.trim()}</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-purple-800 uppercase tracking-wider">${header2.trim()}</th>
+                            <th class="px-4 py-2 text-left text-xs font-semibold text-purple-800 uppercase tracking-wider">${header3.trim()}</th>
+                          </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200 text-sm text-gray-700">`;
+        // Filtrar y procesar solo filas de datos
+        const rowLines = rows
+          .trim()
+          .split("\n")
+          .filter((line) => line.trim().startsWith("|"));
+        rowLines.forEach((line) => {
+          const columns = line
+            .split("|")
+            .map((col) => col.trim())
+            .filter((col) => col.length > 0);
+          if (columns.length === 3) {
+            tableHtml += `<tr>
+                          <td class="px-4 py-2 whitespace-nowrap">${columns[0]}</td>
+                          <td class="px-4 py-2">${columns[1]}</td>
+                          <td class="px-4 py-2">${columns[2]}</td>
+                        </tr>`;
+          }
+        });
+        tableHtml += `</tbody></table>`;
+        return tableHtml;
+      }
+    );
+
+    // 5. Énfasis (Negrita)
     html = html.replace(
       /\*\*(.*?)\*\*/gim,
       '<strong class="font-extrabold text-red-600">$1</strong>'
     );
     html = html.replace(/\*(.*?)\*/gim, "<em>$1</em>");
 
-    // Párrafos (Debe ir después de los encabezados)
-    html = html.replace(
-      /^(?!<h|<ul|<li).*$/gim,
-      '<p class="text-gray-700 mb-4 leading-relaxed">$1</p>'
-    );
+    // 6. Párrafos (Aplica solo a bloques de texto que NO son HTML)
+    html = html
+      .split("\n\n")
+      .map((block) => {
+        block = block.trim();
+        // Evitar envolver bloques que ya son HTML o ya han sido procesados
+        if (
+          block.length > 0 &&
+          !block.startsWith("<h") &&
+          !block.startsWith("<ul") &&
+          !block.startsWith("<table") &&
+          !block.startsWith("<p") &&
+          !block.startsWith("___")
+        ) {
+          return `<p class="text-gray-700 mb-4 leading-relaxed">${block}</p>`;
+        }
+        return block;
+      })
+      .join("");
 
     return html;
   };
@@ -3027,6 +3101,7 @@ const FinancialMetrics = ({ metrics, isLoading }) => (
           <p className="text-gray-500">Equidad</p>
           <FlashingMetric value={metrics.equity} prefix="$" />
         </div>
+        x
         <div className="text-center p-2 w-full">
           <p className="text-gray-500">M. Usado</p>
           <FlashingMetric value={metrics.usedMargin} prefix="$" />
