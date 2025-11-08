@@ -58,6 +58,12 @@ let COMISION_PORCENTAJE = parseFloat(process.env.COMISION_PORCENTAJE) || 0.1;
 let SWAP_DAILY_PORCENTAJE =
   parseFloat(process.env.SWAP_DAILY_PORCENTAJE) || 0.05;
 
+// --- CONTROL DE TIEMPO DEL SWAP ---
+// Usaremos una variable global para simular el último cobro de swap
+// En un sistema de producción, esto iría en una tabla de configuración.
+let lastSwapChargeTime = new Date().getTime(); // Inicializado al inicio del servidor
+const MIN_INTERVAL_BETWEEN_SWAP_MS = 24 * 60 * 60 * 1000; // 24 horas
+
 // Validar que las variables críticas existan
 if (
   !DATABASE_URL ||
@@ -628,7 +634,13 @@ async function cerrarOperacionesAutomáticamente() {
     }
 
     // 3. LÓGICA DE COBRO DE SWAP DIARIO
-    if (SWAP_DAILY_PORCENTAJE > 0) {
+    const now = new Date().getTime();
+
+    // CRÍTICO: El cobro solo procede si la tasa es > 0 Y ha pasado el intervalo mínimo de 24h.
+    if (
+      SWAP_DAILY_PORCENTAJE > 0 &&
+      now - global.lastSwapChargeTime >= MIN_INTERVAL_BETWEEN_SWAP_MS
+    ) {
       const swapOpenOpsResult = await client.query(
         "SELECT id, usuario_id, capital_invertido FROM operaciones WHERE cerrada = false"
       );
@@ -659,7 +671,17 @@ async function cerrarOperacionesAutomáticamente() {
             Object.keys(swapCostByUser).length
           } usuarios.`
         );
+
+        // CRÍTICO: Actualizar el tiempo del último cobro globalmente
+        global.lastSwapChargeTime = now;
       }
+    } else if (SWAP_DAILY_PORCENTAJE > 0) {
+      const remainingTimeMs =
+        MIN_INTERVAL_BETWEEN_SWAP_MS - (now - global.lastSwapChargeTime);
+      const remainingHours = Math.round(remainingTimeMs / (1000 * 60 * 60));
+      console.log(
+        `⏱️ Swap check: ${remainingHours} horas restantes para el próximo cobro. Ignorando el cobro.`
+      );
     }
   } catch (err) {
     // No hay rollback aquí porque liquidarOperacion maneja transacciones individuales
@@ -1708,8 +1730,8 @@ const startServer = async () => {
     console.log("Tabla de sesiones verificada/creada.");
 
     // Establecer la frecuencia de ejecución del Swap/TP/SL/Stop-Out (cada 15s en modo simulación)
-    const intervalMs = 15000; // 15 segundos para Stop-Out/TP/SL
-    const modeName = "Simulación (Rápida)";
+    const CHECK_INTERVAL_MS = 5000; // 5 segundos para comprobaciones rápidas de TP/SL/Stop-Out
+    const modeName = "Desarrollo/Producción (TP/SL Rápido, Swap Diario)";
 
     // Escuchar en el puerto definido por el entorno (Render)
     server.listen(PORT, () => {
@@ -1720,11 +1742,11 @@ const startServer = async () => {
       iniciarWebSocketTwelveData();
 
       // El Swap/TP/SL/Stop-Out se aplica al intervalo definido (15s)
-      setInterval(() => cerrarOperacionesAutomáticamente(), intervalMs);
+      setInterval(() => cerrarOperacionesAutomáticamente(), CHECK_INTERVAL_MS);
       console.log(
-        `⏱️ Auto-cierre y Stop-Out se ejecutan cada ${
-          intervalMs / 1000
-        } segundos. El Swap Diario se aplica una vez en cada ciclo.`
+        `⏱️ TP/SL/Stop-Out checks se ejecutan cada ${
+          CHECK_INTERVAL_MS / 1000
+        } segundos. El Swap solo se cobra una vez cada 24 horas.`
       );
     });
 
