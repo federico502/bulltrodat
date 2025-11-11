@@ -5106,7 +5106,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
       {type === "deposit" ? (
         <div className="text-center">
           <p className="text-gray-500 mb-4">
-            Envía USDT a la siguiente dirección usando la red TRON (TRC20).
+            Envía ETH a la siguiente dirección usando la red TRON (ERC20).
           </p>
           <div className="bg-gray-100 p-4 rounded-lg my-4">
             <img
@@ -5127,7 +5127,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
             </button>
           </div>
           <p className="text-xs text-yellow-600 mt-4">
-            Asegúrate de enviar únicamente USDT en la red TRC20. Enviar otra
+            Asegúrate de enviar únicamente ETH en la red ERC20. Enviar otra
             moneda o usar otra red podría resultar en la pérdida de tus fondos.
           </p>
         </div>
