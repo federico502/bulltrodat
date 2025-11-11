@@ -5106,7 +5106,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
       {type === "deposit" ? (
         <div className="text-center">
           <p className="text-gray-500 mb-4">
-            Envía ETH a la siguiente dirección usando la red TRON (ERC20).
+            Envía ETH a la siguiente dirección usando la red ETH (ERC20).
           </p>
           <div className="bg-gray-100 p-4 rounded-lg my-4">
             <img
