@@ -5075,8 +5075,8 @@ const SideMenu = React.memo(
 );
 
 const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
-  const [network, setNetwork] = useState("TRC20");
-  const depositAddress = "TQmZ1fA2gB4iC3dE5fG6h7J8k9L0mN1oP2q"; // Dirección de ejemplo
+  const [network, setNetwork] = useState("eth");
+  const depositAddress = "0x36e622B28fE228346CEF0D86bbd84235b36aa918"; // Dirección de ejemplo
 
   const handleCopy = () => {
     // Usar execCommand ya que clipboard.writeText puede fallar en iframes
