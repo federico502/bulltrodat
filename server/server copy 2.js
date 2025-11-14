@@ -61,7 +61,7 @@ let SWAP_DAILY_PORCENTAJE =
 // --- CONTROL DE TIEMPO DEL SWAP ---
 // Usaremos una variable global para simular el último cobro de swap
 // En un sistema de producción, esto iría en una tabla de configuración.
-global.lastSwapChargeTime = new Date().getTime(); // Inicializado al inicio del servidor
+let lastSwapChargeTime = new Date().getTime(); // Inicializado al inicio del servidor
 const MIN_INTERVAL_BETWEEN_SWAP_MS = 24 * 60 * 60 * 1000; // 24 horas
 
 // Validar que las variables críticas existan
@@ -1261,7 +1261,6 @@ app.post("/actualizar-usuario", async (req, res) => {
 app.delete("/usuarios/:id", async (req, res) => {
   if (!req.session.userId)
     return res.status(401).json({ error: "No autenticado" });
-  let client;
   try {
     const adminResult = await pool.query(
       "SELECT rol FROM usuarios WHERE id = $1",
@@ -1269,31 +1268,20 @@ app.delete("/usuarios/:id", async (req, res) => {
     );
     if (adminResult.rows[0].rol !== "admin")
       return res.status(403).json({ error: "No autorizado" });
-
     const { id } = req.params;
     if (parseInt(id) === req.session.userId)
       return res
         .status(400)
         .json({ error: "No puedes eliminarte a ti mismo." });
-
-    client = await pool.connect();
-    await client.query("BEGIN");
-    await client.query("DELETE FROM operaciones WHERE usuario_id = $1", [id]);
-    await client.query("DELETE FROM usuarios WHERE id = $1", [id]);
-    await client.query("COMMIT");
+    await pool.query("BEGIN");
+    await pool.query("DELETE FROM operaciones WHERE usuario_id = $1", [id]);
+    await pool.query("DELETE FROM usuarios WHERE id = $1", [id]);
+    await pool.query("COMMIT");
     res.json({ success: true });
   } catch (err) {
-    if (client) {
-      try {
-        await client.query("ROLLBACK");
-      } catch (rollbackErr) {
-        console.error("Error al hacer ROLLBACK:", rollbackErr);
-      }
-    }
+    await pool.query("ROLLBACK");
     console.error(err);
     res.status(500).json({ error: "Error al eliminar el usuario" });
-  } finally {
-    if (client) client.release();
   }
 });
 
@@ -1676,17 +1664,15 @@ wss.on("connection", (ws, req) => {
         data.symbols.forEach((symbol) => {
           const normalized = normalizeSymbol(symbol);
 
-          // Si el símbolo (normalizado) termina en USDT (BTCUSDT, btc-usdt, BTC/USDT, etc.),
-          // lo consideramos cripto para KuCoin y lo convertimos a formato BTC-USDT.
-          if (normalized.endsWith("USDT")) {
-            const base = normalized.slice(0, -4); // Ej: BTCUSDT -> BTC
-            const kuCoinFormat = `${base}-USDT`;
+          if (symbol.includes("USDT")) {
+            // Es KuCoin. Usamos el formato BTC-USDT para la suscripción
+            const kuCoinFormat = symbol.replace("USDT", "USDT");
             if (!activeKuCoinSubscriptions.has(kuCoinFormat)) {
               activeKuCoinSubscriptions.add(kuCoinFormat);
               newKuCoinSymbols.push(kuCoinFormat);
             }
           } else {
-            // Es Twelve Data (Forex, índices, acciones, commodities, etc.)
+            // Es Twelve Data (Forex, Indices, Stocks, Commodities).
             if (!activeTwelveDataSubscriptions.has(symbol)) {
               activeTwelveDataSubscriptions.add(symbol);
               newTwelveDataSymbols.push(symbol);
