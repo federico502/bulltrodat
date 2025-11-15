@@ -3089,6 +3089,16 @@ const ChangePasswordForm = ({ setAlert, onBack }) => {
   );
 };
 
+const PaymentMethodButton = ({ icon, text, onClick }) => (
+  <button
+    onClick={onClick}
+    className="w-full flex items-center p-4 bg-white/5 border border-white/10 rounded-lg text-white hover:bg-white/10 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-500"
+  >
+    {icon}
+    <span className="ml-4 text-lg font-semibold">{text}</span>
+  </button>
+);
+
 const DepositView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
     <button
