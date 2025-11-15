@@ -290,15 +290,26 @@ const AppProvider = ({ children }) => {
   const [globalNotification, setGlobalNotification] = useState(null); // Notificación global
 
   // Funciones de Fetch para Comisiones/Apalancamiento (Simulación)
+  // Funciones de Fetch para Comisiones/Apalancamiento (CONECTADAS)
   const fetchCommissions = useCallback(async () => {
-    // Simulación: Mantener estado actual si no hay llamada real al backend
-    // console.log("Simulating fetchCommissions...");
-  }, []);
+    try {
+      const { data } = await axios.get("/commissions");
+      setCommissions(data); // Carga los datos reales del servidor
+    } catch (error) {
+      console.error("Error fetching commissions:", error);
+      // Mantener los valores por defecto si falla
+    }
+  }, [setCommissions]);
 
   const fetchLeverageOptions = useCallback(async () => {
-    // Simulación: Mantener estado actual
-    // console.log("Simulating fetchLeverageOptions...");
-  }, []);
+    try {
+      const { data } = await axios.get("/leverage-options");
+      setLeverageOptions(data); // Carga las opciones reales del servidor
+    } catch (error) {
+      console.error("Error fetching leverage options:", error);
+      // Mantener los valores por defecto si falla
+    }
+  }, [setLeverageOptions]);
 
   const checkUser = useCallback(async () => {
     setIsAppLoading(true);
@@ -909,12 +920,14 @@ const ManageNotificationsModal = ({ isOpen, onClose, setAlert }) => {
     }
 
     try {
-      const notificationData = { message, color };
+      // El server.js solo espera 'mensaje'
+      const payload = { mensaje: message };
 
-      // Simulación: actualiza el estado global
-      setGlobalNotification(notificationData);
-      // En un entorno real, se haría un POST al backend, que a su vez enviaría el WS
-      // await axios.post('/admin/global-notification', notificationData);
+      // Llamada real al backend
+      await axios.post("/admin/notificar", payload);
+
+      // NO llames a setGlobalNotification aquí.
+      // El servidor la enviará por WebSocket a TODOS, incluyéndote.
 
       setAlert({
         message: "Notificación global enviada con éxito.",
@@ -1017,17 +1030,17 @@ const CommissionSettingsModal = ({
 
   const handleCommissionsSave = async () => {
     try {
-      const newCommissions = {
-        spreadPercentage: parseFloat(settings.spread),
-        commissionPercentage: parseFloat(settings.commission),
-        swapDailyPercentage: parseFloat(settings.swap),
+      const payload = {
+        newSpread: parseFloat(settings.spread),
+        newCommission: parseFloat(settings.commission),
+        newSwap: parseFloat(settings.swap),
       };
 
       // Validación básica
       if (
-        isNaN(newCommissions.spreadPercentage) ||
-        isNaN(newCommissions.commissionPercentage) ||
-        isNaN(newCommissions.swapDailyPercentage)
+        isNaN(payload.newSpread) ||
+        isNaN(payload.newCommission) ||
+        isNaN(payload.newSwap)
       ) {
         setAlert({
           message: "Valores de comisión/swap inválidos.",
@@ -1036,16 +1049,21 @@ const CommissionSettingsModal = ({
         return;
       }
 
-      // Simulación: Actualizar estado local
-      setCommissions(newCommissions);
-      // En un entorno real: await axios.post("/admin/commissions", newCommissions);
+      // Llamada real al backend
+      await axios.post("/admin/commissions", payload);
+
+      // Actualizar el estado local en el contexto
+      setCommissions({
+        spreadPercentage: payload.newSpread,
+        commissionPercentage: payload.newCommission,
+        swapDailyPercentage: payload.newSwap,
+      });
 
       setAlert({
         message: "Comisiones y Swap actualizados",
         type: "success",
       });
-      // Llama al fetch si fuera necesario actualizar opciones en el backend
-      // fetchCommissions();
+      fetchCommissions(); // Opcional: Refrescar por si acaso
     } catch (error) {
       setAlert({
         message:
@@ -1066,22 +1084,14 @@ const CommissionSettingsModal = ({
         return;
       }
 
-      // Simulación: Si el nuevo apalancamiento es diferente, actualizamos la lista de opciones
-      if (!leverageOptions.includes(newLeverage)) {
-        const updatedOptions = [
-          ...leverageOptions.filter((opt) => opt !== maxLeverage),
-          newLeverage,
-        ].sort((a, b) => a - b);
-        // Actualizamos el contexto de leverageOptions (No tenemos setLeverageOptions en el contexto, simulamos la actualización completa del contexto si fuera necesario)
-
-        // En un entorno real: await axios.post("/admin/leverage", { newOptions: updatedOptions });
-      }
+      // Llamada real al backend
+      await axios.post("/admin/leverage", { newLeverage: newLeverage });
 
       setAlert({
         message: `Apalancamiento máximo actualizado a 1:${newLeverage}`,
         type: "success",
       });
-      fetchLeverageOptions(); // Forzar la recarga de opciones (para simulación)
+      fetchLeverageOptions(); // Forzar la recarga de opciones (ahora real)
       onClose();
     } catch (error) {
       setAlert({
@@ -3573,12 +3583,16 @@ const DashboardPage = () => {
             });
             fetchData(pagination.currentPage, opHistoryFilter);
           } else if (data.type === "admin_notification") {
-            // Añadido
+            // Añadido y CORREGIDO
             setAlert({
               message: "Nueva notificación global recibida.",
               type: "info",
             });
-            setGlobalNotification(data.notification);
+            // El servidor solo envía 'message'. Asumimos un color por defecto.
+            setGlobalNotification({
+              message: data.message,
+              color: "bg-blue-600",
+            });
           }
         } catch (error) {
           console.error("Error processing WebSocket message:", error);
