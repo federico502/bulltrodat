@@ -966,7 +966,7 @@ const ManageNotificationsModal = ({ isOpen, onClose, setAlert }) => {
           <select
             value={color}
             onChange={(e) => setColor(e.target.value)}
-            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:ring-cyan-500 cursor-pointer" // Restaurando a cyan
+            className="w-full p-2 bg-black border border-white/10 rounded focus:ring-cyan-500 cursor-pointer" // Restaurando a cyan
           >
             <option value="bg-blue-600">Azul (Informativo)</option>
             <option value="bg-yellow-600">Amarillo (Advertencia)</option>
@@ -1621,7 +1621,7 @@ const OperationsHistory = ({
             id="filter"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="bg-white/5 text-white text-sm rounded-md p-1 border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer" // Restaurando a cyan
+            className="bg-black text-white text-sm rounded-md p-1 border border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer" // Restaurando a cyan
           >
             <option value="todas">Todas</option>
             <option value="abiertas">Abiertas</option>
@@ -1921,7 +1921,7 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           <select
             value={leverage}
             onChange={(e) => setLeverage(parseInt(e.target.value))}
-            className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer" // Restaurando a cyan
+            className="w-full p-2 bg-black border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer" // Restaurando a cyan
           >
             {leverageOptions.map((opt) => (
               <option key={opt} value={opt}>
@@ -2304,7 +2304,7 @@ const UserOperationsModal = ({
                     onChange={(e) =>
                       handleInputChange(op.id, "tipo_operacion", e.target.value)
                     }
-                    className="w-14 p-1 bg-white/5 rounded border border-white/10 text-xs cursor-pointer"
+                    className="w-14 p-1 bg-black rounded border border-white/10 text-xs cursor-pointer"
                   >
                     <option value="buy">BUY</option>
                     <option value="sell">SELL</option>
@@ -2555,7 +2555,7 @@ const UserTableRow = React.memo(
             name="rol"
             value={user.rol}
             onChange={handleInputChange}
-            className="w-full p-1 bg-white/5 rounded border border-white/10 cursor-pointer"
+            className="w-full p-1 bg-black rounded border border-white/10 cursor-pointer"
           >
             <option value="usuario">Usuario</option>
             <option value="admin">Admin</option>
@@ -3326,7 +3326,7 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
             <select
               value={network}
               onChange={(e) => setNetwork(e.target.value)}
-              className="w-full p-2 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500" // Restaurando a cyan
+              className="w-full p-2 bg-black border border-white/10 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500" // Restaurando a cyan
             >
               <option value="TRC20">TRON (TRC20)</option>
               <option value="ERC20">Ethereum (ERC20)</option>
@@ -4307,7 +4307,7 @@ const LoginPage = () => {
                     <select
                       value={countryCode}
                       onChange={(e) => setCountryCode(e.target.value)}
-                      className="p-2 bg-white/5 text-white rounded-l-lg border-r-0 border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer" // Restaurando a cyan
+                      className="p-2 bg-black text-white rounded-l-lg border-r-0 border-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer" // Restaurando a cyan
                     >
                       {countryCodes.map((c) => (
                         <option key={c.code} value={c.code}>
