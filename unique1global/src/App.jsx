@@ -5388,6 +5388,7 @@ const DashboardPage = () => {
     }
   });
 
+  const [allOpenOperations, setAllOpenOperations] = useState([]);
   const [operations, setOperations] = useState([]);
   const [stats, setStats] = useState({});
   const [balance, setBalance] = useState(0);
@@ -5460,12 +5461,13 @@ const DashboardPage = () => {
       if (!user) return;
       setIsLoadingData(true);
       try {
-        const [historialRes, statsRes, balanceRes, performanceRes] =
+        const [historialRes, statsRes, balanceRes, performanceRes, openOpsRes] =
           await Promise.all([
             axios.get(`/historial?page=${page}&limit=5&filter=${filter}`),
             axios.get("/estadisticas"),
             axios.get("/balance"),
             axios.get("/rendimiento"),
+            axios.get("/historial?filter=abiertas&limit=999"),
           ]);
         setOperations(historialRes.data.operations);
         setPagination({
@@ -5475,6 +5477,7 @@ const DashboardPage = () => {
         setStats(statsRes.data);
         setBalance(parseFloat(balanceRes.data.balance));
         setPerformanceData(performanceRes.data);
+        setAllOpenOperations(openOpsRes.data.operations);
       } catch (error) {
         console.error("Failed to fetch data:", error);
         setAlert({ message: "Error al cargar los datos", type: "error" });
@@ -5598,7 +5601,7 @@ const DashboardPage = () => {
   }, [user]);
 
   useEffect(() => {
-    const openOperations = operations.filter((op) => !op.cerrada);
+    const openOperations = allOpenOperations;
     const pnl = openOperations.reduce((total, op) => {
       // FIX: Usar la función de normalización clave
       const normalizedSymbol = normalizeAssetKey(op.activo);
@@ -5635,7 +5638,7 @@ const DashboardPage = () => {
     const freeMargin = equity - usedMargin;
     const marginLevel = usedMargin > 0 ? (equity / usedMargin) * 100 : 0;
     setMetrics({ balance, equity, usedMargin, freeMargin, marginLevel });
-  }, [realTimePrices, operations, balance, commissions]); // Añadir commissions como dependencia
+  }, [realTimePrices, allOpenOperations, balance, commissions]); // Añadir commissions como dependencia
 
   useEffect(() => {
     if (alert.message) {
