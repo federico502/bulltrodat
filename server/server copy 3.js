@@ -1,4 +1,3 @@
-import "dotenv/config";
 /*
 IMPORTANTE: Para que la nueva funcionalidad de apalancamiento y notificaciones funcione,
 es necesario modificar la base de datos. Ejecute los siguientes comandos SQL
@@ -488,7 +487,7 @@ async function cerrarOperacionesAutomáticamente() {
   try {
     // 1. Obtener todas las operaciones abiertas por usuario para el Stop-Out
     const openOpsResult = await client.query(
-      `SELECT op.*, u.balance as user_balance, u.credito as user_credit
+      `SELECT op.*, u.balance as user_balance
        FROM operaciones op
        JOIN usuarios u ON op.usuario_id = u.id
        WHERE op.cerrada = false`
@@ -501,7 +500,6 @@ async function cerrarOperacionesAutomáticamente() {
       const {
         usuario_id,
         user_balance,
-        user_credit,
         capital_invertido,
         activo,
         tipo_operacion,
@@ -527,7 +525,6 @@ async function cerrarOperacionesAutomáticamente() {
       if (!usersData[usuario_id]) {
         usersData[usuario_id] = {
           balance: parseFloat(user_balance),
-          credito: parseFloat(user_credit) || 0,
           usedMargin: 0,
           pnl: 0,
           operations: [],
@@ -542,8 +539,7 @@ async function cerrarOperacionesAutomáticamente() {
     // --- LÓGICA DE STOP-OUT (Nivel de Margen al 100%) ---
     for (const userId in usersData) {
       const data = usersData[userId];
-      // MOD: Equity incluye el Crédito (Bono)
-      const equity = data.balance + data.credito + data.pnl;
+      const equity = data.balance + data.pnl;
       const marginLevel =
         data.usedMargin > 0 ? (equity / data.usedMargin) * 100 : Infinity;
 
@@ -771,7 +767,7 @@ app.get("/me", async (req, res) => {
   }
   try {
     const result = await pool.query(
-      "SELECT id, nombre, email, balance, credito, rol, identificacion, telefono, platform_id FROM usuarios WHERE id = $1",
+      "SELECT id, nombre, email, balance, rol, identificacion, telefono, platform_id FROM usuarios WHERE id = $1",
       [req.session.userId]
     );
     if (result.rows.length === 0)
@@ -1118,7 +1114,7 @@ app.get("/balance", async (req, res) => {
     return res.status(401).json({ error: "No autenticado" });
   try {
     const result = await pool.query(
-      "SELECT balance, credito FROM usuarios WHERE id = $1",
+      "SELECT balance FROM usuarios WHERE id = $1",
       [req.session.userId]
     );
     res.json(result.rows[0]);
@@ -1207,7 +1203,7 @@ app.get("/usuarios", async (req, res) => {
     const totalPages = Math.ceil(totalUsers / limit);
 
     const usuariosResult = await pool.query(
-      "SELECT id, nombre, email, balance, credito, rol, identificacion, telefono, platform_id FROM usuarios WHERE platform_id = $1 ORDER BY id ASC LIMIT $2 OFFSET $3",
+      "SELECT id, nombre, email, balance, rol, identificacion, telefono, platform_id FROM usuarios WHERE platform_id = $1 ORDER BY id ASC LIMIT $2 OFFSET $3",
       [adminPlatformId, limit, offset]
     );
 
@@ -1613,102 +1609,6 @@ app.post("/admin/commissions", async (req, res) => {
     commissionPercentage: COMISION_PORCENTAJE,
     swapDailyPercentage: SWAP_DAILY_PORCENTAJE, // NUEVO
   });
-});
-
-// --- SISTEMA DE CRÉDITO (ADMIN) ---
-
-// Asignar Crédito (Suma al crédito existente)
-app.post("/admin/credit/assign", async (req, res) => {
-  if (!req.session.userId)
-    return res.status(401).json({ error: "No autenticado" });
-
-  const { userId, amount } = req.body;
-  const creditAmount = parseFloat(amount);
-
-  if (isNaN(creditAmount) || creditAmount <= 0) {
-    return res.status(400).json({ error: "Monto inválido" });
-  }
-
-  try {
-    // Verificar que sea admin
-    const adminCheck = await pool.query(
-      "SELECT rol FROM usuarios WHERE id = $1",
-      [req.session.userId]
-    );
-    if (adminCheck.rows.length === 0 || adminCheck.rows[0].rol !== "admin") {
-      return res.status(403).json({ error: "No autorizado" });
-    }
-
-    await pool.query(
-      "UPDATE usuarios SET credito = COALESCE(credito, 0) + $1 WHERE id = $2",
-      [creditAmount, userId]
-    );
-
-    res.json({ success: true, message: "Crédito asignado correctamente" });
-  } catch (err) {
-    console.error("Error asignando crédito:", err);
-    res.status(500).json({ error: "Error interno" });
-  }
-});
-
-// Cobrar Crédito (Resta del Crédito Y del Balance)
-app.post("/admin/credit/collect", async (req, res) => {
-  if (!req.session.userId)
-    return res.status(401).json({ error: "No autenticado" });
-
-  const { userId, amount } = req.body;
-  const collectAmount = parseFloat(amount);
-
-  if (isNaN(collectAmount) || collectAmount <= 0) {
-    return res.status(400).json({ error: "Monto inválido" });
-  }
-
-  const client = await pool.connect();
-  try {
-    // Verificar Admin
-    const adminCheck = await client.query(
-      "SELECT rol FROM usuarios WHERE id = $1",
-      [req.session.userId]
-    );
-    if (adminCheck.rows.length === 0 || adminCheck.rows[0].rol !== "admin") {
-      return res.status(403).json({ error: "No autorizado" });
-    }
-
-    await client.query("BEGIN");
-
-    // Verificar saldo/crédito actual
-    const userRes = await client.query(
-      "SELECT balance, credito FROM usuarios WHERE id = $1 FOR UPDATE",
-      [userId]
-    );
-    if (userRes.rows.length === 0) {
-      await client.query("ROLLBACK");
-      return res.status(404).json({ error: "Usuario no encontrado" });
-    }
-
-    const currentBalance = parseFloat(userRes.rows[0].balance);
-    const currentCredit = parseFloat(userRes.rows[0].credito) || 0;
-
-    // Lógica: Restar del Balance Y Restar del Crédito (hasta 0)
-    // "cuando se cobre el dinero salga del balance"
-    // Pero el crédito también debe bajar, verdad?
-    // Si cobro crédito, el usuario "paga" el crédito.
-    // Ej: User tiene 1000 crédito. Cobra 1000. Balance baja 1000. Crédito baja 1000.
-    
-    await client.query(
-      "UPDATE usuarios SET balance = balance - $1, credito = GREATEST(0, credito - $1) WHERE id = $2",
-      [collectAmount, userId]
-    );
-
-    await client.query("COMMIT");
-    res.json({ success: true, message: "Crédito cobrado del balance correctamente" });
-  } catch (err) {
-    await client.query("ROLLBACK");
-    console.error("Error cobrando crédito:", err);
-    res.status(500).json({ error: "Error interno" });
-  } finally {
-    client.release();
-  }
 });
 
 // --- NUEVA RUTA ADMIN: ENVIAR NOTIFICACIÓN GLOBAL ---

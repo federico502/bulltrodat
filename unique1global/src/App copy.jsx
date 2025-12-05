@@ -4166,109 +4166,15 @@ const UserCard = React.memo(
   }
 );
 
-// NUEVO: Modal para Gestionar Crédito
-const ManageCreditModal = ({ isOpen, onClose, user, setAlert, onSuccess }) => {
-  const [amount, setAmount] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  if (!isOpen || !user) return null;
-
-  const handleAction = async (action) => {
-    if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
-      setAlert({ message: "Ingrese un monto válido", type: "error" });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const endpoint =
-        action === "assign" ? "/admin/credit/assign" : "/admin/credit/collect";
-      
-      await axios.post(endpoint, {
-        userId: user.id,
-        amount: parseFloat(amount),
-      });
-
-      setAlert({
-        message:
-          action === "assign"
-            ? "Crédito asignado con éxito"
-            : "Crédito cobrado con éxito",
-        type: "success",
-      });
-      setAmount("");
-      onSuccess(); // Recargar usuarios
-      onClose();
-    } catch (error) {
-      setAlert({
-        message: error.response?.data?.error || "Error en la operación",
-        type: "error",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={`Gestión de Crédito - ${user.nombre}`}
-      maxWidth="max-w-md"
-    >
-      <div className="space-y-4">
-        <div className="bg-gray-50 p-3 rounded">
-          <p className="text-sm text-gray-600">Balance Actual:</p>
-          <p className="font-bold text-lg">${parseFloat(user.balance).toFixed(2)}</p>
-          <p className="text-sm text-gray-600 mt-2">Crédito Actual (Bono):</p>
-          <p className="font-bold text-lg text-green-600">
-            ${parseFloat(user.credito || 0).toFixed(2)}
-          </p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Monto
-          </label>
-          <input
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-            placeholder="0.00"
-          />
-        </div>
-
-        <div className="flex gap-2 pt-2">
-          <button
-            onClick={() => handleAction("assign")}
-            disabled={isLoading}
-            className="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-500 disabled:opacity-50"
-          >
-            Asignar Crédito
-          </button>
-          <button
-            onClick={() => handleAction("collect")}
-            disabled={isLoading}
-            className="flex-1 bg-red-600 text-white py-2 rounded hover:bg-red-500 disabled:opacity-50"
-          >
-            Cobrar Crédito
-          </button>
-        </div>
-      </div>
-    </Modal>
-  );
-};
-
 const UserTableRow = React.memo(
-  ({ user, onDataChange, onViewUserOps, onDeleteUser, onSave, onManageCredit }) => {
+  ({ user, onDataChange, onViewUserOps, onDeleteUser, onSave }) => {
     const handleInputChange = (e) => {
       const { name, value } = e.target;
       onDataChange(user.id, name, value);
     };
     return (
       <tr className="border-b border-gray-200">
-        <td className="p-2 whitespace-nowrap text-xs text-gray-500">{user.id}</td>
+        <td className="p-2 whitespace-nowrap">{user.id}</td>
         <td className="p-2">
           <input
             type="text"
@@ -4296,9 +4202,6 @@ const UserTableRow = React.memo(
             onChange={handleInputChange}
             className="w-full p-1 bg-gray-50 rounded border border-gray-300"
           />
-          <div className="text-xs text-green-600 mt-1">
-            Crédito: ${parseFloat(user.credito || 0).toFixed(2)}
-          </div>
         </td>
         <td className="p-2">
           <select
@@ -4347,13 +4250,6 @@ const UserTableRow = React.memo(
             Guardar
           </button>
           <button
-            onClick={() => onManageCredit(user)}
-            title="Gestionar Crédito"
-            className="bg-purple-600 text-white p-1 text-xs rounded hover:bg-purple-500 cursor-pointer"
-          >
-           <Icons.Banknotes className="h-4 w-4" />
-          </button>
-          <button
             onClick={() => onViewUserOps(user)}
             title="Ver Operaciones"
             className="bg-yellow-500 text-white p-1 text-xs rounded hover:bg-yellow-400 cursor-pointer"
@@ -4385,7 +4281,6 @@ const ManageUsersModal = ({
     currentPage: 1,
     totalPages: 1,
   });
-  const [selectedUserForCredit, setSelectedUserForCredit] = useState(null); // NUEVO
 
   const fetchUsers = useCallback(
     (page = 1) => {
@@ -4491,7 +4386,6 @@ const ManageUsersModal = ({
                 onViewUserOps={onViewUserOps}
                 onDeleteUser={onDeleteUser}
                 onSave={handleSave}
-                onManageCredit={setSelectedUserForCredit} // NUEVO
               />
             ))}
           </tbody>
@@ -4501,14 +4395,6 @@ const ManageUsersModal = ({
         currentPage={pagination.currentPage}
         totalPages={pagination.totalPages}
         onPageChange={(page) => fetchUsers(page)}
-      />
-      {/* Modal de Crédito */}
-      <ManageCreditModal
-        isOpen={!!selectedUserForCredit}
-        onClose={() => setSelectedUserForCredit(null)}
-        user={selectedUserForCredit}
-        setAlert={setAlert}
-        onSuccess={() => fetchUsers(pagination.currentPage)}
       />
     </Modal>
   );
