@@ -34,6 +34,7 @@ import fetch from "node-fetch";
 import WebSocket, { WebSocketServer } from "ws";
 import http from "http";
 import helmet from "helmet";
+import { runMigrations } from "./auto_migrate.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -1819,6 +1820,9 @@ wss.on("connection", (ws, req) => {
 // --- Inicio del Servidor ---
 const startServer = async () => {
   try {
+    // Ejecutar migraciones automáticas antes de iniciar
+    await runMigrations(pool);
+
     await pool.query(`
           CREATE TABLE IF NOT EXISTS "user_sessions" (
             "sid" varchar NOT NULL COLLATE "default",
