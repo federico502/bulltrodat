@@ -909,9 +909,9 @@ app.post("/operar", async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    // Obtener balance actual del usuario
+    // Obtener balance y crédito actual del usuario
     const userRes = await client.query(
-      "SELECT balance FROM usuarios WHERE id = $1 FOR UPDATE",
+      "SELECT balance, credito FROM usuarios WHERE id = $1 FOR UPDATE",
       [usuario_id]
     );
 
@@ -920,6 +920,7 @@ app.post("/operar", async (req, res) => {
       return res.status(404).json({ error: "Usuario no encontrado." });
     }
     const balanceActual = parseFloat(userRes.rows[0].balance);
+    const creditoActual = parseFloat(userRes.rows[0].credito || 0);
 
     // Obtener el margen usado actual (suma de capital_invertido de operaciones abiertas)
     const margenUsadoRes = await client.query(
@@ -953,8 +954,8 @@ app.post("/operar", async (req, res) => {
     comisionCosto = volumenNocional * (COMISION_PORCENTAJE / 100);
 
     // 3. Validación de margen y comisión
-    // El Margen Libre es: Balance Total - Margen Usado Actual.
-    const margenLibre = balanceActual - margenUsadoActual;
+    // El Margen Libre es: Balance Total + Crédito - Margen Usado Actual.
+    const margenLibre = (balanceActual + creditoActual) - margenUsadoActual;
     const costoTotalRequerido = margenRequerido + comisionCosto;
 
     // CRÍTICO: Comprobamos si el Margen Libre puede cubrir el Margen Nuevo Y la Comisión.
