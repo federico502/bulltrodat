@@ -8,6 +8,8 @@ export async function runMigrations(pool) {
     await client.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS credito NUMERIC DEFAULT 0;");
     await client.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS telefono VARCHAR(255);");
     await client.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS identificacion VARCHAR(255);");
+    await client.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS interes_acumulado NUMERIC DEFAULT 0;");
+    await client.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS tasa_interes NUMERIC DEFAULT 4.0;");
 
     // 2. Tabla Operaciones - Nuevas Columnas (Apalancamiento, Cierre, TP/SL)
     await client.query("ALTER TABLE operaciones ADD COLUMN IF NOT EXISTS apalancamiento INTEGER DEFAULT 1;");

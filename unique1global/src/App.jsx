@@ -2641,7 +2641,7 @@ const PerformanceChart = ({ performanceData, isLoading }) => {
 const StatisticsPanel = ({ stats, performanceData, isLoading }) => (
   <div className="mt-6 space-y-4">
     <Card>
-      <h3 className="text-gray-900 font-bold text-base mb-4">Estadísticas</h3>
+      <h3 className="text-gray-900 font-bold text-base mb-4">Métricas de Crédito</h3>
       {isLoading ? (
         <div className="grid grid-cols-2 gap-4">
           <Skeleton className="h-5" /> <Skeleton className="h-5" />
@@ -2650,28 +2650,28 @@ const StatisticsPanel = ({ stats, performanceData, isLoading }) => (
       ) : (
         <div className="grid grid-cols-2 gap-4 text-gray-600 text-sm">
           <div>
-            Total Invertido:{" "}
-            <span className="font-semibold text-gray-900">
-              ${parseFloat(stats.total_invertido || 0).toFixed(2)}
-            </span>
-          </div>
-          <div>
-            Ganancia Total:{" "}
+            Crédito Total:{" "}
             <span className="font-semibold text-green-600">
-              ${parseFloat(stats.ganancia_total || 0).toFixed(2)}
+              ${parseFloat(stats.credito || 0).toFixed(2)}
             </span>
           </div>
           <div>
-            Abiertas:{" "}
-            <span className="font-semibold text-gray-900">
-              {stats.abiertas || 0}
+            Crédito Usado:{" "}
+            <span className="font-bold text-orange-600">
+              ${parseFloat(stats.credito_usado || 0).toFixed(2)}
             </span>
           </div>
           <div>
-            Cerradas:{" "}
-            <span className="font-semibold text-gray-900">
-              {stats.cerradas || 0}
+            Interés Acum.:{" "}
+            <span className="font-semibold text-red-600">
+              ${parseFloat(stats.interes_acumulado || 0).toFixed(2)}
             </span>
+          </div>
+          <div>
+             Tasa Interés:{" "}
+             <span className="font-semibold text-gray-900">
+              {stats.tasa_interes || 0}%
+             </span>
           </div>
         </div>
       )}
@@ -4166,39 +4166,55 @@ const UserCard = React.memo(
   }
 );
 
-// NUEVO: Modal para Gestionar Crédito
+// NUEVO: Modal para Gestionar Crédito e Intereses
 const ManageCreditModal = ({ isOpen, onClose, user, setAlert, onSuccess }) => {
   const [amount, setAmount] = useState("");
+  const [rate, setRate] = useState(user?.tasa_interes || 4.0);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+        setRate(user.tasa_interes !== undefined ? user.tasa_interes : 4.0);
+    }
+  }, [user]);
 
   if (!isOpen || !user) return null;
 
   const handleAction = async (action) => {
-    if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
-      setAlert({ message: "Ingrese un monto válido", type: "error" });
-      return;
+    if ((action === "assign" || action === "collect") && (!amount || isNaN(amount) || parseFloat(amount) <= 0)) {
+        setAlert({ message: "Ingrese un monto válido", type: "error" });
+        return;
     }
 
     setIsLoading(true);
     try {
-      const endpoint =
-        action === "assign" ? "/admin/credit/assign" : "/admin/credit/collect";
+      let endpoint = "";
+      let payload = { userId: user.id };
+
+      if (action === "assign") {
+          endpoint = "/admin/credit/assign";
+          payload.amount = parseFloat(amount);
+      } else if (action === "collect") {
+          endpoint = "/admin/credit/collect";
+          payload.amount = parseFloat(amount);
+      } else if (action === "apply_interest") {
+          endpoint = "/admin/interest/apply";
+      } else if (action === "collect_interest") {
+          endpoint = "/admin/interest/collect";
+      } else if (action === "update_rate") {
+          endpoint = "/admin/interest/rate";
+          payload.rate = parseFloat(rate);
+      }
       
-      await axios.post(endpoint, {
-        userId: user.id,
-        amount: parseFloat(amount),
-      });
+      const res = await axios.post(endpoint, payload);
 
       setAlert({
-        message:
-          action === "assign"
-            ? "Crédito asignado con éxito"
-            : "Crédito cobrado con éxito",
+        message: res.data.message || "Operación exitosa",
         type: "success",
       });
-      setAmount("");
+      if (action !== "update_rate") setAmount("");
       onSuccess(); // Recargar usuarios
-      onClose();
+      if (action === "collect" || action === "assign") onClose();
     } catch (error) {
       setAlert({
         message: error.response?.data?.error || "Error en la operación",
@@ -4216,44 +4232,90 @@ const ManageCreditModal = ({ isOpen, onClose, user, setAlert, onSuccess }) => {
       title={`Gestión de Crédito - ${user.nombre}`}
       maxWidth="max-w-md"
     >
-      <div className="space-y-4">
-        <div className="bg-gray-50 p-3 rounded">
-          <p className="text-sm text-gray-600">Balance Actual:</p>
-          <p className="font-bold text-lg">${parseFloat(user.balance).toFixed(2)}</p>
-          <p className="text-sm text-gray-600 mt-2">Crédito Actual (Bono):</p>
-          <p className="font-bold text-lg text-green-600">
-            ${parseFloat(user.credito || 0).toFixed(2)}
-          </p>
+      <div className="space-y-6">
+        {/* Estadísticas de Crédito */}
+        <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+            <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Balance:</span>
+                <span className="font-bold">${parseFloat(user.balance).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+                <span className="text-sm text-gray-600">Crédito (Bono):</span>
+                <span className="font-bold text-green-600">${parseFloat(user.credito || 0).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between border-t pt-2 mt-2 border-gray-200">
+                <span className="text-sm text-gray-600">Interés Acumulado:</span>
+                <span className="font-bold text-red-600">${parseFloat(user.interes_acumulado || 0).toFixed(2)}</span>
+            </div>
         </div>
 
+        {/* Sección: Asignar/Cobrar Crédito */}
         <div>
-          <label className="block text-sm font-medium text-gray-700">
-            Monto
-          </label>
+            <h4 className="font-bold text-sm mb-2 text-gray-900">Movimientos de Crédito</h4>
           <input
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="mt-1 block w-full p-2 border border-gray-300 rounded-md"
-            placeholder="0.00"
+            className="mt-1 block w-full p-2 border border-gray-300 rounded-md mb-2"
+            placeholder="Monto"
           />
+          <div className="flex gap-2">
+            <button
+                onClick={() => handleAction("assign")}
+                disabled={isLoading}
+                className="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-500 disabled:opacity-50 text-sm"
+            >
+                Asignar
+            </button>
+            <button
+                onClick={() => handleAction("collect")}
+                disabled={isLoading}
+                className="flex-1 bg-red-600 text-white py-2 rounded hover:bg-red-500 disabled:opacity-50 text-sm"
+            >
+                Cobrar
+            </button>
+          </div>
         </div>
 
-        <div className="flex gap-2 pt-2">
-          <button
-            onClick={() => handleAction("assign")}
-            disabled={isLoading}
-            className="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-500 disabled:opacity-50"
-          >
-            Asignar Crédito
-          </button>
-          <button
-            onClick={() => handleAction("collect")}
-            disabled={isLoading}
-            className="flex-1 bg-red-600 text-white py-2 rounded hover:bg-red-500 disabled:opacity-50"
-          >
-            Cobrar Crédito
-          </button>
+        {/* Sección: Intereses */}
+        <div className="border-t pt-4">
+            <h4 className="font-bold text-sm mb-2 text-gray-900">Gestión de Intereses</h4>
+            <div className="flex items-center gap-2 mb-3">
+                <label className="text-sm text-gray-600 w-32">Tasa de Interés (%):</label>
+                <input
+                    type="number"
+                    value={rate}
+                    onChange={(e) => setRate(e.target.value)}
+                    className="flex-1 p-1 border border-gray-300 rounded"
+                    step="0.1"
+                />
+                <button 
+                  onClick={() => handleAction("update_rate")}
+                  className="bg-indigo-600 text-white px-2 py-1 rounded text-xs"
+                >
+                    Actualizar
+                </button>
+            </div>
+            <div className="flex gap-2">
+                <button
+                    onClick={() => handleAction("apply_interest")}
+                    disabled={isLoading}
+                    className="flex-1 bg-yellow-600 text-white py-2 rounded hover:bg-yellow-500 disabled:opacity-50 text-sm"
+                >
+                    Aplicar Interés
+                </button>
+                <button
+                    onClick={() => handleAction("collect_interest")}
+                    disabled={isLoading}
+                    className="flex-1 bg-orange-600 text-white py-2 rounded hover:bg-orange-500 disabled:opacity-50 text-sm"
+                >
+                    Cobrar Interés
+                </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+                "Aplicar" calcula el interés sobre el crédito actual y lo suma a la deuda. 
+                "Cobrar" descuenta la deuda acumulada del balance del usuario.
+            </p>
         </div>
       </div>
     </Modal>

@@ -1134,10 +1134,32 @@ app.get("/estadisticas", async (req, res) => {
     return res.status(401).json({ error: "No autenticado" });
   try {
     const { rows } = await pool.query(
-      `SELECT SUM(capital_invertido) AS total_invertido, SUM(CASE WHEN cerrada THEN ganancia ELSE 0 END) AS ganancia_total, COUNT(*) FILTER (WHERE cerrada) AS cerradas, COUNT(*) FILTER (WHERE NOT cerrada) AS abiertas FROM operaciones WHERE usuario_id = $1`,
+      `SELECT 
+        u.credito, 
+        u.interes_acumulado, 
+        u.tasa_interes,
+        u.balance,
+        SUM(CASE WHEN op.cerrada THEN op.ganancia ELSE 0 END) AS ganancia_total, 
+        COUNT(*) FILTER (WHERE op.cerrada) AS cerradas, 
+        COUNT(*) FILTER (WHERE NOT op.cerrada) AS abiertas,
+        SUM(op.capital_invertido) FILTER (WHERE NOT op.cerrada) as margen_usado
+       FROM usuarios u
+       LEFT JOIN operaciones op ON u.id = op.usuario_id
+       WHERE u.id = $1
+       GROUP BY u.id`,
       [req.session.userId]
     );
-    res.json(rows[0]);
+    
+    const stats = rows[0] || {};
+    // Calculamos el crédito usado aproximado (si el margen usado supera el balance, se usa crédito)
+    const margenUsado = parseFloat(stats.margen_usado || 0);
+    const balance = parseFloat(stats.balance || 0);
+    const creditoUsado = Math.max(0, margenUsado - balance);
+
+    res.json({
+      ...stats,
+      credito_usado: creditoUsado
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Error al obtener estadísticas" });
@@ -1617,6 +1639,116 @@ app.post("/admin/commissions", async (req, res) => {
 });
 
 // --- SISTEMA DE CRÉDITO (ADMIN) ---
+
+// --- GESTIÓN DE INTERESES (ADMIN) ---
+
+// Aplicar Interés (Calcula y suma al acumulado basado en la tasa del usuario)
+app.post("/admin/interest/apply", async (req, res) => {
+  if (!req.session.userId)
+    return res.status(401).json({ error: "No autenticado" });
+  
+  // Verificar admin
+  const adminCheck = await pool.query(
+    "SELECT rol FROM usuarios WHERE id = $1",
+    [req.session.userId]
+  );
+  if (adminCheck.rows[0]?.rol !== "admin") {
+    return res.status(403).json({ error: "No autorizado" });
+  }
+
+  const { userId } = req.body; // Si userId es null, aplica a todos (opcional, aquí haremos por usuario)
+
+  if (!userId) {
+     return res.status(400).json({ error: "Se requiere userId" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    
+    // Obtener datos del usuario
+    const userRes = await client.query("SELECT credito, tasa_interes FROM usuarios WHERE id = $1 FOR UPDATE", [userId]);
+    const user = userRes.rows[0];
+
+    if (!user) throw new Error("Usuario no encontrado");
+
+    const credito = parseFloat(user.credito || 0);
+    const tasa = parseFloat(user.tasa_interes || 0);
+
+    if (credito > 0 && tasa > 0) {
+      const interesGenerado = credito * (tasa / 100);
+      await client.query("UPDATE usuarios SET interes_acumulado = interes_acumulado + $1 WHERE id = $2", [interesGenerado, userId]);
+      await client.query("COMMIT");
+      res.json({ success: true, message: `Interés de $${interesGenerado.toFixed(2)} aplicado.`, accumulated: interesGenerado });
+    } else {
+      await client.query("ROLLBACK");
+      res.json({ success: false, message: "No se aplicó interés (Crédito 0 o Tasa 0)." });
+    }
+
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error(err);
+    res.status(500).json({ error: "Error al aplicar interés" });
+  } finally {
+    client.release();
+  }
+});
+
+// Cobrar Interés Acumulado (Resta del Balance y resetea acumulado)
+app.post("/admin/interest/collect", async (req, res) => {
+   if (!req.session.userId) return res.status(401).json({ error: "No autenticado" });
+   
+   // Verificar admin (omitido por brevedad, asumimos middleware o check anterior)
+   const adminCheck = await pool.query("SELECT rol FROM usuarios WHERE id = $1", [req.session.userId]);
+   if (adminCheck.rows[0]?.rol !== "admin") return res.status(403).json({ error: "No autorizado" });
+
+   const { userId } = req.body;
+   const client = await pool.connect();
+   try {
+     await client.query("BEGIN");
+     const userRes = await client.query("SELECT interes_acumulado FROM usuarios WHERE id = $1 FOR UPDATE", [userId]);
+     const pendiente = parseFloat(userRes.rows[0].interes_acumulado || 0);
+
+     if (pendiente > 0) {
+        // Restar del balance
+        await client.query("UPDATE usuarios SET balance = balance - $1, interes_acumulado = 0 WHERE id = $2", [pendiente, userId]);
+        
+        // Registrar movimiento? (Opcional, por ahora simple actualización)
+        
+        await client.query("COMMIT");
+        res.json({ success: true, message: `Cobrados $${pendiente.toFixed(2)} de intereses.` });
+     } else {
+        await client.query("ROLLBACK");
+        res.status(400).json({ error: "No hay intereses pendientes para cobrar." });
+     }
+   } catch(err) {
+      await client.query("ROLLBACK");
+      console.error(err);
+      res.status(500).json({ error: "Error al cobrar intereses" });
+   } finally {
+      client.release();
+   }
+});
+
+// Actualizar Tasa de Interés
+app.post("/admin/interest/rate", async (req, res) => {
+    if (!req.session.userId) return res.status(401).json({ error: "No autenticado" });
+    const adminCheck = await pool.query("SELECT rol FROM usuarios WHERE id = $1", [req.session.userId]);
+    if (adminCheck.rows[0]?.rol !== "admin") return res.status(403).json({ error: "No autorizado" });
+
+    const { userId, rate } = req.body;
+    const newRate = parseFloat(rate);
+    
+    if (isNaN(newRate) || newRate < 0) return res.status(400).json({ error: "Tasa inválida" });
+
+    try {
+        await pool.query("UPDATE usuarios SET tasa_interes = $1 WHERE id = $2", [newRate, userId]);
+        res.json({ success: true });
+    } catch(err) {
+        res.status(500).json({ error: "Error al actualizar tasa" });
+    }
+});
+
 
 // Asignar Crédito (Suma al crédito existente)
 app.post("/admin/credit/assign", async (req, res) => {
