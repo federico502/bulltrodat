@@ -4323,7 +4323,7 @@ const ManageCreditModal = ({ isOpen, onClose, user, setAlert, onSuccess }) => {
 };
 
 const UserTableRow = React.memo(
-  ({ user, onDataChange, onViewUserOps, onDeleteUser, onSave, onManageCredit }) => {
+  ({ user, onDataChange, onViewUserOps, onDeleteUser, onSave, onManageCredit, onManageWithdrawals }) => {
     const handleInputChange = (e) => {
       const { name, value } = e.target;
       onDataChange(user.id, name, value);
@@ -4423,6 +4423,13 @@ const UserTableRow = React.memo(
             <Icons.ViewList />
           </button>
           <button
+            onClick={() => onManageWithdrawals(user)}
+            title="Ver Retiros"
+            className="bg-orange-600 text-white p-1 text-xs rounded hover:bg-orange-500 cursor-pointer"
+          >
+            <Icons.ArrowUpTray className="h-4 w-4" />
+          </button>
+          <button
             onClick={() => onDeleteUser(user)}
             title="Eliminar Usuario"
             className="bg-red-600 text-white p-1 text-xs rounded hover:bg-red-500 cursor-pointer"
@@ -4434,6 +4441,137 @@ const UserTableRow = React.memo(
     );
   }
 );
+
+// NUEVO: Modal para Administrar Retiros de Usuario
+const AdminWithdrawalsModal = ({ isOpen, onClose, user, setAlert }) => {
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Cargar retiros al abrir
+  useEffect(() => {
+    if (isOpen && user) {
+      setLoading(true);
+      axios
+        .get(`/admin/withdrawals/${user.id}`)
+        .then((res) => setWithdrawals(res.data))
+        .catch((err) => {
+          console.error(err);
+          setAlert({ message: "Error cargando retiros", type: "error" });
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [isOpen, user]);
+
+  const handleStatusChange = async (withdrawalId, status) => {
+    try {
+      const res = await axios.post("/admin/withdraw/status", {
+        withdrawalId,
+        status,
+        userId: user.id
+      });
+      setAlert({ message: res.data.message, type: "success" });
+      // Recargar lista
+      const updatedList = await axios.get(`/admin/withdrawals/${user.id}`);
+      setWithdrawals(updatedList.data);
+    } catch (error) {
+      setAlert({
+        message: error.response?.data?.error || "Error al actualizar estado",
+        type: "error",
+      });
+    }
+  };
+
+  if (!isOpen || !user) return null;
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`Retiros de ${user.nombre}`}
+      maxWidth="max-w-3xl"
+    >
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm text-left text-gray-700">
+          <thead className="bg-gray-100 uppercase font-bold text-xs">
+            <tr>
+              <th className="px-4 py-2">Fecha</th>
+              <th className="px-4 py-2">Monto</th>
+              <th className="px-4 py-2">Método</th>
+              <th className="px-4 py-2">Detalles</th>
+              <th className="px-4 py-2">Estado</th>
+              <th className="px-4 py-2">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan="6" className="text-center p-4">
+                  Cargando...
+                </td>
+              </tr>
+            ) : withdrawals.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="text-center p-4">
+                  No hay retiros registrados.
+                </td>
+              </tr>
+            ) : (
+              withdrawals.map((w) => (
+                <tr key={w.id} className="border-b hover:bg-gray-50">
+                  <td className="px-4 py-2">
+                    {new Date(w.fecha).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-2 font-bold">
+                    ${parseFloat(w.monto).toFixed(2)}
+                  </td>
+                  <td className="px-4 py-2 capitalize">{w.metodo}</td>
+                  <td className="px-4 py-2 max-w-xs truncate" title={JSON.stringify(w.detalles)}>
+                    {w.metodo === 'crypto' 
+                        ? `${w.detalles.network} - ${w.detalles.address}` 
+                        : 'Ver detalles'}
+                  </td>
+                  <td className="px-4 py-2">
+                    <span
+                      className={`px-2 py-1 rounded text-xs text-white ${
+                        w.estado === "aprobado"
+                          ? "bg-green-500"
+                          : w.estado === "rechazado"
+                          ? "bg-red-500"
+                          : "bg-yellow-500"
+                      }`}
+                    >
+                      {w.estado}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2">
+                    {w.estado === "pendiente" && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleStatusChange(w.id, "aprobado")}
+                          className="bg-green-100 text-green-600 p-1 rounded hover:bg-green-200"
+                          title="Aprobar"
+                        >
+                          <Icons.Check className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleStatusChange(w.id, "rechazado")}
+                          className="bg-red-100 text-red-600 p-1 rounded hover:bg-red-200"
+                          title="Rechazar (Devolver Fondos)"
+                        >
+                          <Icons.X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </Modal>
+  );
+};
 
 const ManageUsersModal = ({
   isOpen,
@@ -4448,6 +4586,7 @@ const ManageUsersModal = ({
     totalPages: 1,
   });
   const [selectedUserForCredit, setSelectedUserForCredit] = useState(null); // NUEVO
+  const [selectedUserForWithdrawals, setSelectedUserForWithdrawals] = useState(null);
 
   const fetchUsers = useCallback(
     (page = 1) => {
@@ -4554,6 +4693,7 @@ const ManageUsersModal = ({
                 onDeleteUser={onDeleteUser}
                 onSave={handleSave}
                 onManageCredit={setSelectedUserForCredit} // NUEVO
+                onManageWithdrawals={setSelectedUserForWithdrawals}
               />
             ))}
           </tbody>
@@ -4571,6 +4711,12 @@ const ManageUsersModal = ({
         user={selectedUserForCredit}
         setAlert={setAlert}
         onSuccess={() => fetchUsers(pagination.currentPage)}
+      />
+      <AdminWithdrawalsModal
+        isOpen={!!selectedUserForWithdrawals}
+        onClose={() => setSelectedUserForWithdrawals(null)}
+        user={selectedUserForWithdrawals}
+        setAlert={setAlert}
       />
     </Modal>
   );

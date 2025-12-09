@@ -1574,6 +1574,80 @@ app.get("/withdrawals", async (req, res) => {
   }
 });
 
+// --- ADMIN RETIROS ---
+
+// Obtener retiros de un usuario específico
+app.get("/admin/withdrawals/:userId", async (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ error: "No autenticado" });
+  
+  // Verificar admin
+  const adminCheck = await pool.query("SELECT rol FROM usuarios WHERE id = $1", [req.session.userId]);
+  if (adminCheck.rows[0]?.rol !== "admin") return res.status(403).json({ error: "No autorizado" });
+
+  const { userId } = req.params;
+  
+  try {
+    const { rows } = await pool.query("SELECT * FROM retiros WHERE usuario_id = $1 ORDER BY fecha DESC", [userId]);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "Error al obtener retiros" });
+  }
+});
+
+// Aprobar o rechazar retiro
+app.post("/admin/withdraw/status", async (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ error: "No autenticado" });
+
+  // Verificar admin
+  const adminCheck = await pool.query("SELECT rol FROM usuarios WHERE id = $1", [req.session.userId]);
+  if (adminCheck.rows[0]?.rol !== "admin") return res.status(403).json({ error: "No autorizado" });
+
+  const { withdrawalId, status, userId } = req.body; // userId necesario para refund si es rechazado
+
+  if (!['aprobado', 'rechazado'].includes(status)) {
+    return res.status(400).json({ error: "Estado inválido" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Verificar estado actual
+    const currentRes = await client.query("SELECT estado, monto FROM retiros WHERE id = $1 FOR UPDATE", [withdrawalId]);
+    if (currentRes.rows.length === 0) throw new Error("Retiro no encontrado");
+    
+    const { estado: estadoActual, monto } = currentRes.rows[0];
+
+    if (estadoActual !== 'pendiente') {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "El retiro ya fue procesado." });
+    }
+
+    // Actualizar estado
+    await client.query("UPDATE retiros SET estado = $1 WHERE id = $2", [status, withdrawalId]);
+
+    // SI ES RECHAZADO: DEVOLVER FONDOS
+    if (status === 'rechazado') {
+      await client.query("UPDATE usuarios SET balance = balance + $1 WHERE id = $2", [monto, userId]);
+    }
+
+    await client.query("COMMIT");
+    res.json({ 
+      success: true, 
+      message: status === 'rechazado' 
+        ? "Retiro rechazado. Fondos devueltos al usuario." 
+        : "Retiro aprobado correctamente." 
+    });
+
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error(err);
+    res.status(500).json({ error: "Error al procesar la solicitud" });
+  } finally {
+    client.release();
+  }
+});
+
 app.get("/admin/registration-code", async (req, res) => {
   if (!req.session.userId)
     return res.status(401).json({ error: "No autenticado" });
