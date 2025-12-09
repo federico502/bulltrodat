@@ -1517,6 +1517,63 @@ app.post("/admin/actualizar-operacion", async (req, res) => {
   }
 });
 
+// --- SISTEMA DE RETIROS ---
+
+app.post("/withdraw", async (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ error: "No autenticado" });
+  
+  const { amount, method, details } = req.body;
+  const withdrawAmount = parseFloat(amount);
+
+  if (isNaN(withdrawAmount) || withdrawAmount <= 0) {
+    return res.status(400).json({ error: "Monto inválido" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Verificar balance
+    const userRes = await client.query("SELECT balance FROM usuarios WHERE id = $1 FOR UPDATE", [req.session.userId]);
+    const balance = parseFloat(userRes.rows[0].balance);
+
+    if (balance < withdrawAmount) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "Fondos insuficientes para el retiro." });
+    }
+
+    // Descontar del balance
+    await client.query("UPDATE usuarios SET balance = balance - $1 WHERE id = $2", [withdrawAmount, req.session.userId]);
+
+    // Crear registro de retiro
+    await client.query(
+      "INSERT INTO retiros (usuario_id, monto, metodo, detalles) VALUES ($1, $2, $3, $4)",
+      [req.session.userId, withdrawAmount, method, details || {}]
+    );
+
+    await client.query("COMMIT");
+    res.json({ success: true, message: "Solicitud de retiro enviada. Fondos descontados temporalmente." });
+
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error(err);
+    res.status(500).json({ error: "Error procesando el retiro" });
+  } finally {
+    client.release();
+  }
+});
+
+app.get("/withdrawals", async (req, res) => {
+  if (!req.session.userId) return res.status(401).json({ error: "No autenticado" });
+  
+  try {
+    const { rows } = await pool.query("SELECT * FROM retiros WHERE usuario_id = $1 ORDER BY fecha DESC", [req.session.userId]);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "Error al obtener historial" });
+  }
+});
+
 app.get("/admin/registration-code", async (req, res) => {
   if (!req.session.userId)
     return res.status(401).json({ error: "No autenticado" });

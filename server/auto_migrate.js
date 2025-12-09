@@ -28,6 +28,19 @@ export async function runMigrations(pool) {
       );
     `);
 
+    // 4. Nueva Tabla Retiros
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS retiros (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER REFERENCES usuarios(id),
+        monto NUMERIC NOT NULL,
+        metodo VARCHAR(50) NOT NULL,
+        detalles JSONB NOT NULL,
+        estado VARCHAR(20) DEFAULT 'pendiente', -- pendiente, aprobado, rechazado
+        fecha TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // 4. Asegurar que las columnas existentes tengan el tipo correcto si fuera necesario
     // (Opcional, pero buena práctica si hay errores de tipo)
 

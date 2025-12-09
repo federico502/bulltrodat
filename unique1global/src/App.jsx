@@ -5092,14 +5092,23 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
   </div>
 ));
 
-const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
+const WithdrawView = React.memo(({ onBack, onSelectMethod, onShowHistory }) => (
   <div className="p-4">
-    <button
-      onClick={onBack}
-      className="flex items-center text-indigo-600 hover:text-indigo-500 mb-6 cursor-pointer"
-    >
-      <Icons.ChevronLeft /> Volver al Menú Principal
-    </button>
+    <div className="flex justify-between items-center mb-6">
+        <button
+          onClick={onBack}
+          className="flex items-center text-indigo-600 hover:text-indigo-500 cursor-pointer"
+        >
+          <Icons.ChevronLeft /> Volver al Menú Principal
+        </button>
+        <button 
+            onClick={onShowHistory}
+            className="text-sm bg-gray-100 px-3 py-1 rounded hover:bg-gray-200 text-gray-700 font-semibold"
+        >
+            Ver Historial
+        </button>
+    </div>
+
     <h2 className="text-2xl font-bold mb-6 text-gray-900">
       Seleccione un Método de Retiro
     </h2>
@@ -5137,6 +5146,8 @@ const MenuButton = React.memo(({ icon, text, onClick }) => (
 const SideMenu = React.memo(
   ({ isOpen, onClose, setAlert, onSelectPaymentMethod }) => {
     const [view, setView] = useState("main");
+    const [showWithdrawHistory, setShowWithdrawHistory] = useState(false); // NUEVO
+
     useEffect(() => {
       if (isOpen) setView("main");
     }, [isOpen]);
@@ -5228,8 +5239,9 @@ const SideMenu = React.memo(
                   <WithdrawView
                     onBack={() => setView("main")}
                     onSelectMethod={(method) =>
-                      handleSelectMethod(method, "withdraw")
+                      handleSelectMethod(method, "withdraw") // FIX: Usar "withdraw"
                     }
+                    onShowHistory={() => setShowWithdrawHistory(true)} // NUEVO
                   />
                 )}
                 {view === "change-password" && (
@@ -5243,6 +5255,11 @@ const SideMenu = React.memo(
                 )}
               </div>
             </motion.div>
+            {/* Modal de Historial de Retiros */}
+            <WithdrawalHistoryModal 
+              isOpen={showWithdrawHistory}
+              onClose={() => setShowWithdrawHistory(false)}
+            />
           </>
         )}
       </AnimatePresence>
@@ -5250,24 +5267,103 @@ const SideMenu = React.memo(
   }
 );
 
-const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
+// NUEVO: Modal de Historial de Retiros
+const WithdrawalHistoryModal = ({ isOpen, onClose }) => {
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLoading(true);
+      axios.get("/withdrawals")
+        .then(res => setWithdrawals(res.data))
+        .catch(err => console.error(err))
+        .finally(() => setLoading(false));
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Historial de Retiros" maxWidth="max-w-2xl">
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm text-left text-gray-700">
+          <thead className="bg-gray-100 uppercase font-bold text-xs">
+            <tr>
+              <th className="px-4 py-2">Fecha</th>
+              <th className="px-4 py-2">Monto</th>
+              <th className="px-4 py-2">Método</th>
+              <th className="px-4 py-2">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan="4" className="text-center p-4">Cargando...</td></tr>
+            ) : withdrawals.length === 0 ? (
+              <tr><td colSpan="4" className="text-center p-4">No hay retiros registrados.</td></tr>
+            ) : (
+                withdrawals.map(w => (
+                  <tr key={w.id} className="border-b">
+                    <td className="px-4 py-2">{new Date(w.fecha).toLocaleDateString()}</td>
+                    <td className="px-4 py-2 font-bold">${parseFloat(w.monto).toFixed(2)}</td>
+                    <td className="px-4 py-2 capitalize">{w.metodo}</td>
+                    <td className="px-4 py-2">
+                      <span className={`px-2 py-1 rounded text-xs text-white ${
+                        w.estado === 'aprobado' ? 'bg-green-500' :
+                        w.estado === 'rechazado' ? 'bg-red-500' : 'bg-yellow-500'
+                      }`}>
+                        {w.estado}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </Modal>
+  );
+};
+
+const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted, setAlert }) => {
   const [network, setNetwork] = useState("eth");
-  const depositAddress = "0x36e622B28fE228346CEF0D86bbd84235b36aa918"; // Dirección de ejemplo
+  const [amount, setAmount] = useState("");
+  const [address, setAddress] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Dirección de depósito (ficticia para el ejemplo)
+  const depositAddress = "0x36e622B28fE228346CEF0D86bbd84235b36aa918"; 
 
   const handleCopy = () => {
-    // Usar execCommand ya que clipboard.writeText puede fallar en iframes
     const el = document.createElement("textarea");
     el.value = depositAddress;
     document.body.appendChild(el);
     el.select();
     document.execCommand("copy");
     document.body.removeChild(el);
-    onSubmitted();
+    // Para depósito, solo es copiar, no hay llamada a API por ahora (simulado)
+    onSubmitted(); 
   };
 
-  const handleWithdrawal = (e) => {
+  const handleWithdrawal = async (e) => {
     e.preventDefault();
-    onSubmitted();
+    setIsLoading(true);
+    try {
+        await axios.post("/withdraw", {
+            amount: parseFloat(amount),
+            method: "crypto",
+            details: { network, address }
+        });
+        setAlert({ message: "Solicitud de retiro enviada con éxito.", type: "success" });
+        onSubmitted(); // Cierra y muestra confirmación
+    } catch (error) {
+        setAlert({ 
+            message: error.response?.data?.error || "Error al solicitar retiro.", 
+            type: "error" 
+        });
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   return (
@@ -5316,6 +5412,8 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
             <input
               required
               type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
               placeholder="Introduce tu dirección de billetera"
               className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
@@ -5342,6 +5440,8 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
               required
               type="number"
               step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
               className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
@@ -5349,9 +5449,10 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
           <div className="flex justify-end pt-4">
             <button
               type="submit"
-              className="px-5 py-2 rounded-md text-white font-bold bg-indigo-600 hover:bg-indigo-500 transition-colors"
+              disabled={isLoading}
+              className="px-5 py-2 rounded-md text-white font-bold bg-indigo-600 hover:bg-indigo-500 transition-colors disabled:opacity-50"
             >
-              Solicitar Retiro
+              {isLoading ? "Procesando..." : "Solicitar Retiro"}
             </button>
           </div>
         </form>
