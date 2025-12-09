@@ -4551,7 +4551,7 @@ const AdminWithdrawalsModal = ({ isOpen, onClose, user, setAlert }) => {
                           className="bg-green-100 text-green-600 p-1 rounded hover:bg-green-200"
                           title="Aprobar"
                         >
-                          <Icons.Check className="h-4 w-4" />
+                          <Icons.ShieldCheck className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleStatusChange(w.id, "rechazado")}
