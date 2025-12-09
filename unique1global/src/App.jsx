@@ -4427,7 +4427,7 @@ const UserTableRow = React.memo(
             title="Ver Retiros"
             className="bg-orange-600 text-white p-1 text-xs rounded hover:bg-orange-500 cursor-pointer"
           >
-            <Icons.ArrowUpTray className="h-4 w-4" />
+            <Icons.Banknotes className="h-4 w-4" />
           </button>
           <button
             onClick={() => onDeleteUser(user)}
