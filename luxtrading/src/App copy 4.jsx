@@ -152,18 +152,6 @@ const Icons = {
       className={className}
     />
   ),
-  ShieldCheck: ({ className }) => (
-    <Icon
-      path="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z"
-      className={className}
-    />
-  ),
-  Banknotes: ({ className }) => (
-    <Icon
-      path="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0 .75-.75V9.75M15 13.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-      className={className}
-    />
-  ),
 };
 
 // --- Catálogo de Activos para Búsqueda y Mapeo (LuxTrading - Manteniendo contenido extenso) ---
@@ -2432,293 +2420,6 @@ const UserOperationsModal = ({
   );
 };
 
-// NUEVO: Modal para Gestionar Crédito e Intereses (Adaptado a LuxTrading)
-const ManageCreditModal = ({ isOpen, onClose, user, setAlert, onSuccess }) => {
-  const [amount, setAmount] = useState("");
-  const [rate, setRate] = useState(user?.tasa_interes || 4.0);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-        setRate(user.tasa_interes !== undefined ? user.tasa_interes : 4.0);
-    }
-  }, [user]);
-
-  if (!isOpen || !user) return null;
-
-  const handleAction = async (action) => {
-    if ((action === "assign" || action === "collect") && (!amount || isNaN(amount) || parseFloat(amount) <= 0)) {
-        setAlert({ message: "Ingrese un monto válido", type: "error" });
-        return;
-    }
-
-    setIsLoading(true);
-    try {
-      let endpoint = "";
-      let payload = { userId: user.id };
-
-      if (action === "assign") {
-          endpoint = "/admin/credit/assign";
-          payload.amount = parseFloat(amount);
-      } else if (action === "collect") {
-          endpoint = "/admin/credit/collect";
-          payload.amount = parseFloat(amount);
-      } else if (action === "apply_interest") {
-          endpoint = "/admin/interest/apply";
-      } else if (action === "collect_interest") {
-          endpoint = "/admin/interest/collect";
-      } else if (action === "update_rate") {
-          endpoint = "/admin/interest/rate";
-          payload.rate = parseFloat(rate);
-      }
-      
-      const res = await axios.post(endpoint, payload);
-
-      setAlert({
-        message: res.data.message || "Operación exitosa",
-        type: "success",
-      });
-      if (action !== "update_rate") setAmount("");
-      onSuccess(); // Recargar usuarios
-      if (action === "collect" || action === "assign") onClose();
-    } catch (error) {
-      setAlert({
-        message: error.response?.data?.error || "Error en la operación",
-        type: "error",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={`Gestión de Crédito - ${user.nombre}`}
-      maxWidth="max-w-md"
-    >
-      <div className="space-y-6 text-neutral-300">
-        {/* Estadísticas de Crédito */}
-        <div className="bg-white/5 p-4 rounded-lg space-y-2 border border-white/10">
-            <div className="flex justify-between">
-                <span className="text-sm text-neutral-400">Balance:</span>
-                <span className="font-bold text-white">${parseFloat(user.balance).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-                <span className="text-sm text-neutral-400">Crédito (Bono):</span>
-                <span className="font-bold text-green-400">${parseFloat(user.credito || 0).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between border-t pt-2 mt-2 border-white/10">
-                <span className="text-sm text-neutral-400">Interés Acumulado:</span>
-                <span className="font-bold text-red-400">${parseFloat(user.interes_acumulado || 0).toFixed(2)}</span>
-            </div>
-        </div>
-
-        {/* Sección: Asignar/Cobrar Crédito */}
-        <div>
-            <h4 className="font-bold text-sm mb-2 text-white">Movimientos de Crédito</h4>
-          <input
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="mt-1 block w-full p-2 bg-white/5 border border-white/10 rounded-md mb-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-            placeholder="Monto"
-          />
-          <div className="flex gap-2">
-            <button
-                onClick={() => handleAction("assign")}
-                disabled={isLoading}
-                className="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-500 disabled:opacity-50 text-sm cursor-pointer"
-            >
-                Asignar
-            </button>
-            <button
-                onClick={() => handleAction("collect")}
-                disabled={isLoading}
-                className="flex-1 bg-red-600 text-white py-2 rounded hover:bg-red-500 disabled:opacity-50 text-sm cursor-pointer"
-            >
-                Cobrar
-            </button>
-          </div>
-        </div>
-
-        {/* Sección: Intereses */}
-        <div className="border-t border-white/10 pt-4">
-            <h4 className="font-bold text-sm mb-2 text-white">Gestión de Intereses</h4>
-            <div className="flex items-center gap-2 mb-3">
-                <label className="text-sm text-neutral-400 w-32">Tasa de Interés (%):</label>
-                <input
-                    type="number"
-                    value={rate}
-                    onChange={(e) => setRate(e.target.value)}
-                    className="flex-1 p-1 bg-white/5 border border-white/10 rounded focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                    step="0.1"
-                />
-                <button 
-                  onClick={() => handleAction("update_rate")}
-                  className="bg-cyan-600 text-white px-2 py-1 rounded text-xs hover:bg-cyan-500 cursor-pointer"
-                >
-                    Actualizar
-                </button>
-            </div>
-            <div className="flex gap-2">
-                <button
-                    onClick={() => handleAction("apply_interest")}
-                    disabled={isLoading}
-                    className="flex-1 bg-yellow-600 text-white py-2 rounded hover:bg-yellow-500 disabled:opacity-50 text-sm cursor-pointer"
-                >
-                    Aplicar Interés
-                </button>
-                <button
-                    onClick={() => handleAction("collect_interest")}
-                    disabled={isLoading}
-                    className="flex-1 bg-orange-600 text-white py-2 rounded hover:bg-orange-500 disabled:opacity-50 text-sm cursor-pointer"
-                >
-                    Cobrar Interés
-                </button>
-            </div>
-            <p className="text-xs text-neutral-500 mt-2">
-                "Aplicar" calcula el interés sobre el crédito actual y lo suma a la deuda. 
-                "Cobrar" descuenta la deuda acumulada del balance del usuario.
-            </p>
-        </div>
-      </div>
-    </Modal>
-  );
-};
-
-// NUEVO: Modal para Administrar Retiros de Usuario (Adaptado a LuxTrading)
-const AdminWithdrawalsModal = ({ isOpen, onClose, user, setAlert }) => {
-  const [withdrawals, setWithdrawals] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  // Cargar retiros al abrir
-  useEffect(() => {
-    if (isOpen && user) {
-      setLoading(true);
-      axios
-        .get(`/admin/withdrawals/${user.id}`)
-        .then((res) => setWithdrawals(res.data))
-        .catch((err) => {
-          console.error(err);
-          setAlert({ message: "Error cargando retiros", type: "error" });
-        })
-        .finally(() => setLoading(false));
-    }
-  }, [isOpen, user]);
-
-  const handleStatusChange = async (withdrawalId, status) => {
-    try {
-      const res = await axios.post("/admin/withdraw/status", {
-        withdrawalId,
-        status,
-        userId: user.id
-      });
-      setAlert({ message: res.data.message, type: "success" });
-      // Recargar lista
-      const updatedList = await axios.get(`/admin/withdrawals/${user.id}`);
-      setWithdrawals(updatedList.data);
-    } catch (error) {
-      setAlert({
-        message: error.response?.data?.error || "Error al actualizar estado",
-        type: "error",
-      });
-    }
-  };
-
-  if (!isOpen || !user) return null;
-
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={`Retiros de ${user.nombre}`}
-      maxWidth="max-w-3xl"
-    >
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm text-left text-neutral-300">
-          <thead className="bg-white/5 uppercase font-bold text-xs text-neutral-400">
-            <tr>
-              <th className="px-4 py-2">Fecha</th>
-              <th className="px-4 py-2">Monto</th>
-              <th className="px-4 py-2">Método</th>
-              <th className="px-4 py-2">Detalles</th>
-              <th className="px-4 py-2">Estado</th>
-              <th className="px-4 py-2">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {loading ? (
-              <tr>
-                <td colSpan="6" className="text-center p-4">
-                  Cargando...
-                </td>
-              </tr>
-            ) : withdrawals.length === 0 ? (
-              <tr>
-                <td colSpan="6" className="text-center p-4">
-                  No hay retiros registrados.
-                </td>
-              </tr>
-            ) : (
-              withdrawals.map((w) => (
-                <tr key={w.id} className="hover:bg-white/5">
-                  <td className="px-4 py-2">
-                    {new Date(w.fecha).toLocaleDateString()}
-                  </td>
-                  <td className="px-4 py-2 font-bold text-white">
-                    ${parseFloat(w.monto).toFixed(2)}
-                  </td>
-                  <td className="px-4 py-2 capitalize">{w.metodo}</td>
-                  <td className="px-4 py-2 max-w-xs truncate" title={JSON.stringify(w.detalles)}>
-                    {w.metodo === 'crypto' 
-                        ? `${w.detalles.network} - ${w.detalles.address}` 
-                        : 'Ver detalles'}
-                  </td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`px-2 py-1 rounded text-xs text-white ${
-                        w.estado === "aprobado"
-                          ? "bg-green-500/20 text-green-400"
-                          : w.estado === "rechazado"
-                          ? "bg-red-500/20 text-red-400"
-                          : "bg-yellow-500/20 text-yellow-400"
-                      }`}
-                    >
-                      {w.estado}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2">
-                    {w.estado === "pendiente" && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleStatusChange(w.id, "aprobado")}
-                          className="bg-green-500/20 text-green-400 p-1 rounded hover:bg-green-500/30 transition-colors"
-                          title="Aprobar"
-                        >
-                          <Icons.ShieldCheck className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleStatusChange(w.id, "rechazado")}
-                          className="bg-red-500/20 text-red-400 p-1 rounded hover:bg-red-500/30 transition-colors"
-                          title="Rechazar (Devolver Fondos)"
-                        >
-                          <Icons.X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </Modal>
-  );
-};
-
 const UserCard = React.memo(
   ({ user, onDataChange, onViewUserOps, onDeleteUser, onSave }) => {
     const handleInputChange = (e) => {
@@ -2813,7 +2514,7 @@ const UserCard = React.memo(
 );
 
 const UserTableRow = React.memo(
-  ({ user, onDataChange, onViewUserOps, onDeleteUser, onSave, onManageCredit, onManageWithdrawals }) => {
+  ({ user, onDataChange, onViewUserOps, onDeleteUser, onSave }) => {
     const handleInputChange = (e) => {
       const { name, value } = e.target;
       onDataChange(user.id, name, value);
@@ -2848,9 +2549,6 @@ const UserTableRow = React.memo(
             onChange={handleInputChange}
             className="w-full p-1 bg-white/5 rounded border border-white/10"
           />
-           <div className="text-xs text-green-400 mt-1">
-            Crédito: ${parseFloat(user.credito || 0).toFixed(2)}
-          </div>
         </td>
         <td className="p-2">
           <select
@@ -2899,25 +2597,11 @@ const UserTableRow = React.memo(
             Guardar
           </button>
           <button
-            onClick={() => onManageCredit(user)}
-            title="Gestionar Crédito"
-            className="bg-purple-600 text-white p-1 text-xs rounded hover:bg-purple-500 cursor-pointer"
-          >
-           <Icons.Banknotes className="h-4 w-4" />
-          </button>
-          <button
             onClick={() => onViewUserOps(user)}
             title="Ver Operaciones"
             className="bg-yellow-600 text-white p-1 text-xs rounded hover:bg-yellow-500 cursor-pointer"
           >
             <Icons.ViewList />
-          </button>
-          <button
-            onClick={() => onManageWithdrawals(user)}
-            title="Ver Retiros"
-            className="bg-orange-600 text-white p-1 text-xs rounded hover:bg-orange-500 cursor-pointer"
-          >
-            <Icons.Banknotes className="h-4 w-4" />
           </button>
           <button
             onClick={() => onDeleteUser(user)}
@@ -2944,8 +2628,6 @@ const ManageUsersModal = ({
     currentPage: 1,
     totalPages: 1,
   });
-  const [selectedUserForCredit, setSelectedUserForCredit] = useState(null); // NUEVO
-  const [selectedUserForWithdrawals, setSelectedUserForWithdrawals] = useState(null);
 
   const fetchUsers = useCallback(
     (page = 1) => {
@@ -3060,8 +2742,6 @@ const ManageUsersModal = ({
                 onViewUserOps={onViewUserOps}
                 onDeleteUser={handleDeleteUserWrapper} // Usando el wrapper
                 onSave={handleSave}
-                onManageCredit={setSelectedUserForCredit} // NUEVO
-                onManageWithdrawals={setSelectedUserForWithdrawals}
               />
             ))}
           </tbody>
@@ -3071,20 +2751,6 @@ const ManageUsersModal = ({
         currentPage={pagination.currentPage}
         totalPages={pagination.totalPages}
         onPageChange={(page) => fetchUsers(page)}
-      />
-      {/* Modal de Crédito */}
-      <ManageCreditModal
-        isOpen={!!selectedUserForCredit}
-        onClose={() => setSelectedUserForCredit(null)}
-        user={selectedUserForCredit}
-        setAlert={setAlert}
-        onSuccess={() => fetchUsers(pagination.currentPage)}
-      />
-      <AdminWithdrawalsModal
-        isOpen={!!selectedUserForWithdrawals}
-        onClose={() => setSelectedUserForWithdrawals(null)}
-        user={selectedUserForWithdrawals}
-        setAlert={setAlert}
       />
     </Modal>
   );
@@ -3459,40 +3125,25 @@ const DepositView = React.memo(({ onBack, onSelectMethod }) => (
   </div>
 ));
 
-const WithdrawView = React.memo(({ onBack, onSelectMethod, onShowHistory }) => (
+const WithdrawView = React.memo(({ onBack, onSelectMethod }) => (
   <div className="p-4">
-    <div className="flex justify-between items-center mb-6">
-        <button
-          onClick={onBack}
-          className="flex items-center text-cyan-500 hover:text-cyan-400 cursor-pointer"
-        >
-          <Icons.ChevronLeft /> Volver al Menú Principal
-        </button>
-        <button
-            onClick={onShowHistory}
-            className="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200 font-semibold cursor-pointer"
-        >
-            Ver Historial
-        </button>
-    </div>
-
-    <h2 className="text-2xl font-bold mb-6 text-gray-900">
+    <button
+      onClick={onBack}
+      className="flex items-center text-cyan-400 hover:text-cyan-300 mb-6 cursor-pointer" // Restaurando a cyan
+    >
+      <Icons.ChevronLeft /> Volver al Menú Principal
+    </button>
+    <h2 className="text-2xl font-bold mb-6 text-white">
       Seleccione un Método de Retiro
     </h2>
     <div className="space-y-4">
-      {/* NUEVO: Botón para Tarjeta de Crédito/Débito */}
       <PaymentMethodButton
-        icon={<Icons.CreditCard className="h-8 w-8 text-blue-500" />}
-        text="Tarjeta de Crédito/Débito"
-        onClick={() => onSelectMethod("card", "withdraw")}
-      />
-      <PaymentMethodButton
-        icon={<Icons.CreditCard className="h-8 w-8 text-cyan-500" />}
+        icon={<Icons.CreditCard className="h-8 w-8 text-cyan-400" />} // Restaurando a cyan
         text="Criptomonedas"
         onClick={() => onSelectMethod("crypto", "withdraw")}
       />
       <PaymentMethodButton
-        icon={<Icons.Banknotes className="h-8 w-8 text-green-500" />}
+        icon={<Icons.Banknotes className="h-8 w-8 text-green-400" />}
         text="Transferencia Bancaria"
         onClick={() => onSelectMethod("bank", "withdraw")}
       />
@@ -3513,8 +3164,6 @@ const MenuButton = React.memo(({ icon, text, onClick }) => (
 const SideMenu = React.memo(
   ({ isOpen, onClose, setAlert, onSelectPaymentMethod }) => {
     const [view, setView] = useState("main");
-    const [showWithdrawHistory, setShowWithdrawHistory] = useState(false); // NUEVO
-
     useEffect(() => {
       if (isOpen) setView("main");
     }, [isOpen]);
@@ -3532,16 +3181,16 @@ const SideMenu = React.memo(
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={onClose}
-              className="fixed inset-0 bg-black/50 z-40 cursor-pointer"
+              className="fixed inset-0 bg-black/50 z-40"
             />
             <motion.div
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "tween", ease: "circOut", duration: 0.4 }}
-              className="fixed top-0 left-0 h-full w-80 bg-white shadow-2xl z-50 border-r border-gray-200 flex flex-col"
+              className="fixed top-0 left-0 h-full w-80 bg-neutral-900 shadow-2xl z-50 border-r border-white/10 flex flex-col"
             >
-              <div className="p-4 border-b border-gray-200 flex-shrink-0 bg-neutral-900">
+              <div className="p-4 border-b border-white/10 flex-shrink-0">
                 <img
                   className="mb-2"
                   src={VITE_PLATFORM_LOGO || "/luxtrading-logo.png"}
@@ -3554,29 +3203,24 @@ const SideMenu = React.memo(
                   <div className="p-4 space-y-2">
                     <MenuButton
                       icon={
-                        <Icons.ArrowDownTray className="h-5 w-5 text-green-500" />
+                        <Icons.ArrowDownTray className="h-5 w-5 text-green-400" />
                       }
                       text="Depositar"
                       onClick={() => setView("deposit")}
                     />
                     <MenuButton
                       icon={
-                        <Icons.ArrowUpTray className="h-5 w-5 text-cyan-500" />
+                        <Icons.ArrowUpTray className="h-5 w-5 text-cyan-400" /> // Restaurando a cyan
                       }
                       text="Retirar"
                       onClick={() => setView("withdraw")}
                     />
-                    <MenuButton
-                      icon={<Icons.Key className="h-5 w-5 text-gray-500" />}
-                      text="Cambiar Contraseña"
-                      onClick={() => setView("change-password")}
-                    />
-                    <div className="my-2 h-px bg-gray-200" />
+                    <div className="my-2 h-px bg-white/10" />
                     <MenuButton
                       icon={
-                        <Icons.UserCircle className="h-5 w-5 text-gray-500" />
+                        <Icons.UserCircle className="h-5 w-5 text-neutral-400" />
                       }
-                      text="Mis Datos"
+                      text="Gestionar Cuenta"
                       onClick={() => setView("profile")}
                     />
                   </div>
@@ -3601,22 +3245,10 @@ const SideMenu = React.memo(
                     onSelectMethod={(method) =>
                       handleSelectMethod(method, "withdraw")
                     }
-                    onShowHistory={() => setShowWithdrawHistory(true)} // NUEVO
-                  />
-                )}
-                {view === "change-password" && (
-                  <ChangePasswordForm
-                    setAlert={setAlert}
-                    onBack={() => setView("main")}
                   />
                 )}
               </div>
             </motion.div>
-            {/* Modal de Historial de Retiros */}
-            <WithdrawalHistoryModal
-              isOpen={showWithdrawHistory}
-              onClose={() => setShowWithdrawHistory(false)}
-            />
           </>
         )}
       </AnimatePresence>
@@ -3624,103 +3256,26 @@ const SideMenu = React.memo(
   }
 );
 
-// NUEVO: Modal de Historial de Retiros
-const WithdrawalHistoryModal = ({ isOpen, onClose }) => {
-  const [withdrawals, setWithdrawals] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      setLoading(true);
-      axios.get("/withdrawals")
-        .then(res => setWithdrawals(res.data))
-        .catch(err => console.error(err))
-        .finally(() => setLoading(false));
-    }
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Historial de Retiros" maxWidth="max-w-2xl">
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm text-left text-gray-700">
-          <thead className="bg-gray-100 uppercase font-bold text-xs">
-            <tr>
-              <th className="px-4 py-2">Fecha</th>
-              <th className="px-4 py-2">Monto</th>
-              <th className="px-4 py-2">Método</th>
-              <th className="px-4 py-2">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan="4" className="text-center p-4">Cargando...</td></tr>
-            ) : withdrawals.length === 0 ? (
-              <tr><td colSpan="4" className="text-center p-4">No hay retiros registrados.</td></tr>
-            ) : (
-                withdrawals.map(w => (
-                  <tr key={w.id} className="border-b">
-                    <td className="px-4 py-2">{new Date(w.fecha).toLocaleDateString()}</td>
-                    <td className="px-4 py-2 font-bold">${parseFloat(w.monto).toFixed(2)}</td>
-                    <td className="px-4 py-2 capitalize">{w.metodo}</td>
-                    <td className="px-4 py-2">
-                      <span className={`px-2 py-1 rounded text-xs text-white ${
-                        w.estado === 'aprobado' ? 'bg-green-500' :
-                        w.estado === 'rechazado' ? 'bg-red-500' : 'bg-yellow-500'
-                      }`}>
-                        {w.estado}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </Modal>
-  );
-};
-
-const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted, setAlert }) => {
-  const [network, setNetwork] = useState("eth");
-  const [amount, setAmount] = useState("");
-  const [address, setAddress] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Dirección de depósito (ficticia para el ejemplo)
-  const depositAddress = "0x36e622B28fE228346CEF0D86bbd84235b36aa918";
+const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted }) => {
+  const [network, setNetwork] = useState("TRC20");
+  const depositAddress = "TQmZ1fA2gB4iC3dE5fG6h7J8k9L0mN1oP2q";
 
   const handleCopy = () => {
+    // navigator.clipboard.writeText(depositAddress);
+    // Usar execCommand ya que clipboard.writeText puede fallar en iframes
     const el = document.createElement("textarea");
     el.value = depositAddress;
     document.body.appendChild(el);
     el.select();
     document.execCommand("copy");
     document.body.removeChild(el);
-    // Para depósito, solo es copiar, no hay llamada a API por ahora (simulado)
-    onSubmitted();
+
+    onSubmitted("Dirección copiada");
   };
 
-  const handleWithdrawal = async (e) => {
+  const handleWithdrawal = (e) => {
     e.preventDefault();
-    setIsLoading(true);
-    try {
-        await axios.post("/withdraw", {
-            amount: parseFloat(amount),
-            method: "crypto",
-            details: { network, address }
-        });
-        setAlert({ message: "Solicitud de retiro enviada con éxito.", type: "success" });
-        onSubmitted(); // Cierra y muestra confirmación
-    } catch (error) {
-        setAlert({
-            message: error.response?.data?.error || "Error al solicitar retiro.",
-            type: "error"
-        });
-    } finally {
-        setIsLoading(false);
-    }
+    onSubmitted("Solicitud de retiro enviada");
   };
 
   return (
@@ -3734,36 +3289,37 @@ const CryptoPaymentModal = ({ isOpen, onClose, type, onSubmitted, setAlert }) =>
     >
       {type === "deposit" ? (
         <div className="text-center">
-          <p className="text-gray-500 mb-4">
-            Envía ETH a la siguiente dirección usando la red ETH (ERC20).
+          <p className="text-neutral-400 mb-4">
+            Envía USDT a la siguiente dirección usando la red TRON (TRC20).
           </p>
-          <div className="bg-gray-100 p-4 rounded-lg my-4">
+          <div className="bg-neutral-800 p-4 rounded-lg my-4">
             <img
               src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${depositAddress}`}
               alt="QR Code"
               className="mx-auto border-4 border-white rounded-lg"
             />
           </div>
-          <div className="bg-gray-50 p-3 rounded-lg flex items-center justify-between gap-4">
-            <span className="font-mono text-sm break-all text-gray-700">
+          <div className="bg-neutral-900/50 p-3 rounded-lg flex items-center justify-between gap-4">
+            <span className="font-mono text-sm break-all text-neutral-300">
               {depositAddress}
             </span>
             <button
               onClick={handleCopy}
-              className="p-2 rounded-md hover:bg-gray-200 transition-colors flex-shrink-0"
+              className="p-2 rounded-md hover:bg-neutral-700 transition-colors flex-shrink-0"
+              title="Copiar dirección"
             >
               <Icons.Clipboard className="h-5 w-5" />
             </button>
           </div>
-          <p className="text-xs text-yellow-600 mt-4">
-            Asegúrate de enviar únicamente ETH en la red ERC20. Enviar otra
+          <p className="text-xs text-yellow-400 mt-4">
+            Asegúrate de enviar únicamente USDT en la red TRC20. Enviar otra
             moneda o usar otra red podría resultar en la pérdida de tus fondos.
           </p>
         </div>
       ) : (
         <form onSubmit={handleWithdrawal} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-300 mb-1">
               Tu Dirección de Billetera (USDT)
             </label>
             <input
