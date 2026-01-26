@@ -307,7 +307,7 @@ const AppProvider = ({ children }) => {
     try {
       const { data } = await axios.get("/commissions");
       setCommissions(data); // Carga los datos reales del servidor
-    } catch (error) {
+    } catch {
       console.error("Error fetching commissions:", error);
       // Mantener los valores por defecto si falla
     }
@@ -317,7 +317,7 @@ const AppProvider = ({ children }) => {
     try {
       const { data } = await axios.get("/leverage-options");
       setLeverageOptions(data); // Carga las opciones reales del servidor
-    } catch (error) {
+    } catch {
       console.error("Error fetching leverage options:", error);
       // Mantener los valores por defecto si falla
     }
@@ -329,7 +329,7 @@ const AppProvider = ({ children }) => {
       const { data } = await axios.get("/me");
       setUser(data);
       setIsAuthenticated(true);
-    } catch (error) {
+    } catch {
       console.log("No authenticated user found.");
       setIsAuthenticated(false);
       setUser(null);
@@ -946,7 +946,7 @@ const ManageNotificationsModal = ({ isOpen, onClose, setAlert }) => {
         type: "success",
       });
       onClose();
-    } catch (error) {
+    } catch {
       setAlert({ message: "Error al enviar la notificación.", type: "error" });
     }
   };
@@ -2249,7 +2249,7 @@ const UserOperationsModal = ({
       await onUpdateOperation(payload);
       setAlert({ message: "Operación guardada con éxito.", type: "success" });
       fetchUserOperations(pagination.currentPage); // Refrescar la lista
-    } catch (error) {
+    } catch {
       // La función onUpdateOperation ya debería haber establecido un alert de error
       // pero lo reforzamos aquí si es necesario
     }
@@ -4164,7 +4164,7 @@ const DashboardPage = () => {
       setNewOpModalData({ type, volume, asset: selectedAsset });
       setIsNewOpModalOpen(true);
     },
-    [realTimePrices, selectedAsset]
+    [realTimePrices, selectedAsset, setAlert, setNewOpModalData, setIsNewOpModalOpen]
   );
 
   const handleConfirmOperation = useCallback(
