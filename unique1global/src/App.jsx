@@ -2086,12 +2086,7 @@ const Icons = {
       className={className}
     />
   ),
-  Bell: ({ className }) => (
-    <Icon
-      path="M14.857 17.082a23.848 23.848 0 005.454-1.331 8.967 8.967 0 01-4.436-5.334m4.436 5.334a23.848 23.848 0 01-5.454 1.331m0 0a2.38 2.38 0 01-1.872 0M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-      className={className}
-    />
-  ),
+
   X: ({ className = "h-6 w-6" }) => (
     <Icon path="M6 18L18 6M6 6l12 12" className={className} />
   ),
@@ -2307,11 +2302,11 @@ const AppProvider = ({ children }) => {
         try {
           const commRes = await axios.get("/commissions");
           setCommissions(commRes.data);
-        } catch (e) {
+        } catch {
           console.warn("Failed to fetch commissions, using defaults.");
         }
       }
-    } catch (error) {
+    } catch {
       console.log("No authenticated user found.");
       setIsAuthenticated(false);
       setUser(null);
@@ -2509,13 +2504,12 @@ const TradingViewWidget = React.memo(({ symbol }) => {
 
   useEffect(() => {
     const tvSymbol = getTradingViewSymbol(symbol);
-    let widget = null;
 
     const createWidget = () => {
       if (!containerRef.current || typeof window.TradingView === "undefined")
         return;
       containerRef.current.innerHTML = "";
-      widget = new window.TradingView.widget({
+      new window.TradingView.widget({
         autosize: true,
         symbol: tvSymbol,
         interval: "D",
@@ -3890,7 +3884,7 @@ const UserOperationsModal = ({
     try {
       await onUpdateOperation(operationData);
       setAlert({ message: "Operación actualizada con éxito", type: "success" });
-    } catch (error) {
+    } catch {
       setAlert({ message: "Error al actualizar la operación", type: "error" });
     }
   };
@@ -4735,7 +4729,7 @@ const ManageLeverageModal = ({ isOpen, onClose, setAlert }) => {
           setCurrentLeverage(res.data.maxLeverage);
           setNewLeverage(res.data.maxLeverage);
         })
-        .catch((err) =>
+        .catch(() =>
           setAlert({
             message: "No se pudo cargar el apalancamiento actual",
             type: "error",
@@ -4754,7 +4748,7 @@ const ManageLeverageModal = ({ isOpen, onClose, setAlert }) => {
         type: "success",
       });
       onClose();
-    } catch (error) {
+    } catch {
       setAlert({
         message: "Error al actualizar el apalancamiento",
         type: "error",
@@ -5116,7 +5110,7 @@ const UserProfile = React.memo(({ setAlert, onBack }) => {
       await axios.put("/me/profile", { identificacion, telefono });
       setAlert({ message: "Perfil actualizado con éxito", type: "success" });
       refreshUser();
-    } catch (error) {
+    } catch {
       setAlert({ message: "Error al actualizar el perfil", type: "error" });
     }
   };
@@ -5759,7 +5753,6 @@ const DashboardPage = () => {
     setRealTimePrices,
     commissions, // Necesario para el cálculo de margen
     setGlobalNotification,
-    globalNotification,
   } = useContext(AppContext);
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [mobileVolume, setMobileVolume] = useState(0.01);
@@ -5806,7 +5799,7 @@ const DashboardPage = () => {
       return Array.isArray(parsedAssets) && parsedAssets.length > 0
         ? normalizeInitialAssets(parsedAssets)
         : initialAssets;
-    } catch (error) {
+    } catch {
       return initialAssets;
     }
   });
@@ -6043,12 +6036,7 @@ const DashboardPage = () => {
 
     // Cálculo de Swap diario para PnL flotante (simulado, pero se cobra en el backend)
     // Se calcula el Swap diario para mostrar un PnL más preciso, aunque el cobro lo hace el backend.
-    const swapCostTotal = openOperations.reduce((total, op) => {
-      const margen = parseFloat(op.capital_invertido || 0);
-      // Usar la comisión del contexto para el cálculo local
-      const swapRate = commissions.swapDailyPercentage / 100;
-      return total + margen * swapRate;
-    }, 0);
+    // const swapCostTotal removed (unused)
 
     const usedMargin = openOperations.reduce(
       (total, op) => total + parseFloat(op.capital_invertido || 0),
@@ -6101,7 +6089,7 @@ const DashboardPage = () => {
       setNewOpModalData({ type, volume, asset: selectedAsset });
       setIsNewOpModalOpen(true);
     },
-    [realTimePrices, selectedAsset]
+    [realTimePrices, selectedAsset, setAlert, setNewOpModalData, setIsNewOpModalOpen]
   );
 
   const handleConfirmOperation = useCallback(
