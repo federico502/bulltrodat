@@ -3829,7 +3829,7 @@ const UserOperationsModal = ({
           setOperations(
             res.data.operaciones.map((op) => ({
               ...op,
-              ganancia: calculateProfit(op),
+              ganancia: op.ganancia !== undefined && op.ganancia !== null ? parseFloat(op.ganancia) : calculateProfit(op),
             }))
           );
           if (!showAll) {
@@ -4036,13 +4036,17 @@ const UserOperationsModal = ({
                     className="form-checkbox h-5 w-5 text-indigo-600 bg-gray-100 border-gray-300 rounded focus:ring-indigo-500"
                   />
                 </td>
-                <td
-                  className={`p-1 font-mono ${
-                    op.ganancia >= 0 ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {op.ganancia.toFixed(2)}
-                </td>
+                  <input
+                    type="number"
+                    step="any"
+                    value={op.ganancia}
+                    onChange={(e) =>
+                      handleInputChange(op.id, "ganancia", e.target.value)
+                    }
+                    className={`w-20 p-1 bg-gray-50 rounded border border-gray-300 font-mono ${
+                        op.ganancia >= 0 ? "text-green-600" : "text-red-600"
+                    }`}
+                  />
                 <td className="p-1">
                   <button
                     onClick={() => handleSave(op)}

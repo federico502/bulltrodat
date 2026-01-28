@@ -1446,18 +1446,24 @@ app.post("/admin/actualizar-operacion", async (req, res) => {
     const esCerrada = cerrada === true || cerrada === "true";
 
     if (esCerrada) {
-      if (
-        tipo_operacion.toLowerCase() === "buy" ||
-        tipo_operacion.toLowerCase() === "compra"
-      ) {
-        nuevaGanancia =
-          (parseFloat(precio_cierre) - parseFloat(precio_entrada)) *
-          parseFloat(volumen);
+      // MODIFICACIÓN: Si se envía una ganancia manual, usarla. Si no, calcularla.
+      if (req.body.ganancia !== undefined && req.body.ganancia !== null && req.body.ganancia !== "") {
+          nuevaGanancia = parseFloat(req.body.ganancia);
       } else {
-        // sell
-        nuevaGanancia =
-          (parseFloat(precio_entrada) - parseFloat(precio_cierre)) *
-          parseFloat(volumen);
+          // Cálculo automático (fallback)
+          if (
+            tipo_operacion.toLowerCase() === "buy" ||
+            tipo_operacion.toLowerCase() === "compra"
+          ) {
+            nuevaGanancia =
+              (parseFloat(precio_cierre) - parseFloat(precio_entrada)) *
+              parseFloat(volumen);
+          } else {
+            // sell
+            nuevaGanancia =
+              (parseFloat(precio_entrada) - parseFloat(precio_cierre)) *
+              parseFloat(volumen);
+          }
       }
     }
 
