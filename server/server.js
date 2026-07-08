@@ -84,9 +84,7 @@ const { Pool } = pg;
 const dbConfig = parse(DATABASE_URL);
 const pool = new Pool({
   ...dbConfig,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  ssl: NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
 });
 
 // --- Configuración de Middlewares ---
@@ -482,6 +480,85 @@ async function liquidarOperacion(client, op, precioActual, motivo, ganancia) {
     ganancia: ganancia,
     tipoCierre: motivo,
   });
+}
+
+async function procesarOpcionesBinariasExpiradas() {
+  const client = await pool.connect();
+  try {
+    const expiredOpsResult = await client.query(
+      `SELECT op.*, u.balance as user_balance
+       FROM opciones_binarias op
+       JOIN usuarios u ON op.usuario_id = u.id
+       WHERE op.finalizada = false AND op.fecha_expiracion <= CURRENT_TIMESTAMP`
+    );
+    const expiredOps = expiredOpsResult.rows;
+
+    for (const op of expiredOps) {
+      await client.query("BEGIN");
+      
+      const normalizedSymbol = normalizeSymbol(op.activo);
+      const precioActualStr = global.preciosEnTiempoReal[normalizedSymbol];
+      if (!precioActualStr) {
+        // Si no hay precio actual en memoria, no podemos liquidarla todavía (esperamos al próximo tick)
+        await client.query("ROLLBACK");
+        continue;
+      }
+      const precioCierre = parseFloat(precioActualStr);
+      const precioEntrada = parseFloat(op.precio_entrada);
+      const monto = parseFloat(op.monto);
+      const tipo = op.tipo_opcion.toLowerCase(); // 'call' / 'put'
+
+      let ganadora = false;
+      if (tipo === "call" || tipo === "sube") {
+        ganadora = precioCierre > precioEntrada;
+      } else if (tipo === "put" || tipo === "baja") {
+        ganadora = precioCierre < precioEntrada;
+      }
+
+      // El retorno fijo es del 85%
+      const retornoPorcentaje = 85;
+      const gananciaNeto = ganadora ? monto * (retornoPorcentaje / 100) : -monto;
+
+      // 1. Actualizar el estado de la opción binaria
+      await client.query(
+        `UPDATE opciones_binarias 
+         SET precio_cierre = $1, ganancia = $2, finalizada = true 
+         WHERE id = $3`,
+        [precioCierre, ganadora ? gananciaNeto : 0, op.id]
+      );
+
+      // 2. Si ganó, acreditar balance del usuario (inversión de vuelta + ganancia)
+      if (ganadora) {
+        await client.query(
+          "UPDATE usuarios SET balance = balance + $1 WHERE id = $2",
+          [monto + gananciaNeto, op.usuario_id]
+        );
+      }
+
+      // 3. Crear notificación para el usuario
+      const mensaje = `Opción binaria de ${op.activo} (${tipo === 'call' ? 'SUBE' : 'BAJA'}) ha finalizado. Resultado: ${ganadora ? 'GANADA (+$' + gananciaNeto.toFixed(2) + ')' : 'PERDIDA (-$' + monto.toFixed(2) + ')'}.`;
+      await client.query(
+        "INSERT INTO notificaciones (mensaje) VALUES ($1)",
+        [mensaje]
+      );
+
+      await client.query("COMMIT");
+
+      // Notificar al cliente a través de WS
+      broadcast({
+        type: "opcion_binaria_finalizada",
+        usuario_id: op.usuario_id,
+        opcion_id: op.id,
+        activo: op.activo,
+        ganadora,
+        ganancia: ganadora ? gananciaNeto : -monto,
+      });
+    }
+  } catch (err) {
+    console.error("Error al procesar opciones binarias expiradas:", err);
+  } finally {
+    client.release();
+  }
 }
 
 async function cerrarOperacionesAutomáticamente() {
@@ -2019,6 +2096,112 @@ app.post("/admin/notificar", async (req, res) => {
   }
 });
 
+// --- NUEVAS RUTAS: OPCIONES BINARIAS ---
+app.post("/opciones-binarias/operar", async (req, res) => {
+  const { activo, monto, tipo_opcion, duracion } = req.body;
+  const usuario_id = req.session.userId;
+  if (!usuario_id) return res.status(401).json({ error: "No autenticado" });
+
+  const nMonto = parseFloat(monto);
+  const nDuracion = parseInt(duracion);
+
+  if (
+    !activo ||
+    typeof activo !== "string" ||
+    !tipo_opcion ||
+    !["call", "put", "sube", "baja"].includes(tipo_opcion.toLowerCase()) ||
+    isNaN(nMonto) ||
+    nMonto <= 0 ||
+    isNaN(nDuracion) ||
+    ![60, 120, 300].includes(nDuracion)
+  ) {
+    return res.status(400).json({ error: "Datos de opción inválidos." });
+  }
+
+  const normalizedSymbol = normalizeSymbol(activo);
+  const precioActualStr = global.preciosEnTiempoReal[normalizedSymbol];
+  if (!precioActualStr) {
+    return res.status(400).json({ error: "Precio del activo no disponible. Intente de nuevo." });
+  }
+  const precioEntrada = parseFloat(precioActualStr);
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Consultar saldo del usuario
+    const userRes = await client.query(
+      "SELECT balance FROM usuarios WHERE id = $1 FOR UPDATE",
+      [usuario_id]
+    );
+
+    if (userRes.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Usuario no encontrado." });
+    }
+
+    const balanceActual = parseFloat(userRes.rows[0].balance);
+    if (balanceActual < nMonto) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ error: "Saldo insuficiente para esta operación." });
+    }
+
+    // Restar el monto invertido del balance
+    await client.query(
+      "UPDATE usuarios SET balance = balance - $1 WHERE id = $2",
+      [nMonto, usuario_id]
+    );
+
+    // Calcular expiración
+    const fechaExpiracion = new Date(Date.now() + nDuracion * 1000);
+
+    const insertRes = await client.query(
+      `INSERT INTO opciones_binarias (usuario_id, activo, monto, precio_entrada, tipo_opcion, duracion, fecha_expiracion)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [usuario_id, activo, nMonto, precioEntrada, tipo_opcion.toLowerCase(), nDuracion, fechaExpiracion]
+    );
+
+    await client.query("COMMIT");
+    res.json({ success: true, opcion: insertRes.rows[0] });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error(err);
+    res.status(500).json({ error: "Error interno al crear la opción binaria." });
+  } finally {
+    client.release();
+  }
+});
+
+app.get("/opciones-binarias/activas", async (req, res) => {
+  if (!req.session.userId)
+    return res.status(401).json({ error: "No autenticado" });
+  try {
+    const result = await pool.query(
+      "SELECT * FROM opciones_binarias WHERE usuario_id = $1 AND finalizada = false ORDER BY fecha_creacion DESC",
+      [req.session.userId]
+    );
+    res.json({ success: true, operaciones: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error al obtener opciones activas." });
+  }
+});
+
+app.get("/opciones-binarias/historial", async (req, res) => {
+  if (!req.session.userId)
+    return res.status(401).json({ error: "No autenticado" });
+  try {
+    const result = await pool.query(
+      "SELECT * FROM opciones_binarias WHERE usuario_id = $1 AND finalizada = true ORDER BY fecha_creacion DESC LIMIT 50",
+      [req.session.userId]
+    );
+    res.json({ success: true, operaciones: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error al obtener historial de opciones." });
+  }
+});
+
 // Lógica para manejar suscripciones enviadas por el cliente
 wss.on("connection", (ws, req) => {
   ws.on("message", (message) => {
@@ -2117,6 +2300,8 @@ const startServer = async () => {
 
       // El Swap/TP/SL/Stop-Out se aplica al intervalo definido (15s)
       setInterval(() => cerrarOperacionesAutomáticamente(), CHECK_INTERVAL_MS);
+      // Las opciones binarias se comprueban cada 1 segundo para mayor precisión de expiración
+      setInterval(() => procesarOpcionesBinariasExpiradas(), 1000);
       console.log(
         `⏱️ TP/SL/Stop-Out checks se ejecutan cada ${
           CHECK_INTERVAL_MS / 1000

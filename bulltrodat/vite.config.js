@@ -8,6 +8,7 @@ export default defineConfig({
       "/api": {
         target: "http://localhost:3000", // Asegúrate que este sea el puerto de tu backend
         changeOrigin: true,
+        ws: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
       },
     },

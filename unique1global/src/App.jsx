@@ -2552,6 +2552,704 @@ const TradingViewWidget = React.memo(({ symbol }) => {
   );
 });
 
+// --- NUEVA VISTA DE GRÁFICO INTERACTIVO ANIMADO (HECHO CON HTML5 CANVAS) ---
+const AnimatedCustomChart = ({ 
+  symbol, 
+  currentPrice, 
+  activeOperations = [], 
+  mode,
+  tpPreview,
+  slPreview
+}) => {
+  const canvasRef = useRef(null);
+  const containerRef = useRef(null);
+  const priceHistoryRef = useRef([]);
+  const displayedHistoryRef = useRef([]);
+  const particles = useRef([]);
+  const shockwaves = useRef([]);
+  const floatingTexts = useRef([]);
+  const pendingEventsRef = useRef([]);
+  const prevOpsRef = useRef([]);
+  const mousePosRef = useRef({ x: null, y: null });
+  const animationFrameId = useRef(null);
+
+  const livePriceNum = parseFloat(currentPrice);
+
+  // Generar historial simulado al cambiar de activo
+  useEffect(() => {
+    const startPrice = !isNaN(livePriceNum) && livePriceNum > 0 ? livePriceNum : 60000;
+    const history = [];
+    const now = Date.now();
+    let currentWalk = startPrice;
+
+    for (let i = 60; i >= 0; i--) {
+      // Caminata aleatoria realista
+      const rand = (Math.random() - 0.5) * (startPrice * 0.001);
+      currentWalk += rand;
+      history.push({
+        time: now - i * 3000,
+        price: currentWalk,
+      });
+    }
+    priceHistoryRef.current = history;
+    displayedHistoryRef.current = JSON.parse(JSON.stringify(history));
+    particles.current = [];
+    shockwaves.current = [];
+    floatingTexts.current = [];
+    pendingEventsRef.current = [];
+    prevOpsRef.current = JSON.parse(JSON.stringify(activeOperations));
+  }, [symbol]);
+
+  // Actualizar historial con ticks en tiempo real
+  useEffect(() => {
+    if (isNaN(livePriceNum) || livePriceNum <= 0) return;
+    const history = priceHistoryRef.current;
+    if (history.length === 0) return;
+
+    const lastItem = history[history.length - 1];
+    const now = Date.now();
+
+    // Si el precio cambió, agregamos un punto nuevo o actualizamos el último
+    if (livePriceNum !== lastItem.price) {
+      if (now - lastItem.time < 3000) {
+        lastItem.price = livePriceNum;
+      } else {
+        history.push({ time: now, price: livePriceNum });
+        if (history.length > 80) history.shift();
+      }
+    }
+  }, [livePriceNum]);
+
+  // Detectar apertura/cierre de operaciones para lanzar animaciones (Estilo IQ Option)
+  useEffect(() => {
+    const prevOps = prevOpsRef.current;
+    const currentOps = activeOperations;
+
+    // 1. Detectar nuevas operaciones abiertas
+    currentOps.forEach((op) => {
+      const isNew = !prevOps.some((prev) => prev.id === op.id);
+      if (isNew) {
+        const isBuy = mode === "cfd"
+          ? op.tipo_operacion?.toLowerCase() === "buy"
+          : op.tipo_opcion?.toLowerCase() === "call" || op.tipo_opcion?.toLowerCase() === "sube";
+
+        pendingEventsRef.current.push({
+          type: "open",
+          isBuy,
+          price: parseFloat(op.precio_entrada || op.monto),
+          time: Date.now()
+        });
+      }
+    });
+
+    // 2. Detectar operaciones cerradas
+    prevOps.forEach((op) => {
+      const isClosed = !currentOps.some((curr) => curr.id === op.id);
+      if (isClosed) {
+        const entryPrice = parseFloat(op.precio_entrada || op.monto);
+        const isBuy = mode === "cfd"
+          ? op.tipo_operacion?.toLowerCase() === "buy"
+          : op.tipo_opcion?.toLowerCase() === "call" || op.tipo_opcion?.toLowerCase() === "sube";
+
+        // Estimar si fue ganadora
+        const isWin = isBuy ? (livePriceNum > entryPrice) : (livePriceNum < entryPrice);
+        const profitVal = mode === "cfd"
+          ? (isBuy ? (livePriceNum - entryPrice) : (entryPrice - livePriceNum))
+          : (isWin ? parseFloat(op.monto) * 0.85 : -parseFloat(op.monto));
+
+        pendingEventsRef.current.push({
+          type: "close",
+          isBuy,
+          isWin,
+          profit: profitVal,
+          price: entryPrice,
+          time: Date.now()
+        });
+      }
+    });
+
+    prevOpsRef.current = JSON.parse(JSON.stringify(currentOps));
+  }, [activeOperations, livePriceNum, mode]);
+
+  // Manejo del cursor de cruz
+  const handleMouseMove = (e) => {
+    if (!canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    mousePosRef.current = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+  };
+
+  const handleMouseLeave = () => {
+    mousePosRef.current = { x: null, y: null };
+  };
+
+  // Loop de dibujo y animación
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    const resizeCanvas = () => {
+      if (containerRef.current) {
+        canvas.width = containerRef.current.clientWidth;
+        canvas.height = containerRef.current.clientHeight;
+      }
+    };
+    resizeCanvas();
+    window.addEventListener("resize", resizeCanvas);
+
+    const render = () => {
+      const width = canvas.width;
+      const height = canvas.height;
+      ctx.clearRect(0, 0, width, height);
+
+      const history = priceHistoryRef.current;
+      const displayed = displayedHistoryRef.current;
+
+      if (history.length === 0 || displayed.length === 0) {
+        animationFrameId.current = requestAnimationFrame(render);
+        return;
+      }
+
+      // 1. Interpolar (Lerp) suavizadamente para el efecto elástico
+      for (let i = 0; i < history.length; i++) {
+        if (!displayed[i]) {
+          displayed[i] = { ...history[i] };
+        } else {
+          displayed[i].price += (history[i].price - displayed[i].price) * 0.15;
+          displayed[i].time = history[i].time;
+        }
+      }
+      if (displayed.length > history.length) {
+        displayed.splice(history.length);
+      }
+
+      // 2. Escalar datos a la pantalla
+      const prices = displayed.map((d) => d.price);
+      let minP = Math.min(...prices);
+      let maxP = Math.max(...prices);
+      const diff = maxP - minP || 10;
+      const padding = diff * 0.15;
+      minP -= padding;
+      maxP += padding;
+
+      const getX = (index) => (index / (displayed.length - 1)) * (width - 60); // 60px margen derecho
+      const getY = (price) => height - ((price - minP) / (maxP - minP)) * (height - 60) - 30; // Margen vertical
+
+      // 3. Dibujar rejilla completa (Grid Horizontal y Vertical)
+      ctx.strokeStyle = "rgba(229, 231, 235, 0.4)";
+      ctx.lineWidth = 1;
+      
+      // Líneas horizontales del grid
+      for (let i = 1; i < 5; i++) {
+        const y = (height / 5) * i;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width - 60, y);
+        ctx.stroke();
+
+        const gridPrice = maxP - ((maxP - minP) / 5) * i;
+        ctx.fillStyle = "#9CA3AF";
+        ctx.font = "10px sans-serif";
+        ctx.fillText(`$${gridPrice.toFixed(2)}`, width - 55, y + 3);
+      }
+
+      // Líneas verticales del grid (Eje X) con marcas de tiempo
+      for (let i = 1; i < 6; i++) {
+        const x = (width / 6) * i;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height - 30);
+        ctx.stroke();
+
+        const ptIdx = Math.floor((displayed.length / 6) * i);
+        if (displayed[ptIdx]) {
+          const date = new Date(displayed[ptIdx].time);
+          const timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+          ctx.fillStyle = "#9CA3AF";
+          ctx.font = "9px monospace";
+          ctx.textAlign = "center";
+          ctx.fillText(timeStr, x, height - 15);
+        }
+      }
+
+      // 4. Dibujar líneas verticales de expiración para Opciones Binarias (Estilo IQ Option)
+      if (mode === "binary") {
+        const purchaseLimitX = width - 42;
+        const expirationX = width - 12;
+
+        // Línea de límite de compra
+        ctx.save();
+        ctx.strokeStyle = "rgba(167, 139, 250, 0.4)";
+        ctx.setLineDash([4, 2]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(purchaseLimitX, 0);
+        ctx.lineTo(purchaseLimitX, height - 30);
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(167, 139, 250, 0.6)";
+        ctx.font = "8px sans-serif";
+        ctx.save();
+        ctx.translate(purchaseLimitX - 4, 40);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText("TIEMPO LÍMITE", 0, 0);
+        ctx.restore();
+        ctx.restore();
+
+        // Línea roja de expiración final
+        ctx.save();
+        ctx.strokeStyle = "rgba(239, 68, 68, 0.5)";
+        ctx.setLineDash([4, 2]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(expirationX, 0);
+        ctx.lineTo(expirationX, height - 30);
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(239, 68, 68, 0.7)";
+        ctx.font = "8px sans-serif";
+        ctx.save();
+        ctx.translate(expirationX - 4, 40);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText("EXPIRACIÓN", 0, 0);
+        ctx.restore();
+        ctx.restore();
+      }
+
+      // 5. Dibujar barras de volumen en el fondo (Estilo Trading)
+      displayed.forEach((pt, idx) => {
+        const x = getX(idx);
+        const isUp = idx === 0 ? true : pt.price >= displayed[idx - 1].price;
+        // Altura del volumen simulada
+        const volHeight = Math.abs(Math.sin(pt.time * 0.001)) * 25 + 5;
+        ctx.fillStyle = isUp ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)";
+        ctx.fillRect(x - 2, height - 30 - volHeight, 4, volHeight);
+      });
+
+      // 6. Dibujar área con degradado brillante
+      ctx.beginPath();
+      ctx.moveTo(getX(0), height - 30);
+      displayed.forEach((pt, idx) => {
+        ctx.lineTo(getX(idx), getY(pt.price));
+      });
+      ctx.lineTo(getX(displayed.length - 1), height - 30);
+      ctx.closePath();
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, "rgba(139, 92, 246, 0.28)");
+      gradient.addColorStop(1, "rgba(139, 92, 246, 0.0)");
+      ctx.fillStyle = gradient;
+      ctx.fill();
+
+      // 7. Calcular y Dibujar Línea de Indicador Técnico: SMA (14)
+      const period = 14;
+      const smaData = [];
+      for (let i = 0; i < displayed.length; i++) {
+        if (i < period - 1) {
+          smaData.push(null);
+        } else {
+          let sum = 0;
+          for (let j = 0; j < period; j++) {
+            sum += displayed[i - j].price;
+          }
+          smaData.push(sum / period);
+        }
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      let firstSma = true;
+      smaData.forEach((val, idx) => {
+        if (val === null) return;
+        const x = getX(idx);
+        const y = getY(val);
+        if (firstSma) {
+          ctx.moveTo(x, y);
+          firstSma = false;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      ctx.strokeStyle = "rgba(245, 158, 11, 0.7)"; // Dorado/Naranja
+      ctx.setLineDash([2, 2]);
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+
+      // 8. Dibujar la línea principal de precios con brillo neón
+      ctx.save();
+      ctx.beginPath();
+      displayed.forEach((pt, idx) => {
+        if (idx === 0) ctx.moveTo(getX(idx), getY(pt.price));
+        else ctx.lineTo(getX(idx), getY(pt.price));
+      });
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = "#8B5CF6";
+      ctx.strokeStyle = "#8B5CF6";
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.restore();
+
+      // Coordenadas del último tick
+      const lastIdx = displayed.length - 1;
+      const lastX = getX(lastIdx);
+      const lastY = getY(displayed[lastIdx].price);
+
+      // 9. Procesar eventos en cola (Abrir y Cerrar) para generar animaciones
+      if (pendingEventsRef.current.length > 0) {
+        pendingEventsRef.current.forEach((ev) => {
+          if (ev.type === "open") {
+            shockwaves.current.push({
+              x: lastX,
+              y: lastY,
+              radius: 0,
+              maxRadius: 75,
+              alpha: 1.0,
+              color: ev.isBuy ? "#02D13D" : "#EF4444",
+            });
+            floatingTexts.current.push({
+              x: lastX - 30,
+              y: lastY - 15,
+              text: ev.isBuy ? "CALL 🟢" : "PUT 🔴",
+              alpha: 1.0,
+              color: ev.isBuy ? "#02D13D" : "#EF4444",
+              scale: 1.25,
+            });
+          } else if (ev.type === "close") {
+            const color = ev.isWin ? "#FBBF24" : "#9CA3AF";
+            // Spawn de explosión
+            for (let k = 0; k < 25; k++) {
+              const angle = Math.random() * Math.PI * 2;
+              const speed = Math.random() * 4.5 + 2.0;
+              particles.current.push({
+                x: lastX,
+                y: lastY,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 1.2,
+                size: Math.random() * 3.0 + 1.0,
+                alpha: 1.0,
+                decay: Math.random() * 0.02 + 0.015,
+                color: color,
+              });
+            }
+            floatingTexts.current.push({
+              x: lastX - 35,
+              y: lastY - 20,
+              text: ev.profit >= 0 ? `+$${ev.profit.toFixed(2)} 🎉` : `-$${Math.abs(ev.profit).toFixed(2)} 😢`,
+              alpha: 1.0,
+              color: ev.profit >= 0 ? "#10B981" : "#EF4444",
+              scale: 1.4,
+            });
+          }
+        });
+        pendingEventsRef.current = [];
+      }
+
+      // 10. Spawn de partículas ordinarias del trail del precio
+      if (Math.random() < 0.7) {
+        particles.current.push({
+          x: lastX,
+          y: lastY,
+          vx: (Math.random() - 0.7) * 1.5 - 1.0,
+          vy: (Math.random() - 0.5) * 1.5,
+          size: Math.random() * 2.5 + 0.8,
+          alpha: 1.0,
+          decay: Math.random() * 0.02 + 0.015,
+          color: Math.random() < 0.3 ? "#A78BFA" : "#8B5CF6",
+        });
+      }
+
+      // Dibujar partículas activas (Explosiones e Trail)
+      particles.current.forEach((p, idx) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= p.decay;
+        if (p.alpha <= 0) {
+          particles.current.splice(idx, 1);
+          return;
+        }
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = p.color;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // 11. Dibujar ondas expansivas de apertura (Shockwaves)
+      shockwaves.current.forEach((s, idx) => {
+        s.radius += 2.0;
+        s.alpha -= 0.025;
+        if (s.alpha <= 0 || s.radius >= s.maxRadius) {
+          shockwaves.current.splice(idx, 1);
+          return;
+        }
+        ctx.save();
+        ctx.globalAlpha = s.alpha;
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 3;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = s.color;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.radius * 0.6, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // 12. Dibujar textos flotantes
+      floatingTexts.current.forEach((t, idx) => {
+        t.y -= 0.8;
+        t.alpha -= 0.015;
+        if (t.alpha <= 0) {
+          floatingTexts.current.splice(idx, 1);
+          return;
+        }
+        ctx.save();
+        ctx.globalAlpha = t.alpha;
+        ctx.fillStyle = t.color;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = t.color;
+        ctx.font = `bold ${Math.floor(10 * t.scale)}px sans-serif`;
+        ctx.fillText(t.text, t.x, t.y);
+        ctx.restore();
+      });
+
+      // 13. Línea horizontal de cotización actual (Dashed)
+      ctx.save();
+      ctx.strokeStyle = "rgba(139, 92, 246, 0.4)";
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, lastY);
+      ctx.lineTo(width - 60, lastY);
+      ctx.stroke();
+      ctx.restore();
+
+      // 14. Previsualizaciones de TP y SL (CFD)
+      if (mode === "cfd") {
+        if (tpPreview && !isNaN(parseFloat(tpPreview))) {
+          const tpVal = parseFloat(tpPreview);
+          if (tpVal > minP && tpVal < maxP) {
+            const tpY = getY(tpVal);
+            ctx.save();
+            ctx.strokeStyle = "rgba(16, 185, 129, 0.6)";
+            ctx.setLineDash([5, 5]);
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(0, tpY);
+            ctx.lineTo(width - 60, tpY);
+            ctx.stroke();
+
+            ctx.fillStyle = "rgba(16, 185, 129, 0.8)";
+            ctx.font = "bold 9px sans-serif";
+            ctx.fillText(`PREVISUALIZAR TP: $${tpVal.toFixed(2)}`, 10, tpY - 6);
+            ctx.restore();
+          }
+        }
+
+        if (slPreview && !isNaN(parseFloat(slPreview))) {
+          const slVal = parseFloat(slPreview);
+          if (slVal > minP && slVal < maxP) {
+            const slY = getY(slVal);
+            ctx.save();
+            ctx.strokeStyle = "rgba(239, 68, 68, 0.6)";
+            ctx.setLineDash([5, 5]);
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(0, slY);
+            ctx.lineTo(width - 60, slY);
+            ctx.stroke();
+
+            ctx.fillStyle = "rgba(239, 68, 68, 0.8)";
+            ctx.font = "bold 9px sans-serif";
+            ctx.fillText(`PREVISUALIZAR SL: $${slVal.toFixed(2)}`, 10, slY - 6);
+            ctx.restore();
+          }
+        }
+      }
+
+      // 15. Dibujar líneas de Operaciones Activas
+      activeOperations.forEach((op) => {
+        const entryPrice = parseFloat(op.precio_entrada || op.monto);
+        if (isNaN(entryPrice) || entryPrice < minP || entryPrice > maxP) return;
+
+        const opY = getY(entryPrice);
+        const isBuy = mode === "cfd" 
+          ? op.tipo_operacion?.toLowerCase() === "buy"
+          : op.tipo_opcion?.toLowerCase() === "call" || op.tipo_opcion?.toLowerCase() === "sube";
+        
+        const color = isBuy ? "#02D13D" : "#EF4444";
+
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.setLineDash([6, 3]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(0, opY);
+        ctx.lineTo(width - 60, opY);
+        ctx.stroke();
+
+        ctx.shadowBlur = 4;
+        ctx.shadowColor = color;
+        ctx.fillStyle = color;
+        ctx.font = "bold 9px sans-serif";
+        const labelText = mode === "cfd" 
+          ? `${op.tipo_operacion?.toUpperCase()} ${op.volumen} @ $${entryPrice.toFixed(2)}`
+          : `${op.tipo_opcion?.toUpperCase()} $${op.monto} @ $${entryPrice.toFixed(2)}`;
+        ctx.fillText(labelText, 10, opY - 6);
+        ctx.restore();
+      });
+
+      // 16. Dibujar Cursor de Cruz (Crosshair) interactivo
+      const mouse = mousePosRef.current;
+      if (mouse.x !== null && mouse.y !== null && mouse.x < width - 60 && mouse.y < height - 30) {
+        // Línea vertical
+        ctx.save();
+        ctx.strokeStyle = "rgba(156, 163, 175, 0.5)";
+        ctx.setLineDash([3, 3]);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(mouse.x, 0);
+        ctx.lineTo(mouse.x, height - 30);
+        ctx.stroke();
+
+        // Línea horizontal
+        ctx.beginPath();
+        ctx.moveTo(0, mouse.y);
+        ctx.lineTo(width - 60, mouse.y);
+        ctx.stroke();
+        ctx.restore();
+
+        // Calcular precio en la coordenada Y del cursor
+        const hoverPrice = minP + ((height - 30 - mouse.y) / (height - 60)) * (maxP - minP);
+
+        // Badge de precio del cursor
+        ctx.save();
+        ctx.fillStyle = "#4B5563"; // Gris oscuro
+        ctx.beginPath();
+        ctx.roundRect(width - 58, mouse.y - 9, 56, 18, 4);
+        ctx.fill();
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "bold 9px monospace";
+        ctx.textAlign = "center";
+        ctx.fillText(hoverPrice.toFixed(2), width - 30, mouse.y + 3);
+        ctx.restore();
+
+        // Badge de tiempo en el eje X
+        const hoverTimePercent = mouse.x / (width - 60);
+        const ptIdx = Math.floor(hoverTimePercent * (displayed.length - 1));
+        if (displayed[ptIdx]) {
+          const hoverDate = new Date(displayed[ptIdx].time);
+          const timeStr = `${hoverDate.getHours().toString().padStart(2, '0')}:${hoverDate.getMinutes().toString().padStart(2, '0')}:${hoverDate.getSeconds().toString().padStart(2, '0')}`;
+          
+          ctx.save();
+          ctx.fillStyle = "#4B5563";
+          ctx.beginPath();
+          ctx.roundRect(mouse.x - 25, height - 28, 50, 15, 3);
+          ctx.fill();
+          ctx.fillStyle = "#FFFFFF";
+          ctx.font = "bold 9px monospace";
+          ctx.textAlign = "center";
+          ctx.fillText(timeStr, mouse.x, height - 17);
+          ctx.restore();
+        }
+      }
+
+      // 17. Punto local flotante neón y pulsante en la punta actual
+      ctx.save();
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = "#8B5CF6";
+      ctx.fillStyle = "#A78BFA";
+      ctx.beginPath();
+      const pulseRadius = 5.5 + Math.sin(Date.now() * 0.015) * 1.8;
+      ctx.arc(lastX, lastY, pulseRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // 18. Etiqueta del precio en tiempo real
+      ctx.save();
+      ctx.fillStyle = "#8B5CF6";
+      ctx.beginPath();
+      ctx.roundRect(width - 58, lastY - 9, 56, 18, 4);
+      ctx.fill();
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 10px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(displayed[lastIdx].price.toFixed(2), width - 30, lastY + 3);
+      ctx.restore();
+
+      // 19. HUD/Overlay de estadísticas en la esquina superior izquierda (Estilo Trading)
+      ctx.save();
+      ctx.fillStyle = "rgba(17, 24, 39, 0.75)"; // Fondo oscuro translúcido
+      ctx.beginPath();
+      ctx.roundRect(15, 15, 160, 65, 8);
+      ctx.fill();
+      
+      // Texto del HUD
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "bold 11px sans-serif";
+      ctx.fillText(symbol.toUpperCase(), 25, 32);
+
+      // Calcular cambio porcentual aproximado en la pantalla
+      const pctChange = ((displayed[lastIdx].price - displayed[0].price) / displayed[0].price) * 100;
+      const changeColor = pctChange >= 0 ? "#10B981" : "#EF4444";
+      ctx.fillStyle = changeColor;
+      ctx.font = "bold 10px monospace";
+      ctx.fillText(`${pctChange >= 0 ? "+" : ""}${pctChange.toFixed(3)}%`, 110, 32);
+
+      ctx.fillStyle = "#9CA3AF";
+      ctx.font = "9px sans-serif";
+      ctx.fillText(`MÁX: $${maxP.toFixed(2)}`, 25, 48);
+      ctx.fillText(`MÍN: $${minP.toFixed(2)}`, 25, 60);
+
+      // Pequeñas leyendas de indicadores
+      ctx.fillStyle = "rgba(245, 158, 11, 0.9)";
+      ctx.fillRect(25, 68, 5, 5);
+      ctx.fillStyle = "#9CA3AF";
+      ctx.font = "bold 8px monospace";
+      ctx.fillText("SMA(14)", 34, 73);
+
+      ctx.fillStyle = "rgba(16, 185, 129, 0.5)";
+      ctx.fillRect(78, 68, 5, 5);
+      ctx.fillStyle = "#9CA3AF";
+      ctx.fillText("VOL", 87, 73);
+
+      ctx.restore();
+
+      animationFrameId.current = requestAnimationFrame(render);
+    };
+
+    animationFrameId.current = requestAnimationFrame(render);
+
+    return () => {
+      window.removeEventListener("resize", resizeCanvas);
+      cancelAnimationFrame(animationFrameId.current);
+    };
+  }, [activeOperations, mode, tpPreview, slPreview]);
+
+  return (
+    <div ref={containerRef} className="w-full h-full relative bg-white overflow-hidden">
+      <canvas 
+        ref={canvasRef} 
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className="absolute inset-0 block w-full h-full cursor-crosshair" 
+      />
+    </div>
+  );
+};
+
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
   if (totalPages <= 1) return null;
   const handlePrevious = () => {
@@ -2586,13 +3284,15 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 const PerformanceChart = ({ performanceData, isLoading }) => {
   const chartData = useMemo(
     () => ({
-      labels: performanceData.map((d) =>
-        new Date(d.fecha).toLocaleDateString()
-      ),
+      labels: Array.isArray(performanceData)
+        ? performanceData.map((d) => new Date(d.fecha).toLocaleDateString())
+        : [],
       datasets: [
         {
           label: "Ganancia Diaria",
-          data: performanceData.map((d) => parseFloat(d.ganancia_dia || 0)),
+          data: Array.isArray(performanceData)
+            ? performanceData.map((d) => parseFloat(d.ganancia_dia || 0))
+            : [],
           fill: true,
           backgroundColor: "rgba(65, 0, 147, 0.2)",
           borderColor: "#410093",
@@ -2620,7 +3320,7 @@ const PerformanceChart = ({ performanceData, isLoading }) => {
       <div className="h-28">
         {isLoading ? (
           <Skeleton className="h-full w-full" />
-        ) : !performanceData || performanceData.length === 0 ? (
+        ) : !Array.isArray(performanceData) || performanceData.length === 0 ? (
           <div className="flex items-center justify-center h-full text-gray-500 text-xs">
             No hay datos de rendimiento
           </div>
@@ -2670,7 +3370,6 @@ const StatisticsPanel = ({ stats, performanceData, isLoading }) => (
         </div>
       )}
     </Card>
-    <PerformanceChart performanceData={performanceData} isLoading={isLoading} />
   </div>
 );
 
@@ -2804,8 +3503,8 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
   };
 
   return (
-    <div className="mb-6">
-      <div ref={searchContainerRef} className="relative">
+    <div className="flex-grow flex flex-col overflow-hidden mb-6 min-h-0">
+      <div ref={searchContainerRef} className="relative flex-shrink-0">
         <form onSubmit={handleSubmit} className="mb-1 flex gap-2">
           <input
             type="text"
@@ -2847,10 +3546,10 @@ const AssetLists = React.memo(({ assets, onAddAsset, onRemoveAsset }) => {
           </motion.ul>
         )}
       </div>
-      <h2 className="text-gray-500 font-bold text-sm tracking-wider uppercase mt-4 mb-3 px-2">
+      <h2 className="text-gray-500 font-bold text-sm tracking-wider uppercase mt-4 mb-3 px-2 flex-shrink-0">
         Mis Activos
       </h2>
-      <ul className="space-y-1 max-h-48 overflow-y-auto">
+      <ul className="space-y-1 flex-grow overflow-y-auto min-h-0">
         <AnimatePresence>
           {assets.map((symbol) => (
             <AssetRow
@@ -2993,7 +3692,6 @@ const ProfileMenu = React.memo(
 );
 
 const Header = ({
-  onOperation,
   onManageUsers,
   onManageLeverage,
   onManageCommissions, // NUEVA prop
@@ -3001,9 +3699,12 @@ const Header = ({
   onToggleMainSidebar,
   onOpenProfileModal,
   onManageNotifications,
+  dashboardMode,
+  setDashboardMode,
+  metrics,
+  isLoading,
 }) => {
-  const { user, logout, selectedAsset } = useContext(AppContext);
-  const [volume, setVolume] = useState(0.01);
+  const { user, logout } = useContext(AppContext);
 
   return (
     <header className="flex justify-between items-center px-4 sm:px-6 py-3 bg-white border-b border-gray-200">
@@ -3014,40 +3715,73 @@ const Header = ({
         >
           <Icons.Menu />
         </button>
-        <div className="hidden sm:flex items-center space-x-2">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => onOperation("sell", volume)}
-            className="bg-red-600 hover:bg-red-500 transition-all text-white px-5 py-2 text-sm font-bold rounded-md shadow-lg shadow-red-500/20 hover:shadow-red-500/40 cursor-pointer"
+        {/* Selector de modo de trading */}
+        <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+          <button
+            onClick={() => setDashboardMode("cfd")}
+            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+              dashboardMode === "cfd"
+                ? "bg-purple-600 text-white shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+            style={dashboardMode === "cfd" ? { backgroundColor: "#410093" } : {}}
           >
-            SELL
-          </motion.button>
-          <input
-            type="number"
-            value={volume}
-            onChange={(e) => setVolume(parseFloat(e.target.value) || 0)}
-            step="0.01"
-            min="0.01"
-            className="w-24 p-2 border border-gray-300 bg-gray-50 rounded-md text-gray-900 text-center text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
-          />
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => onOperation("buy", volume)}
-            className="bg-green-600 hover:bg-green-500 transition-all text-white px-5 py-2 text-sm font-bold rounded-md shadow-lg shadow-green-500/20 hover:shadow-green-500/40 cursor-pointer"
-            style={{ backgroundColor: "#02D13D" }}
+            CFD Trading
+          </button>
+          <button
+            onClick={() => setDashboardMode("binary")}
+            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-colors cursor-pointer ${
+              dashboardMode === "binary"
+                ? "bg-purple-600 text-white shadow-sm"
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+            style={dashboardMode === "binary" ? { backgroundColor: "#410093" } : {}}
           >
-            BUY
-          </motion.button>
+            Opciones Binarias
+          </button>
         </div>
       </div>
-      <div className="text-center">
-        <h2 className="text-xl sm:text-3xl font-bold text-gray-900">
-          {selectedAsset}
-        </h2>
-        <p className="text-xs text-gray-500 hidden sm:block">
-          Activo para operar
-        </p>
+      
+      {/* Barra de métricas financieras responsiva en el centro */}
+      <div className="flex items-center gap-2 sm:gap-6 text-[10px] sm:text-xs border bg-gray-50 px-2 sm:px-4 py-1.5 rounded-lg border-gray-100 shadow-sm overflow-x-auto max-w-full">
+        <div className="flex flex-col items-center flex-shrink-0">
+          <span className="text-gray-400 font-semibold uppercase tracking-wider text-[9px] sm:text-[10px]">Balance</span>
+          <span className="font-bold text-gray-900">${metrics?.balance}</span>
+        </div>
+        <div className="h-6 w-px bg-gray-200 flex-shrink-0"></div>
+        <div className="flex flex-col items-center flex-shrink-0">
+          <span className="text-gray-400 font-semibold uppercase tracking-wider text-[9px] sm:text-[10px]">Equidad</span>
+          <FlashingMetric value={metrics?.equity} prefix="$" />
+        </div>
+        <div className="h-6 w-px bg-gray-200 flex-shrink-0 hidden sm:block"></div>
+        <div className="flex flex-col items-center flex-shrink-0 hidden sm:flex">
+          <span className="text-gray-400 font-semibold uppercase tracking-wider text-[10px]">M. Usado</span>
+          <FlashingMetric value={metrics?.usedMargin} prefix="$" />
+        </div>
+        <div className="h-6 w-px bg-gray-200 flex-shrink-0 hidden md:block"></div>
+        <div className="flex flex-col items-center flex-shrink-0 hidden md:flex">
+          <span className="text-gray-400 font-semibold uppercase tracking-wider text-[10px]">M. Libre</span>
+          <FlashingMetric value={metrics?.freeMargin} prefix="$" />
+        </div>
+        <div className="h-6 w-px bg-gray-200 flex-shrink-0 hidden lg:block"></div>
+        <div className="flex flex-col items-center flex-shrink-0 hidden lg:flex">
+          <span className="text-gray-400 font-semibold uppercase tracking-wider text-[10px]">Nivel Margen</span>
+          <span
+            className={`font-bold transition-colors duration-300 ${
+              parseFloat(metrics?.marginLevel) > 200
+                ? "text-green-600"
+                : parseFloat(metrics?.marginLevel) > 120
+                ? "text-yellow-600"
+                : parseFloat(metrics?.marginLevel) > 0
+                ? "text-red-600 animate-pulse"
+                : "text-gray-400"
+            }`}
+          >
+            {metrics?.marginLevel}%
+          </span>
+        </div>
       </div>
+
       <div className="flex items-center space-x-4">
         <ProfileMenu
           user={user}
@@ -3414,6 +4148,517 @@ const OperationsHistory = ({
   );
 };
 
+// --- NUEVO COMPONENTE: PANEL DE CONTROL DE OPERACIONES CFD ---
+const CfdOptionsPanel = ({
+  selectedAsset,
+  realTimePrices,
+  commissions,
+  onConfirm,
+  setAlert,
+  tp,
+  setTp,
+  sl,
+  setSl
+}) => {
+  const [volume, setVolume] = useState(0.01);
+  const [leverage, setLeverage] = useState(1);
+  const [leverageOptions, setLeverageOptions] = useState([1]);
+  const [loading, setLoading] = useState(false);
+
+  const normalizedAsset = normalizeAssetKey(selectedAsset);
+  const livePrice = realTimePrices[normalizedAsset];
+  const livePriceNum = parseFloat(livePrice);
+
+  useEffect(() => {
+    // Cargar opciones de apalancamiento permitidas desde el backend
+    axios
+      .get("/leverage-options")
+      .then((res) => {
+        if (res.data && res.data.length > 0) {
+          setLeverageOptions(res.data);
+          if (!res.data.includes(leverage)) {
+            setLeverage(res.data[0]);
+          }
+        }
+      })
+      .catch((err) => console.error("Error fetching leverage options:", err));
+  }, []);
+
+  const commissionCost = useMemo(() => {
+    const volNum = parseFloat(volume);
+    if (isNaN(livePriceNum) || isNaN(volNum) || volNum <= 0 || !commissions) return 0;
+    return calculateCommissionCost(
+      livePriceNum,
+      volNum,
+      commissions.commissionPercentage
+    );
+  }, [livePriceNum, volume, commissions]);
+
+  const swapDailyCost = useMemo(() => {
+    const volNum = parseFloat(volume);
+    if (isNaN(livePriceNum) || isNaN(volNum) || volNum <= 0 || !commissions || !leverage) return 0;
+    return calculateSwapDailyCost(
+      livePriceNum,
+      volNum,
+      commissions.swapDailyPercentage,
+      leverage
+    );
+  }, [livePriceNum, volume, commissions, leverage]);
+
+  const volNum = parseFloat(volume);
+  const requiredMargin = isNaN(livePriceNum) || isNaN(volNum) || volNum <= 0
+    ? "0.00"
+    : ((livePriceNum * volNum) / leverage).toFixed(2);
+
+  const calculatePotentialProfit = (value, targetType, side) => {
+    const volNum = parseFloat(volume);
+    if (!value || isNaN(livePriceNum) || isNaN(volNum) || volNum <= 0) return null;
+    const targetPrice = parseFloat(value);
+    if (isNaN(targetPrice)) return null;
+
+    if (targetType === "tp" || targetType === "sl") {
+      return side === "buy"
+        ? (targetPrice - livePriceNum) * volNum - commissionCost
+        : (livePriceNum - targetPrice) * volNum - commissionCost;
+    }
+    return null;
+  };
+
+  const handleTrade = async (side) => {
+    const volNum = parseFloat(volume);
+    if (isNaN(volNum) || volNum <= 0) {
+      setAlert({ message: "Por favor, ingrese un volumen válido mayor a 0.", type: "error" });
+      return;
+    }
+    setLoading(true);
+    try {
+      await onConfirm({
+        volumen: volNum,
+        take_profit: tp ? parseFloat(tp) : null,
+        stop_loss: sl ? parseFloat(sl) : null,
+        tipo_operacion: side,
+        apalancamiento: leverage,
+      });
+      // Limpiar campos TP/SL opcionales tras éxito
+      setTp("");
+      setSl("");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isValidVolume = !isNaN(volNum) && volNum > 0;
+
+  return (
+    <Card className="flex flex-col justify-between p-4 min-w-[280px] sm:w-80 h-full">
+      {/* Top Group */}
+      <div className="flex flex-col gap-4">
+        <h3 className="text-gray-900 font-bold text-base border-b border-gray-100 pb-2">
+          Operar CFD
+        </h3>
+
+        {/* Precio actual */}
+        <div className="flex justify-between items-center bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+          <span className="text-xs text-gray-500 font-medium">Precio Actual:</span>
+          <span className="font-mono text-sm font-bold text-gray-900">
+            {!isNaN(livePriceNum) ? `$${livePriceNum.toFixed(4)}` : "Cargando..."}
+          </span>
+        </div>
+
+        {/* Volumen / Lote y Apalancamiento side-by-side */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-gray-700">Volumen / Lote:</label>
+            <input
+              type="number"
+              step="any"
+              min="0.00001"
+              value={volume}
+              onChange={(e) => setVolume(parseFloat(e.target.value) || 0)}
+              placeholder="Cant."
+              className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-gray-700">Apalancamiento:</label>
+            <select
+              value={leverage}
+              onChange={(e) => setLeverage(parseInt(e.target.value))}
+              className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              {leverageOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  1:{opt}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Margen y comisiones estimadas */}
+        <div className="flex flex-col gap-2 text-xs bg-gray-50 p-3 rounded-lg border border-gray-100">
+          <div className="flex justify-between text-gray-500">
+            <span>Margen Requerido:</span>
+            <span className="font-semibold text-gray-900">${requiredMargin}</span>
+          </div>
+          <div className="flex justify-between text-gray-500">
+            <span>Comisión ({commissions?.commissionPercentage || 0}%):</span>
+            <span className="font-semibold text-red-600">${commissionCost.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-gray-500">
+            <span>Swap Diario ({commissions?.swapDailyPercentage || 0}%):</span>
+            <span className="font-semibold text-gray-700">${swapDailyCost.toFixed(4)}</span>
+          </div>
+        </div>
+
+        {/* Take Profit y Stop Loss side-by-side */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-gray-700">Take Profit (Opc):</label>
+            <input
+              type="number"
+              value={tp}
+              onChange={(e) => setTp(e.target.value)}
+              placeholder="TP"
+              className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 font-semibold focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-gray-700">Stop Loss (Opc):</label>
+            <input
+              type="number"
+              value={sl}
+              onChange={(e) => setSl(e.target.value)}
+              placeholder="SL"
+              className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 font-semibold focus:outline-none focus:ring-2 focus:ring-red-500"
+            />
+          </div>
+        </div>
+
+        {/* Estimaciones de TP / SL */}
+        {((tp !== "" && !isNaN(parseFloat(tp))) || (sl !== "" && !isNaN(parseFloat(sl)))) && isValidVolume && !isNaN(livePriceNum) && (
+          <div className="text-[11px] space-y-1 bg-gray-50/50 p-2 rounded-lg border border-gray-100/50">
+            {tp !== "" && !isNaN(parseFloat(tp)) && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Est. TP:</span>
+                <span className="font-semibold text-green-600">B: +${parseFloat(calculatePotentialProfit(tp, "tp", "buy") || 0).toFixed(2)} | S: +${parseFloat(calculatePotentialProfit(tp, "tp", "sell") || 0).toFixed(2)}</span>
+              </div>
+            )}
+            {sl !== "" && !isNaN(parseFloat(sl)) && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Est. SL:</span>
+                <span className="font-semibold text-red-500">B: -${Math.abs(parseFloat(calculatePotentialProfit(sl, "sl", "buy") || 0)).toFixed(2)} | S: -${Math.abs(parseFloat(calculatePotentialProfit(sl, "sl", "sell") || 0)).toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Group (Buttons) */}
+      <div className="grid grid-cols-2 gap-3 mt-4">
+        <button
+          onClick={() => handleTrade("buy")}
+          disabled={loading || isNaN(livePriceNum) || !isValidVolume}
+          className="flex items-center justify-center bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded-lg text-base cursor-pointer transition-all shadow disabled:opacity-50"
+          style={{ backgroundColor: "#02D13D" }}
+        >
+          BUY
+        </button>
+        <button
+          onClick={() => handleTrade("sell")}
+          disabled={loading || isNaN(livePriceNum) || !isValidVolume}
+          className="flex items-center justify-center bg-red-600 hover:bg-red-500 text-white font-bold py-3 px-4 rounded-lg text-base cursor-pointer transition-all shadow disabled:opacity-50"
+        >
+          SELL
+        </button>
+      </div>
+    </Card>
+  );
+};
+
+// --- NUEVO COMPONENTE: PANEL DE CONTROL DE OPCIONES BINARIAS ---
+const BinaryOptionsPanel = ({ 
+  selectedAsset, 
+  realTimePrices, 
+  onConfirm, 
+  activeOperations,
+  setAlert 
+}) => {
+  const [duration, setDuration] = useState(60); // 60, 120, 300
+  const [amount, setAmount] = useState(10);
+  const [loading, setLoading] = useState(false);
+
+  const normalizedSymbol = normalizeAssetKey(selectedAsset);
+  const livePrice = realTimePrices[normalizedSymbol];
+  const livePriceNum = parseFloat(livePrice);
+
+  const handleTrade = async (type) => {
+    if (isNaN(amount) || amount <= 0) {
+      setAlert({ message: "Ingrese un monto de inversión válido.", type: "error" });
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data } = await axios.post("/opciones-binarias/operar", {
+        activo: selectedAsset,
+        monto: amount,
+        tipo_opcion: type,
+        duracion: duration,
+      });
+      if (data.success) {
+        setAlert({ message: "Opción binaria abierta con éxito.", type: "success" });
+        onConfirm(); // Callback para refrescar listas
+      } else {
+        setAlert({ message: data.error || "Error al abrir la opción binaria.", type: "error" });
+      }
+    } catch (err) {
+      console.error(err);
+      setAlert({
+        message: err.response?.data?.error || "Error de red al abrir la opción binaria.",
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const payoutPercentage = 85;
+  const potentialPayout = !isNaN(amount) && amount > 0 ? (amount * 1.85).toFixed(2) : "0.00";
+
+  return (
+    <Card className="flex flex-col justify-between p-4 min-w-[280px] sm:w-80 h-full">
+      {/* Top Group */}
+      <div className="flex flex-col gap-4">
+        <h3 className="text-gray-900 font-bold text-lg border-b border-gray-100 pb-2">
+          Operar Binarias
+        </h3>
+        
+        {/* Precio actual */}
+        <div className="flex justify-between items-center bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+          <span className="text-sm text-gray-500 font-medium">Precio Actual:</span>
+          <span className="font-mono text-lg font-bold text-gray-900">
+            {!isNaN(livePriceNum) ? `$${livePriceNum.toFixed(4)}` : "Cargando..."}
+          </span>
+        </div>
+
+        {/* Duración */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-semibold text-gray-700">Tiempo de Expiración:</label>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "1 Min", value: 60 },
+              { label: "2 Min", value: 120 },
+              { label: "5 Min", value: 300 }
+            ].map((item) => (
+              <button
+                key={item.value}
+                onClick={() => setDuration(item.value)}
+                className={`py-2 px-1 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                  duration === item.value
+                    ? "bg-purple-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+                style={duration === item.value ? { backgroundColor: "#410093" } : {}}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Monto de inversión */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-semibold text-gray-700">Importe (USD):</label>
+          <div className="relative">
+            <span className="absolute left-3 top-2.5 text-gray-400 font-medium">$</span>
+            <input
+              type="number"
+              min="1"
+              value={amount}
+              onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
+              className="w-full pl-7 pr-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white"
+            />
+          </div>
+        </div>
+
+        {/* Retorno y ganancia potencial */}
+        <div className="flex flex-col gap-1 text-sm bg-gray-50 p-3 rounded-lg border border-gray-100">
+          <div className="flex justify-between text-gray-500">
+            <span>Rendimiento:</span>
+            <span className="text-green-600 font-bold">{payoutPercentage}%</span>
+          </div>
+          <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200/60 pt-1.5 mt-1.5">
+            <span>Retorno Potencial:</span>
+            <span className="text-green-600">${potentialPayout}</span>
+          </div>
+        </div>
+
+        {/* Operaciones Activas con countdown */}
+        {activeOperations.length > 0 && (
+          <div className="flex flex-col gap-2 mt-2 border-t border-gray-100 pt-2">
+            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+              Operaciones Activas ({activeOperations.length})
+            </h4>
+            <div className="max-h-36 overflow-y-auto space-y-2 pr-1">
+              {activeOperations.map((op) => (
+                <ActiveBinaryOpRow key={op.id} op={op} />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Botones de operar */}
+      <div className="flex flex-col gap-2 mt-4">
+        <button
+          onClick={() => handleTrade("call")}
+          disabled={loading || isNaN(livePriceNum)}
+          className={`flex items-center justify-center gap-2 bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 px-6 rounded-lg text-center cursor-pointer transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed`}
+          style={{ backgroundColor: "#02D13D" }}
+        >
+          <Icons.Plus className="w-4 h-4 text-white rotate-45" />
+          <span>SUBE (CALL)</span>
+        </button>
+        <button
+          onClick={() => handleTrade("put")}
+          disabled={loading || isNaN(livePriceNum)}
+          className={`flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-6 rounded-lg text-center cursor-pointer transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          <span className="rotate-180 block">
+            <Icons.Plus className="w-4 h-4 text-white rotate-45" />
+          </span>
+          <span>BAJA (PUT)</span>
+        </button>
+      </div>
+    </Card>
+  );
+};
+
+// Componente fila activa con cuenta regresiva local
+const ActiveBinaryOpRow = ({ op }) => {
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const difference = new Date(op.fecha_expiracion).getTime() - Date.now();
+      return Math.max(0, Math.floor(difference / 1000));
+    };
+
+    setTimeLeft(calculateTimeLeft());
+
+    const interval = setInterval(() => {
+      const left = calculateTimeLeft();
+      setTimeLeft(left);
+      if (left <= 0) clearInterval(interval);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [op]);
+
+  const isCall = op.tipo_opcion.toLowerCase() === "call" || op.tipo_opcion.toLowerCase() === "sube";
+
+  return (
+    <div className="flex justify-between items-center text-xs p-2 bg-gray-50 border border-gray-100 rounded-lg">
+      <div className="flex flex-col">
+        <span className="font-bold text-gray-800">{op.activo}</span>
+        <span className={`font-semibold ${isCall ? "text-green-600" : "text-red-600"}`}>
+          {isCall ? "SUBE ▲" : "BAJA ▼"} (${parseFloat(op.monto).toFixed(2)})
+        </span>
+      </div>
+      <div className="flex flex-col items-end">
+        <span className="text-gray-400 font-mono">
+          Entrada: {parseFloat(op.precio_entrada).toFixed(4)}
+        </span>
+        <span className="text-purple-700 font-bold font-mono bg-purple-50 px-2 py-0.5 rounded border border-purple-100">
+          {timeLeft > 0 ? `${timeLeft}s` : "Expira..."}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+// --- NUEVO COMPONENTE: HISTORIAL DE OPCIONES BINARIAS ---
+const BinaryOperationsHistory = ({ operations, isLoading }) => {
+  return (
+    <Card className="flex-grow flex flex-col overflow-hidden mt-4">
+      <div className="p-3 bg-gray-50 flex justify-between items-center flex-shrink-0">
+        <h3 className="text-base font-bold text-gray-900">
+          Historial de Opciones Binarias
+        </h3>
+      </div>
+      <div className="flex-grow overflow-y-auto">
+        <table className="w-full text-sm text-left text-gray-700">
+          <thead className="bg-gray-100 text-xs uppercase sticky top-0 z-10 text-gray-600">
+            <tr>
+              {["Fecha", "Activo", "Tipo", "Monto", "Entrada", "Cierre", "Resultado", "G-P"].map((h) => (
+                <th key={h} className="px-3 py-2 font-medium">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {isLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <tr key={i}>
+                  {Array.from({ length: 8 }).map((_, j) => (
+                    <td key={j} className="px-3 py-2">
+                      <Skeleton className="h-5" />
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : operations.length === 0 ? (
+              <tr>
+                <td colSpan="8" className="text-center py-8 text-gray-500">
+                  No hay opciones binarias finalizadas en tu historial.
+                </td>
+              </tr>
+            ) : (
+              operations.map((op) => {
+                const isCall = op.tipo_opcion.toLowerCase() === "call" || op.tipo_opcion.toLowerCase() === "sube";
+                const ganancia = parseFloat(op.ganancia || 0);
+                const ganadora = ganancia > 0;
+                
+                return (
+                  <tr key={op.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {new Date(op.fecha_creacion).toLocaleString()}
+                    </td>
+                    <td className="px-3 py-2 font-semibold">{op.activo}</td>
+                    <td className={`px-3 py-2 font-bold ${isCall ? "text-green-600" : "text-red-600"}`}>
+                      {isCall ? "SUBE ▲" : "BAJA ▼"}
+                    </td>
+                    <td className="px-3 py-2 font-mono">${parseFloat(op.monto).toFixed(2)}</td>
+                    <td className="px-3 py-2 font-mono">{parseFloat(op.precio_entrada).toFixed(4)}</td>
+                    <td className="px-3 py-2 font-mono">
+                      {op.precio_cierre ? parseFloat(op.precio_cierre).toFixed(4) : "-"}
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                        ganadora 
+                          ? "bg-green-100 text-green-800" 
+                          : "bg-red-100 text-red-800"
+                      }`}>
+                        {ganadora ? "GANADA" : "PERDIDA"}
+                      </span>
+                    </td>
+                    <td className={`px-3 py-2 font-bold font-mono ${ganadora ? "text-green-600" : "text-red-600"}`}>
+                      {ganadora ? `+$${ganancia.toFixed(2)}` : `-$${parseFloat(op.monto).toFixed(2)}`}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  );
+};
+
 const Modal = ({
   isOpen,
   onClose,
@@ -3512,6 +4757,13 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const [sl, setSl] = useState("");
   const [leverage, setLeverage] = useState(1);
   const [leverageOptions, setLeverageOptions] = useState([1]);
+  const [currentVolume, setCurrentVolume] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentVolume(volume !== undefined && volume !== null ? String(volume) : "");
+    }
+  }, [isOpen, volume]);
 
   useEffect(() => {
     // Cargar opciones de apalancamiento permitidas desde el backend
@@ -3532,39 +4784,44 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   }, [isOpen]);
 
   const commissionCost = useMemo(() => {
-    if (isNaN(livePriceNum) || !volume || !commissions) return 0;
+    const volNum = parseFloat(currentVolume);
+    if (isNaN(livePriceNum) || isNaN(volNum) || volNum <= 0 || !commissions) return 0;
     return calculateCommissionCost(
       livePriceNum,
-      volume,
+      volNum,
       commissions.commissionPercentage
     );
-  }, [livePriceNum, volume, commissions]);
+  }, [livePriceNum, currentVolume, commissions]);
 
   // NUEVO: Cálculo del costo de Swap diario
   const swapDailyCost = useMemo(() => {
-    if (isNaN(livePriceNum) || !volume || !commissions || !leverage) return 0;
+    const volNum = parseFloat(currentVolume);
+    if (isNaN(livePriceNum) || isNaN(volNum) || volNum <= 0 || !commissions || !leverage) return 0;
     return calculateSwapDailyCost(
       livePriceNum,
-      volume,
+      volNum,
       commissions.swapDailyPercentage,
       leverage
     );
-  }, [livePriceNum, volume, commissions, leverage]);
+  }, [livePriceNum, currentVolume, commissions, leverage]);
 
-  const requiredMargin = isNaN(livePriceNum)
+  const volNum = parseFloat(currentVolume);
+  const requiredMargin = isNaN(livePriceNum) || isNaN(volNum) || volNum <= 0
     ? "0.00"
-    : ((livePriceNum * volume) / leverage).toFixed(2);
+    : ((livePriceNum * volNum) / leverage).toFixed(2);
 
   useEffect(() => {
     if (!isOpen) {
       setTp("");
       setSl("");
       setLeverage(1);
+      setCurrentVolume("");
     }
   }, [isOpen]);
 
   const calculatePotentialProfit = (value, targetType) => {
-    if (!value || isNaN(livePriceNum) || !volume) return null;
+    const volNum = parseFloat(currentVolume);
+    if (!value || isNaN(livePriceNum) || isNaN(volNum) || volNum <= 0) return null;
     const targetPrice = parseFloat(value);
     if (isNaN(targetPrice)) return null;
 
@@ -3572,13 +4829,13 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
       // Nota: La comisión ya está aplicada en el balance, por lo que solo la restamos
       // para la estimación de PnL en el modal.
       return type === "buy"
-        ? (targetPrice - livePriceNum) * volume - commissionCost
-        : (livePriceNum - targetPrice) * volume - commissionCost;
+        ? (targetPrice - livePriceNum) * volNum - commissionCost
+        : (livePriceNum - targetPrice) * volNum - commissionCost;
     }
     if (targetType === "sl") {
       return type === "buy"
-        ? (targetPrice - livePriceNum) * volume - commissionCost
-        : (livePriceNum - targetPrice) * volume - commissionCost;
+        ? (targetPrice - livePriceNum) * volNum - commissionCost
+        : (livePriceNum - targetPrice) * volNum - commissionCost;
     }
     return null;
   };
@@ -3587,8 +4844,10 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
   const potentialSlProfit = calculatePotentialProfit(sl, "sl");
 
   const handleConfirm = () => {
+    const volNum = parseFloat(currentVolume);
+    if (isNaN(volNum) || volNum <= 0) return;
     onConfirm({
-      volumen: volume,
+      volumen: volNum,
       take_profit: tp ? parseFloat(tp) : null,
       stop_loss: sl ? parseFloat(sl) : null,
       tipo_operacion: type,
@@ -3596,6 +4855,8 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
     });
     onClose();
   };
+
+  const isValidVolume = !isNaN(volNum) && volNum > 0;
 
   return (
     <Modal
@@ -3611,8 +4872,8 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
           <ModalLivePrice symbol={asset} />
         </p>
         <p className="flex justify-between">
-          <span>Volumen:</span>
-          <span className="font-mono text-gray-900">{volume}</span>
+          <span>Volumen a operar:</span>
+          <span className="font-mono text-gray-900">{currentVolume || "0"}</span>
         </p>
         <div className="py-2 border-t border-gray-200">
           <p className="flex justify-between">
@@ -3635,6 +4896,25 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
             </span>
           </p>
         </div>
+      </div>
+      <div className="mb-4">
+        <label className="block text-sm font-medium mb-2 text-gray-700">
+          Volumen / Lote:
+        </label>
+        <input
+          type="number"
+          step="any"
+          min="0.00001"
+          value={currentVolume}
+          onChange={(e) => setCurrentVolume(e.target.value)}
+          placeholder="Cantidad de activos a operar"
+          className="w-full p-2 bg-gray-100 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+        />
+        {currentVolume !== "" && !isValidVolume && (
+          <p className="text-xs text-red-500 mt-1">
+            Por favor, ingrese un volumen válido mayor a 0.
+          </p>
+        )}
       </div>
       <div className="mb-4">
         <label className="block text-sm font-medium mb-2 text-gray-700">
@@ -3689,9 +4969,9 @@ const NewOperationModal = ({ isOpen, onClose, operationData, onConfirm }) => {
       <div className="flex justify-end mt-4">
         <button
           onClick={handleConfirm}
-          disabled={isNaN(livePriceNum)}
+          disabled={isNaN(livePriceNum) || !isValidVolume}
           className={`px-5 py-2 rounded-md text-white font-bold transition-colors cursor-pointer ${
-            isNaN(livePriceNum)
+            isNaN(livePriceNum) || !isValidVolume
               ? "bg-gray-400 cursor-not-allowed"
               : type === "buy"
               ? "bg-green-600 hover:bg-green-500"
@@ -5762,6 +7042,35 @@ const DashboardPage = () => {
   const [mobileVolume, setMobileVolume] = useState(0.01);
   const wsRef = useRef(null);
 
+  const [openTabs, setOpenTabs] = useState(["BTC-USDT"]);
+
+  useEffect(() => {
+    if (selectedAsset && !openTabs.includes(selectedAsset)) {
+      setOpenTabs((prev) => [...prev, selectedAsset]);
+    }
+  }, [selectedAsset, openTabs]);
+
+  const handleCloseTab = useCallback(
+    (tabToClose) => {
+      setOpenTabs((prev) => {
+        const nextTabs = prev.filter((t) => t !== tabToClose);
+        if (selectedAsset === tabToClose) {
+          setSelectedAsset(nextTabs[nextTabs.length - 1] || "BTC-USDT");
+        }
+        return nextTabs;
+      });
+    },
+    [selectedAsset, setSelectedAsset]
+  );
+
+  const [dashboardMode, setDashboardMode] = useState("cfd"); // "cfd" o "binary"
+  const [activeBinaryOps, setActiveBinaryOps] = useState([]);
+  const [binaryOpsHistory, setBinaryOpsHistory] = useState([]);
+  const [chartView, setChartView] = useState("tradingview"); // "tradingview" o "interactive"
+  const [cfdTp, setCfdTp] = useState("");
+  const [cfdSl, setCfdSl] = useState("");
+
+
   // FIX CRÍTICO: Nueva función para normalizar activos en la lista inicial
   const normalizeInitialAssets = useCallback((assets) => {
     return assets.map((symbol) => {
@@ -5851,6 +7160,60 @@ const DashboardPage = () => {
     onConfirm: () => {},
   });
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  const fetchBinaryOps = useCallback(async () => {
+    try {
+      const activeRes = await axios.get("/opciones-binarias/activas");
+      if (activeRes.data && activeRes.data.success) {
+        setActiveBinaryOps(activeRes.data.operaciones);
+      }
+      const historyRes = await axios.get("/opciones-binarias/historial");
+      if (historyRes.data && historyRes.data.success) {
+        setBinaryOpsHistory(historyRes.data.operaciones);
+      }
+    } catch (err) {
+      console.error("Error fetching binary options:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchBinaryOps();
+    }
+  }, [user, fetchBinaryOps, dashboardMode]);
+
+  useEffect(() => {
+    if (activeBinaryOps.length === 0) return;
+
+    const timer = setInterval(() => {
+      let hasExpired = false;
+      const now = Date.now();
+
+      activeBinaryOps.forEach((op) => {
+        const expiryTime = new Date(op.fecha_expiracion).getTime();
+        if (expiryTime <= now) {
+          hasExpired = true;
+        }
+      });
+
+      if (hasExpired) {
+        setTimeout(() => {
+          fetchBinaryOps();
+          axios.get("/balance").then((res) => {
+            if (res.data) {
+              setBalance(parseFloat(res.data.balance));
+              setStats((prev) => ({
+                ...prev,
+                balance: parseFloat(res.data.balance),
+              }));
+            }
+          });
+        }, 1500);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [activeBinaryOps, fetchBinaryOps, setBalance, setStats]);
 
   const handleOpenPaymentModal = (method, type) => {
     setPaymentModalConfig({ isOpen: true, method, type });
@@ -5973,6 +7336,15 @@ const DashboardPage = () => {
               type: "success",
             });
             // Recargar el historial y balance para reflejar el cierre
+            fetchData(pagination.currentPage, opHistoryFilter);
+          } else if (data.type === "opcion_binaria_finalizada") {
+            setAlert({
+              message: `Opción Binaria #${data.opcion_id} (${data.activo}) finalizada. Resultado: ${
+                data.ganadora ? "GANADA (+$" + parseFloat(data.ganancia).toFixed(2) + ")" : "PERDIDA (-$" + Math.abs(parseFloat(data.ganancia)).toFixed(2) + ")"
+              }`,
+              type: data.ganadora ? "success" : "error",
+            });
+            fetchBinaryOps();
             fetchData(pagination.currentPage, opHistoryFilter);
           }
         } catch (error) {
@@ -6334,11 +7706,11 @@ const DashboardPage = () => {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="fixed top-0 left-0 h-full w-72 bg-white p-4 overflow-y-auto flex-shrink-0 border-r border-gray-200 flex flex-col z-40 lg:hidden"
+              className="fixed top-0 left-0 h-full w-72 bg-white p-4 overflow-hidden flex-shrink-0 border-r border-gray-200 flex flex-col z-40 lg:hidden"
             >
-              <div className="flex-grow">
+              <div className="flex-grow flex flex-col overflow-hidden min-h-0">
                 <img
-                  className="mb-4"
+                  className="mb-4 flex-shrink-0"
                   src={platformLogo}
                   width="220"
                   alt="Logo"
@@ -6360,9 +7732,9 @@ const DashboardPage = () => {
           </>
         )}
       </AnimatePresence>
-      <aside className="hidden lg:flex lg:flex-col w-72 bg-white p-4 overflow-y-auto flex-shrink-0 border-r border-gray-200">
-        <div className="flex-grow">
-          <img className="mb-4" src={platformLogo} width="220" alt="Logo" />
+      <aside className="hidden lg:flex lg:flex-col w-72 bg-white p-4 overflow-hidden flex-shrink-0 border-r border-gray-200">
+        <div className="flex-grow flex flex-col overflow-hidden min-h-0">
+          <img className="mb-4 flex-shrink-0" src={platformLogo} width="220" alt="Logo" />
           <AssetLists
             assets={userAssets}
             onAddAsset={handleAddAsset}
@@ -6377,12 +7749,7 @@ const DashboardPage = () => {
           />
         </div>
       </aside>
-      <NewOperationModal
-        isOpen={isNewOpModalOpen}
-        onClose={() => setIsNewOpModalOpen(false)}
-        operationData={newOpModalData}
-        onConfirm={handleConfirmOperation}
-      />
+
       <ManageUsersModal
         isOpen={isUsersModalOpen}
         onClose={() => setIsUsersModalOpen(false)}
@@ -6429,7 +7796,6 @@ const DashboardPage = () => {
 
       <main className="flex-1 flex flex-col bg-transparent overflow-hidden">
         <Header
-          onOperation={handleOpenNewOpModal}
           onManageUsers={() => setIsUsersModalOpen(true)}
           onManageLeverage={() => setIsLeverageModalOpen(true)}
           onManageCommissions={() => setIsCommissionsModalOpen(true)} // Nuevo handler
@@ -6437,53 +7803,219 @@ const DashboardPage = () => {
           onToggleSideMenu={() => setIsSideMenuOpen(true)}
           onToggleMainSidebar={() => setIsSidebarVisible(!isSidebarVisible)}
           onOpenProfileModal={() => setIsProfileModalOpen(true)}
+          dashboardMode={dashboardMode}
+          setDashboardMode={setDashboardMode}
+          metrics={displayMetrics}
+          isLoading={isLoadingData}
         />
         <div className="flex-1 flex flex-col p-2 sm:p-4 gap-4 overflow-y-auto pb-24 sm:pb-4">
-          <div className="flex-grow min-h-[300px] sm:min-h-[400px] bg-white rounded-xl shadow-lg border border-gray-200">
-            <TradingViewWidget symbol={selectedAsset} />
-          </div>
-          <FinancialMetrics
-            metrics={displayMetrics}
-            isLoading={isLoadingData}
-          />
-          <div className="h-full flex flex-col">
-            <OperationsHistory
-              operations={operations}
-              setOperations={setOperations}
-              filter={opHistoryFilter}
-              setFilter={handleFilterChange}
-              onRowClick={handleOpRowClick}
-              isLoading={isLoadingData}
-              pagination={pagination}
-              onPageChange={handlePageChange}
-              setAlert={setAlert}
-            />
-          </div>
+          {dashboardMode === "cfd" ? (
+            <div className="flex-grow flex flex-col gap-4">
+              <div className="flex flex-col lg:flex-row gap-4 flex-grow min-h-[500px]">
+                {/* Gráfico */}
+                <div className="flex-grow bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden flex flex-col">
+                  {/* Pestañas de Activos y Selector de Vista */}
+                  <div className="flex justify-between items-center bg-gray-50 border-b border-gray-200 overflow-x-auto select-none scrollbar-none sm:scrollbar-thin">
+                    <div className="flex">
+                      {openTabs.map((tab) => {
+                        const isActive = tab === selectedAsset;
+                        return (
+                          <div
+                            key={tab}
+                            onClick={() => setSelectedAsset(tab)}
+                            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-r border-gray-200 cursor-pointer transition-colors ${
+                              isActive
+                                ? "bg-white text-purple-700 border-t-2 border-t-purple-600"
+                                : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                            }`}
+                            style={isActive ? { borderTopColor: "#410093", color: "#410093" } : {}}
+                          >
+                            <span>{tab}</span>
+                            {openTabs.length > 1 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCloseTab(tab);
+                                }}
+                                className="text-gray-400 hover:text-red-500 hover:bg-gray-200 rounded p-0.5 transition-colors cursor-pointer"
+                              >
+                                <Icons.X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Selector de vista de gráfico */}
+                    <div className="flex bg-gray-200 p-0.5 rounded-lg border border-gray-300 mr-2 flex-shrink-0">
+                      <button
+                        onClick={() => setChartView("tradingview")}
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded transition-colors cursor-pointer ${
+                          chartView === "tradingview"
+                            ? "bg-white text-gray-800 shadow-sm"
+                            : "text-gray-500 hover:text-gray-800"
+                        }`}
+                      >
+                        TradingView
+                      </button>
+                      <button
+                        onClick={() => setChartView("interactive")}
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded transition-colors cursor-pointer ${
+                          chartView === "interactive"
+                            ? "bg-purple-600 text-white shadow-sm"
+                            : "text-gray-500 hover:text-gray-800"
+                        }`}
+                        style={chartView === "interactive" ? { backgroundColor: "#410093" } : {}}
+                      >
+                        Interactivo 🧪
+                      </button>
+                    </div>
+                  </div>
+                  {/* Contenedor del Gráfico */}
+                  <div className="flex-grow relative min-h-[350px]">
+                    {chartView === "tradingview" ? (
+                      <TradingViewWidget symbol={selectedAsset} />
+                    ) : (
+                      <AnimatedCustomChart
+                        symbol={selectedAsset}
+                        currentPrice={realTimePrices[normalizeAssetKey(selectedAsset)]}
+                        activeOperations={operations.filter((op) => op.estado === "abierta")}
+                        mode="cfd"
+                        tpPreview={cfdTp}
+                        slPreview={cfdSl}
+                      />
+                    )}
+                  </div>
+                </div>
+                {/* Panel de Órdenes CFD */}
+                <div className="flex-shrink-0 flex flex-col">
+                  <CfdOptionsPanel
+                    selectedAsset={selectedAsset}
+                    realTimePrices={realTimePrices}
+                    commissions={commissions}
+                    onConfirm={handleConfirmOperation}
+                    setAlert={setAlert}
+                    tp={cfdTp}
+                    setTp={setCfdTp}
+                    sl={cfdSl}
+                    setSl={setCfdSl}
+                  />
+                </div>
+              </div>
+
+              <div className="h-full flex flex-col">
+                <OperationsHistory
+                  operations={operations}
+                  setOperations={setOperations}
+                  filter={opHistoryFilter}
+                  setFilter={handleFilterChange}
+                  onRowClick={handleOpRowClick}
+                  isLoading={isLoadingData}
+                  pagination={pagination}
+                  onPageChange={handlePageChange}
+                  setAlert={setAlert}
+                />
+              </div>
+            </div>
+          ) : (
+            // Modo Opciones Binarias
+            <div className="flex-grow flex flex-col gap-4">
+              <div className="flex flex-col lg:flex-row gap-4 flex-grow min-h-[500px]">
+                {/* Gráfico */}
+                <div className="flex-grow bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden flex flex-col">
+                  {/* Pestañas de Activos y Selector de Vista */}
+                  <div className="flex justify-between items-center bg-gray-50 border-b border-gray-200 overflow-x-auto select-none scrollbar-none sm:scrollbar-thin">
+                    <div className="flex">
+                      {openTabs.map((tab) => {
+                        const isActive = tab === selectedAsset;
+                        return (
+                          <div
+                            key={tab}
+                            onClick={() => setSelectedAsset(tab)}
+                            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-r border-gray-200 cursor-pointer transition-colors ${
+                              isActive
+                                ? "bg-white text-purple-700 border-t-2 border-t-purple-600"
+                                : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                            }`}
+                            style={isActive ? { borderTopColor: "#410093", color: "#410093" } : {}}
+                          >
+                            <span>{tab}</span>
+                            {openTabs.length > 1 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleCloseTab(tab);
+                                }}
+                                className="text-gray-400 hover:text-red-500 hover:bg-gray-200 rounded p-0.5 transition-colors cursor-pointer"
+                              >
+                                <Icons.X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Selector de vista de gráfico */}
+                    <div className="flex bg-gray-200 p-0.5 rounded-lg border border-gray-300 mr-2 flex-shrink-0">
+                      <button
+                        onClick={() => setChartView("tradingview")}
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded transition-colors cursor-pointer ${
+                          chartView === "tradingview"
+                            ? "bg-white text-gray-800 shadow-sm"
+                            : "text-gray-500 hover:text-gray-800"
+                        }`}
+                      >
+                        TradingView
+                      </button>
+                      <button
+                        onClick={() => setChartView("interactive")}
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded transition-colors cursor-pointer ${
+                          chartView === "interactive"
+                            ? "bg-purple-600 text-white shadow-sm"
+                            : "text-gray-500 hover:text-gray-800"
+                        }`}
+                        style={chartView === "interactive" ? { backgroundColor: "#410093" } : {}}
+                      >
+                        Interactivo 🧪
+                      </button>
+                    </div>
+                  </div>
+                  {/* Contenedor del Gráfico */}
+                  <div className="flex-grow relative min-h-[350px]">
+                    {chartView === "tradingview" ? (
+                      <TradingViewWidget symbol={selectedAsset} />
+                    ) : (
+                      <AnimatedCustomChart
+                        symbol={selectedAsset}
+                        currentPrice={realTimePrices[normalizeAssetKey(selectedAsset)]}
+                        activeOperations={activeBinaryOps}
+                        mode="binary"
+                      />
+                    )}
+                  </div>
+                </div>
+                {/* Panel de Órdenes */}
+                <div className="flex-shrink-0 flex flex-col">
+                  <BinaryOptionsPanel
+                    selectedAsset={selectedAsset}
+                    realTimePrices={realTimePrices}
+                    onConfirm={fetchBinaryOps}
+                    activeOperations={activeBinaryOps}
+                    setAlert={setAlert}
+                  />
+                </div>
+              </div>
+              {/* Historial de Opciones Binarias */}
+              <div className="h-full flex flex-col">
+                <BinaryOperationsHistory
+                  operations={binaryOpsHistory}
+                  isLoading={isLoadingData}
+                />
+              </div>
+            </div>
+          )}
         </div>
-        <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm p-3 border-t border-gray-200 flex justify-around items-center gap-2">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => handleOpenNewOpModal("sell", mobileVolume)}
-            className="flex-1 bg-red-600 hover:bg-red-500 transition-all text-white px-4 py-3 text-sm font-bold rounded-md"
-          >
-            SELL
-          </motion.button>
-          <input
-            type="number"
-            value={mobileVolume}
-            onChange={(e) => setMobileVolume(parseFloat(e.target.value) || 0)}
-            step="0.01"
-            min="0.01"
-            className="w-24 p-3 border border-gray-300 bg-gray-50 rounded-md text-gray-900 text-center text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-          />
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => handleOpenNewOpModal("buy", mobileVolume)}
-            className="flex-1 bg-green-600 hover:bg-green-500 transition-all text-white px-4 py-3 text-sm font-bold rounded-md"
-          >
-            BUY
-          </motion.button>
-        </div>
+
       </main>
     </div>
   );

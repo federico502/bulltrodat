@@ -602,13 +602,15 @@ const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 const PerformanceChart = ({ performanceData, isLoading }) => {
   const chartData = useMemo(
     () => ({
-      labels: performanceData.map((d) =>
-        new Date(d.fecha).toLocaleDateString()
-      ),
+      labels: Array.isArray(performanceData)
+        ? performanceData.map((d) => new Date(d.fecha).toLocaleDateString())
+        : [],
       datasets: [
         {
           label: "Ganancia Diaria",
-          data: performanceData.map((d) => parseFloat(d.ganancia_dia || 0)),
+          data: Array.isArray(performanceData)
+            ? performanceData.map((d) => parseFloat(d.ganancia_dia || 0))
+            : [],
           fill: true,
           backgroundColor: "rgba(22, 163, 74, 0.2)",
           borderColor: "#22c55e",
@@ -636,7 +638,7 @@ const PerformanceChart = ({ performanceData, isLoading }) => {
       <div className="h-28">
         {isLoading ? (
           <Skeleton className="h-full w-full" />
-        ) : !performanceData || performanceData.length === 0 ? (
+        ) : !Array.isArray(performanceData) || performanceData.length === 0 ? (
           <div className="flex items-center justify-center h-full text-neutral-500 text-xs">
             No hay datos de rendimiento
           </div>

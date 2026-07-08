@@ -4,12 +4,13 @@ export async function runMigrations(pool) {
   try {
     await client.query("BEGIN");
 
-    // 1. Tabla Usuarios - Nuevas Columnas (Crédito, Teléfono, Identificación)
+    // 1. Tabla Usuarios - Nuevas Columnas (Crédito, Teléfono, Identificación, Plataforma)
     await client.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS credito NUMERIC DEFAULT 0;");
     await client.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS telefono VARCHAR(255);");
     await client.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS identificacion VARCHAR(255);");
     await client.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS interes_acumulado NUMERIC DEFAULT 0;");
     await client.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS tasa_interes NUMERIC DEFAULT 4.0;");
+    await client.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS platform_id VARCHAR(255);");
 
     // 2. Tabla Operaciones - Nuevas Columnas (Apalancamiento, Cierre, TP/SL)
     await client.query("ALTER TABLE operaciones ADD COLUMN IF NOT EXISTS apalancamiento INTEGER DEFAULT 1;");
@@ -41,8 +42,23 @@ export async function runMigrations(pool) {
       );
     `);
 
-    // 4. Asegurar que las columnas existentes tengan el tipo correcto si fuera necesario
-    // (Opcional, pero buena práctica si hay errores de tipo)
+    // 5. Nueva Tabla Opciones Binarias
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS opciones_binarias (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER REFERENCES usuarios(id),
+        activo VARCHAR(50) NOT NULL,
+        monto NUMERIC NOT NULL,
+        precio_entrada NUMERIC NOT NULL,
+        precio_cierre NUMERIC,
+        tipo_opcion VARCHAR(10) NOT NULL,
+        duracion INTEGER NOT NULL,
+        ganancia NUMERIC,
+        finalizada BOOLEAN DEFAULT FALSE,
+        fecha_creacion TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        fecha_expiracion TIMESTAMP WITH TIME ZONE NOT NULL
+      );
+    `);
 
     await client.query("COMMIT");
     console.log("✅ Migraciones completadas con éxito.");
